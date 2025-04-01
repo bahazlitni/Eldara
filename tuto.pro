@@ -1,12 +1,11 @@
-QT += core gui
-QT += svgwidgets
+QT += core gui widgets svg
 
 TARGET = CircuitsSimulator
 TEMPLATE = app
 
-greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
-
 CONFIG += c++20
+
+greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
 
 SOURCES += \
     Grid.cpp \
@@ -20,43 +19,42 @@ SOURCES += \
     commands/InsertObjectsCommand.cpp \
     commands/MergeSelectionCommand.cpp \
     commands/MovePointsCommand.cpp \
+    commands/RemoveObjectsCommand.cpp \
     commands/RemoveVariablesCommand.cpp \
     commands/SplitDipoleCommand.cpp \
-    objects/BCPath.cpp \
-    tools/MouseTool.cpp \
-    tools/Selector.cpp \
-    utils/Functions.cpp \
     commands/Timeline.cpp \
+    objects/BCPath.cpp \
     objects/Dipole.cpp \
     objects/Wire.cpp \
-    utils/Geometry.cpp \
+    tools/MouseTool.cpp \
+    tools/Selector.cpp \
     tools/Grabber.cpp \
     tools/Pen.cpp \
-    main.cpp \
+    utils/Functions.cpp \
+    utils/Geometry.cpp \
     utils/Selection.cpp \
+    main.cpp \
+    widgets/MainPanel.cpp \
     widgets/custom/CustomDoubleSpinBox.cpp \
     widgets/custom/CustomSpinBox.cpp \
+    widgets/groups/AliasGroup.cpp \
     widgets/groups/ColorsGroup.cpp \
     widgets/groups/DipoleGroup.cpp \
+    widgets/groups/InputGroup.cpp \
+    widgets/groups/ObjectGroup.cpp \
     widgets/groups/PenGroup.cpp \
     widgets/groups/UnitDipoleGroup.cpp \
     widgets/inputs/ColorInput.cpp \
     widgets/inputs/DoubleParameterInput.cpp \
     widgets/tabs/QuickSettingsTab.cpp \
     widgets/tabs/SelectionTab.cpp \
-    widgets/tabs/VariablesTab.cpp \
-    widgets\MainPanel.cpp \
-    widgets\groups\AliasGroup.cpp \
-    widgets\groups\InputGroup.cpp \
-    widgets\groups\ObjectGroup.cpp \
-    commands/RemoveObjectsCommand.cpp \
-
-
+    widgets/tabs/VariablesTab.cpp
 
 HEADERS += \
     Grid.h \
     App.h \
     VariablesManager.h \
+    Window.h \
     commands/AddVariablesCommand.h \
     commands/ChangeAttributeCommand.h \
     commands/ChangeVariablesCommand.h \
@@ -65,62 +63,58 @@ HEADERS += \
     commands/InsertObjectsCommand.h \
     commands/MergeSelectionCommand.h \
     commands/MovePointsCommand.h \
+    commands/RemoveObjectsCommand.h \
     commands/RemoveVariablesCommand.h \
     commands/SplitDipoleCommand.h \
+    commands/Timeline.h \
+    objects/Alias.h \
     objects/BCControlPoint.h \
     objects/BCPath.h \
     objects/BCPoint.h \
-    objects/Object.h \
-    objects/Resistor.h \
-    objects/Inductor.h \
-    commands/Timeline.h \
-    commands/RemoveObjectsCommand.h \
-    objects/Alias.h \
     objects/Battery.h \
     objects/Capacitor.h \
     objects/DC_CurrentGenerator.h \
     objects/DC_VoltageGenerator.h \
     objects/Dipole.h \
+    objects/Inductor.h \
+    objects/Object.h \
+    objects/Resistor.h \
     objects/UnitDipole.h \
+    objects/Wire.h \
     objects/WorldPoint.h \
     tools/MouseTool.h \
-    utils/Functions.h \
-    utils/Geometry.h \
     tools/Grabber.h \
     tools/Pen.h \
     tools/Selector.h \
-    Window.h \
-    objects/Wire.h \
+    utils/Functions.h \
+    utils/Geometry.h \
     utils/Selection.h \
     utils/Types.h \
+    widgets/MainPanel.h \
     widgets/custom/CustomDoubleSpinBox.h \
     widgets/custom/CustomSpinBox.h \
+    widgets/groups/AliasGroup.h \
     widgets/groups/ColorsGroup.h \
+    widgets/groups/DipoleGroup.h \
+    widgets/groups/InputGroup.h \
+    widgets/groups/ObjectGroup.h \
     widgets/groups/PenGroup.h \
     widgets/groups/UnitDipoleGroup.h \
     widgets/inputs/AddressInput.h \
     widgets/inputs/BooleanInput.h \
-    widgets/inputs/DoubleParameterInput.h \
     widgets/inputs/ColorInput.h \
     widgets/inputs/CoordinateInput.h \
-    widgets/HSeparator.h \
+    widgets/inputs/DoubleParameterInput.h \
     widgets/inputs/IDLabel.h \
     widgets/inputs/ObjectTypeInput.h \
     widgets/inputs/RadiusInput.h \
-    widgets/groups/DipoleGroup.h \
     widgets/tabs/QuickSettingsTab.h \
     widgets/tabs/SelectionTab.h \
-    widgets/tabs/VariablesTab.h \
-    widgets\MainPanel.h \
-    widgets\groups\AliasGroup.h \
-    widgets\groups\InputGroup.h \
-    widgets\groups\ObjectGroup.h \
+    widgets/tabs/VariablesTab.h
 
-
-# Default rules for deployment.
+# Deployment rules
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-RESOURCES += \
-    assets.qrc
+RESOURCES += assets.qrc
