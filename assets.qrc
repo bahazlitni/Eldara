@@ -1,0 +1,38 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/cursor/pen.png</file>
+        <file>assets/cursor/grab.png</file>
+        <file>assets/cursor/selector.png</file>
+        <file>assets/cursor/grabbing.png</file>
+        <file>assets/cursor/pen_constructing.png</file>
+        <file>assets/cursor/cross.png</file>
+        <file>assets/cursor/selector_plus.png</file>
+        <file>assets/cursor/pen_constructing_plus.png</file>
+        <file>assets/cursor/BC_EDIT.png</file>
+        <file>assets/cursor/BC_EDIT_CONTROLLING.png</file>
+        <file>assets/icons/arrow_down.svg</file>
+        <file>assets/icons/arrow_left.svg</file>
+        <file>assets/icons/arrow_right.svg</file>
+        <file>assets/icons/arrow_up.svg</file>
+        <file>widgets/styles/MainPanel.qss</file>
+        <file>assets/objects/Battery.svg</file>
+        <file>assets/objects/Capacitor.svg</file>
+        <file>assets/objects/DC_CurrentGenerator.svg</file>
+        <file>assets/objects/DC_VoltageGenerator.svg</file>
+        <file>assets/objects/Diode.svg</file>
+        <file>assets/objects/Inductor.svg</file>
+        <file>assets/objects/Resistor.svg</file>
+        <file>assets/objects/Zener.svg</file>
+        <file>assets/objects/Alias/Alias8.svg</file>
+        <file>assets/objects/Alias/Alias12.svg</file>
+        <file>assets/objects/Alias/Alias16.svg</file>
+        <file>assets/objects/Alias/Alias20.svg</file>
+        <file>assets/cursor/selector_minus.png</file>
+        <file>assets/icons/arrow_down.png</file>
+        <file>assets/icons/arrow_left.png</file>
+        <file>assets/icons/arrow_right.png</file>
+        <file>assets/icons/arrow_up.png</file>
+        <file>assets/icons/eye_opened.png</file>
+        <file>assets/icons/eye_shut.png</file>
+    </qresource>
+</RCC>

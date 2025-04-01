@@ -1,0 +1,17 @@
+*.pro.user
+*.pro.user.*
+*.qmake.stash
+Makefile*
+CMakeLists.txt.user
+CMakeCache.txt
+build*/
+*.o
+*.obj
+*.so
+*.dll
+*.a
+*.lib
+*.exe
+moc_*
+ui_*
+qrc_*
