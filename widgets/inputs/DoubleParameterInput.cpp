@@ -1,31 +1,9 @@
 #include "DoubleParameterInput.h"
-#include <QHBoxLayout>
-#include <QDoubleSpinBox>
-#include <QComboBox>
-#include <QPushButton>
-#include <QLineEdit>
-#include <QCheckBox>
-#include <QCompleter>
-#include <QStyle>
-#include <cmath>
 #include "widgets/custom/CustomDoubleSpinBox.h"
-#include <QPushButton>
-#include <QLabel>
-#include <QButtonGroup>
-
 #include "widgets/inputs/BooleanInput.h"
-
-inline QString textLabelOf(const VariableType type){
-    switch(type){
-    case VAR_RESISTANCE: return "Resistance";
-    case VAR_CAPACITANCE: return "Capacitance";
-    case VAR_INDUCTANCE: return "Inductance";
-    case VAR_INTENSITY: return "Intensity";
-    case VAR_QUANTITY: return "Quantity";
-    case VAR_VOLTAGE: return "Voltage";
-    default: return "";
-    }
-}
+#include "widgets/MainPanel.h"
+#include "App.h"
+#include "widgets/tabs/VariablesTab.h"
 
 inline int indexToMagnitude(const QPair<int,int> &range, int index){
     return std::max(range.second - index*3, range.first);
@@ -34,11 +12,13 @@ inline int magnitudeToIndex(const QPair<int,int> &range, int order){
     return std::max((range.second - order)/3, 0);
 }
 
-DoubleParameterInput::DoubleParameterInput(InputGroup* group, VariableType type, QWidget* parent):
+DoubleParameterInput::DoubleParameterInput(ObjectGroup* group, Param param, const QString label, QWidget* parent):
     QWidget(parent),
     group(group),
-    vartype(type),
-    unit(getUnitOfVariableType(type)),
+    label(label),
+    param(param),
+    unit(paramUnit(param)),
+    vartype(paramVartype(param)),
     magnitudeRange(unitMagnitudeRange(unit)),
     maxValue(pow(10.0, magnitudeRange.second + 3)),
     minValue(pow(10.0, magnitudeRange.first)),
@@ -49,13 +29,13 @@ DoubleParameterInput::DoubleParameterInput(InputGroup* group, VariableType type,
     variableButton(new QPushButton("Variable", headerWidget)),
     ShowLabel(
         new BooleanInput(
-            group, "show-label",
+            group, Attr::ShowLabel,
             QIcon(":/assets/icons/eye_opened.png"),
             QIcon(":/assets/icons/eye_shut.png"),
             QSize(16,16),
             parent
-        )
-    ),
+            )
+        ),
     constantWidget(new QWidget(this)),
     valueSpin(new CustomDoubleSpinBox(constantWidget)),
     magnitudeCombo(new QComboBox(constantWidget)),
@@ -74,11 +54,10 @@ DoubleParameterInput::DoubleParameterInput(InputGroup* group, VariableType type,
 void DoubleParameterInput::setupHeaderUi(){
     QHBoxLayout *layout = new QHBoxLayout(headerWidget);
     QButtonGroup *modeGroup = new QButtonGroup(headerWidget);
-    QLabel *label = new QLabel(textLabelOf(vartype));
     QHBoxLayout *modeLayout = new QHBoxLayout();
 
     layout->addWidget(ShowLabel);
-    layout->addWidget(label);
+    layout->addWidget(new QLabel(label));
 
     layout->addLayout(modeLayout);
     layout->setSpacing(12);
@@ -182,16 +161,16 @@ void DoubleParameterInput::setupConstantUi(){
 
     connect(valueSpin, &QDoubleSpinBox::valueChanged,
             this, &DoubleParameterInput::handleValueSpinValueChanged
-    );
+            );
     connect(valueSpin, &QDoubleSpinBox::editingFinished,
             this, &DoubleParameterInput::handleValueSpinEditingFinished
-    );
+            );
     connect(magnitudeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &DoubleParameterInput::handleMagnitudeChange
-    );
+            );
     connect(toggleRawButton, &QPushButton::toggled,
             this, &DoubleParameterInput::toggleRaw
-    );
+            );
 
     toggleRawButton->blockSignals(true);
     toggleRawButton->setChecked(true);
@@ -247,16 +226,16 @@ void DoubleParameterInput::handleConstantSwitching(){
 
     valueSpin->blockSignals(true);
     magnitudeCombo->blockSignals(true);
-    bool ok;
-    const QString &strvalue = group->dataString("value");
-    rawValue = strvalue.toDouble(&ok);
-    currentOrder = isRaw() ? 0 : magnitude(rawValue);
-    updateSpinAndMagnitude();
-    if(ok && !strvalue.isEmpty())
-        valueSpin->setValue(rawValue / multiplier);
-    else {
-        valueSpin->lineEdit()->setPlaceholderText(strvalue);
+
+    if(group->isMixedParam(param)){
+        valueSpin->lineEdit()->setPlaceholderText("Mixed");
         valueSpin->lineEdit()->setText("");
+    }
+    else {
+        rawValue = group->paramValue(param);
+        currentOrder = isRaw() ? 0 : magnitude(rawValue);
+        updateSpinAndMagnitude();
+        valueSpin->setValue(rawValue / multiplier);
     }
     magnitudeCombo->blockSignals(false);
     valueSpin->blockSignals(false);
@@ -295,11 +274,12 @@ void DoubleParameterInput::updateCompleterModel(){
 void DoubleParameterInput::updateData(){
     ShowLabel->updateData();
 
-    variables = group->app->varManager.varnames(vartype);
-    updateCompleterModel();
+    variables = group->mainPanel->variablesTab->names(vartype);
 
-    if(validateVarname(group->dataString("varname")))
+    if(validateVarname(group->paramVarname(param))){
         handleVariableSwitching();
+        updateCompleterModel();
+    }
     else
         handleConstantSwitching();
 }
@@ -339,23 +319,23 @@ void DoubleParameterInput::handleVariableEdit(const QString &text) {
 void DoubleParameterInput::finalizeVariableEdit() {
     const QString newVarname = varnameLineEdit->text().trimmed();
     if(validateVarname(newVarname)) {
-        group->onEditingFinishedApply("varname", newVarname);
+        group->confirmParamVarname(param, newVarname);
         varnameLineEdit->setStyleSheet("color: white;");
-        group->app->update();
+        group->mainPanel->app->update();
     }
 }
 
 void DoubleParameterInput::handleValueSpinValueChanged(const double value){
     rawValue = value*multiplier;
-    group->apply("value", QString::number(rawValue));
-    group->app->update();
+    group->setParamValue(param, rawValue);
+    group->mainPanel->app->update();
 }
 
 void DoubleParameterInput::handleMagnitudeChange(int index){
     currentOrder = indexToMagnitude(magnitudeRange, index);
     updateSpinAndMagnitude();
-    group->apply("value", QString::number(rawValue));
-    group->app->update();
+    group->setParamValue(param, rawValue);
+    group->mainPanel->app->update();
 }
 
 void DoubleParameterInput::toggleRaw() {
@@ -375,7 +355,8 @@ void DoubleParameterInput::handleValueSpinEditingFinished(){
     rawValue = valueSpin->value()*multiplier;
     currentOrder = isRaw() ? 0 : magnitude(rawValue);
     updateSpinAndMagnitude();
-    group->onEditingFinishedApply("value", QString::number(rawValue));
+    group->confirmParamValue(param, rawValue);
+    group->mainPanel->app->update();
 }
 
 
@@ -384,13 +365,10 @@ void DoubleParameterInput::onAddVariables(
     [[maybe_unused]] const QVector<QVariant> &values,
     const QVector<VariableType> &types
 ){
-    bool needUpdate = false;
     for(int i = 0; i < names.size(); ++i){
         if(types[i] != vartype) continue;
-        needUpdate = true;
         variables.append(names[i]);
     }
-    if(!needUpdate) return;
     updateCompleterModel();
     variableButton->setEnabled(true);
     if(isConstant() && validateVarname(varname))
@@ -399,21 +377,15 @@ void DoubleParameterInput::onAddVariables(
 
 void DoubleParameterInput::onChangeVariables(
     [[maybe_unused]] const QVector<QString> &names,
-    [[maybe_unused]] const QVector<QVariant> &newValues,
-    [[maybe_unused]] const QVector<VariableType> &types
+    [[maybe_unused]] const QVector<QVariant> &newValues
 ){}
 
 void DoubleParameterInput::onRemoveVariables(
-    const QVector<QString> &names,
-    [[maybe_unused]] const QVector<VariableType> &types
+    const QVector<QString> &names
 ){
-    bool needUpdate = false;
     for(int i = 0; i < names.size(); ++i){
-        if(types[i] != vartype) continue;
-        needUpdate = true;
         variables.removeOne(names[i]);
     }
-    if(!needUpdate) return;
     updateCompleterModel();
     if(isVariable() && !validateVarname(varname))
         handleConstantSwitching();

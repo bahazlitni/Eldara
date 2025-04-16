@@ -1,25 +1,17 @@
 #pragma once
 
-#include "utils/Types.h"
-#include <QGroupBox>
-#include <QSet>
-#include <QVBoxLayout>
-#include <QWidget>
-#include <QTabWidget>
-#include <QLabel>
-#include <QScrollArea>
+#include "utils/Globals.h"
 
-class App;
-class ObjectGroup;
-class ColorsGroup;
-class AliasGroup;
-class UnitDipoleGroup;
+class InputGroup;
+class DipoleGroup;
+class MainPanel;
+
 class SelectionTab : public QWidget {
     Q_OBJECT
 
 public:
-    explicit SelectionTab(App *app, QWidget *parent = nullptr);
-    App *app;
+    explicit SelectionTab(MainPanel *mainPanel);
+    MainPanel *mainPanel;
 
 public slots:
     void updateData();
@@ -32,18 +24,15 @@ public slots:
     );
     void onChangeVariables(
         const QVector<QString> &names,
-        const QVector<QVariant> &newValues,
-        [[maybe_unused]] const QVector<VariableType> &types
+        const QVector<QVariant> &newValues
     );
     void onRemoveVariables(
-        const QVector<QString> &names,
-        [[maybe_unused]] const QVector<VariableType> &types
+        const QVector<QString> &names
     );
 
 private:
     QVBoxLayout *mainLayout;
-    QVector<ObjectGroup*> objectGroups;
-    QVector<UnitDipoleGroup*> unitDipoleGroups;
-    ColorsGroup *colorsGroup;
+
+    QVector<InputGroup*> inputGroups;
     QScrollArea *scrollArea;
 };

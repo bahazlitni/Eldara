@@ -8,14 +8,14 @@
 #include <QLabel>
 #include <QScrollArea>
 
-class App;
+class MainPanel;
 class PenGroup;
 class QuickSettingsTab : public QWidget {
     Q_OBJECT
 
 public:
-    explicit QuickSettingsTab(App *app, QWidget *parent = nullptr);
-    App *app;
+    explicit QuickSettingsTab(MainPanel *mainPanel);
+    MainPanel *mainPanel;
 
 public slots:
     void updateGridData();

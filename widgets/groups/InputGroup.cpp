@@ -1,21 +1,17 @@
 #include "InputGroup.h"
 #include "App.h"
 #include "tools/Selector.h"
-
-#include <QToolButton>
-#include <QBoxLayout>
-#include <QStringList>
-#include <QStyle>
+#include "widgets/MainPanel.h"
 
 // Constructor: sets up the header button and content area.
-InputGroup::InputGroup(App *app, QWidget *parent):
+InputGroup::InputGroup(MainPanel *mainPanel, QWidget *parent):
     QWidget(parent),
     headerButton(new QToolButton(this)),
     contentWidget(new QWidget(this)),
     contentLayout(new QGridLayout(contentWidget)),
     collapsedIcon(QIcon(":/assets/icons/arrow_right.svg")),
     expandedIcon(QIcon(":/assets/icons/arrow_down.svg")),
-    app(app)
+    mainPanel(mainPanel)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 

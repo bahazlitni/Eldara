@@ -2,21 +2,15 @@
 #include "App.h"
 
 #include "widgets/groups/PenGroup.h"
+#include "widgets/MainPanel.h"
 
-#include <QVBoxLayout>
-#include <QToolButton>
-#include <QGroupBox>
-#include <QScrollArea>
-#include <QTabWidget>
-#include <QLabel>
-#include <QGuiApplication>
 
-QuickSettingsTab::QuickSettingsTab(App *app, QWidget *parent) :
-    QWidget(parent),
-    app(app),
+QuickSettingsTab::QuickSettingsTab(MainPanel *mainPanel) :
+    QWidget(mainPanel),
+    mainPanel(mainPanel),
     mainLayout(new QVBoxLayout(this)),
     scrollArea(new QScrollArea(this)),
-    penGroup(new PenGroup(app, this))
+    penGroup(new PenGroup(mainPanel, this))
 {
     setObjectName("QuickSettingsTab");
 

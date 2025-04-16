@@ -1,6 +1,6 @@
 #pragma once
 #include "WorldPoint.h"
-#include "../utils/Types.h"
+#include "../utils/Globals.h"
 #include "utils/Geometry.h"
 #include <QRegularExpression>
 #include <cstdint>
@@ -14,7 +14,7 @@ private:
     QString _address;
     int _radius;
     QColor _color;
-    LockedDipoles _connections;
+    DipolesSet _connections;
     bool _showLabel;
 
 public:
@@ -23,13 +23,14 @@ public:
         uint64_t id,
         const QString &address,
         float x, float y, int r,
-        const QColor &color,
+        const QBrush &brush,
         const bool showLabel
     ) :
-        WorldPoint(QPointF(x, y)),
+        WorldPoint(x, y, brush),
         _id(id), _address(address),
-        _radius(r), _color(color),
-        _showLabel(showLabel) {}
+        _radius(r),
+        _showLabel(showLabel)
+    {}
 
     ~Alias() override = default;
 
@@ -40,15 +41,19 @@ public:
 
     // Getters and Setters
     uint64_t id() const { return _id; }
-    QString name() const override { return _address; }
-    QColor color() const override { return _color; }
-    void setColor(const QColor &color) override { _color = color; }
+    inline QString label() const override { return _address; }
 
+    int diameter() const { return _radius*2; }
     int radius() const { return _radius; }
     void setRadius(int r) { _radius = r; }
 
-    bool showLabel() const { return _showLabel; }
-    void setShowLabel(bool b) { _showLabel = b; }
+    float width() const { return (float) diameter(); }
+    float height() const { return width(); }
+    QSizeF size() const { return QSizeF(width(), height()); }
+    QRectF rect() const { return QRectF(x() - _radius, y() - _radius, width(), height()); }
+
+    bool showLabel() const override { return _showLabel; }
+    void setShowLabel(bool b) override { _showLabel = b; }
 
     // Interface Methods (type and category)
     ObjectType type() const override { return ALIAS; }
@@ -74,25 +79,31 @@ public:
     // Connection Methods
     void connect(const SharedDipole &dipole) { _connections.insert(dipole); }
     void disconnect(const SharedDipole &dipole) { _connections.remove(dipole); }
-    LockedDipoles connections() const { return _connections; }
+    DipolesSet connections() const { return _connections; }
 
-    // UI Methods (dataString and setData)
-    QString dataString(const QString &key) const override {
-        if (key == "id") return QString::number(_id);
-        if (key == "address") return _address;
-        if (key == "radius") return QString::number(_radius);
-        if (key == "show-label") return _showLabel? "1" : "0";
-        return WorldPoint::dataString(key);
+    // UI Methods (getAttr and setData)
+    QVariant getAttr(const Attr attr) const override {
+        switch(attr){
+        case Attr::ID: return _id;
+        case Attr::Address: return _address;
+        case Attr::Radius: return _radius;
+        case Attr::Diameter: return diameter();
+        case Attr::Width: return width();
+        case Attr::Height: return height();
+        case Attr::Size: return size();
+        case Attr::Rect: return rect();
+        default: return WorldPoint::getAttr(attr);
+        }
     }
-
-    void setData(const QString &key, const QString &value) override {
-        if (key == "address") setAddress(value);
-        else if (key == "radius") setRadius(value.toInt());
-        else if (key == "show-label") setShowLabel(value == "1");
-        else WorldPoint::setData(key, value);
+    void setAttr(const Attr attr, const QVariant &v) override {
+        switch(attr){
+        case Attr::Address: setAddress(v.toString()); return;
+        case Attr::Radius: setRadius(v.toUInt()); return;
+        default: WorldPoint::setAttr(attr, v); return;
+        }
     }
 
     SharedAlias clone(const uint64_t id) const {
-        return std::make_shared<Alias>(id, address(), x(), y(), radius(), color(), showLabel());
+        return std::make_shared<Alias>(id, address(), x(), y(), radius(), _brush, showLabel());
     }
 };

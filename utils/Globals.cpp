@@ -1,46 +1,18 @@
-#include "Functions.h"
-#include "Geometry.h"
+#include "Globals.h"
 #include "App.h"
-#include "Grid.h"
-#include "objects/Alias.h"
-#include "objects/Dipole.h"
 
-#include <chrono>
-#include <QPainterPath>
-
-
-QString formatUnit(double value, int precision) {
-    // SI Prefixes
-    const QStringList prefixes = {"p", "n", "µ", "m", "", "k", "M", "G", "T"};
-    const int middleIndex = 4;
-
-    if (value == 0.0) {
-        return QString("0");
-    }
-
-    int exponent = static_cast<int>(std::floor(std::log10(std::abs(value))));
-    int index = middleIndex + exponent / 3;
-    index = std::clamp(index, 0, static_cast<int>(prefixes.size()) - 1);
-
-    float scaledValue = value / std::pow(10, (index - middleIndex) * 3);
-
-    // Format the result
-    return QString::number(scaledValue, 'f', precision) + prefixes[index];
-}
-
-long long now() {
-    auto now = std::chrono::system_clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch());
-    return static_cast<long long>(ms.count());
-}
-
-
-QPointF indicateTarget(App *app, QPainterPath &indicators, const QPointF &target, const QVector<QPointF> &points){
+QPointF indicateTarget(
+    App *app,
+    QPainterPath &indicators,
+    const QPointF &target,
+    const QVector<QPointF> &points,
+    const float zoom
+){
     float dmin[2][2];
     QPointF refp[2][2];
     bool found[2][2] = { { false, false }, { false, false } };
 
-    const float margin = 5.0 / app->grid.zoom();
+    const float margin = 5.0/zoom;
     QPointF suggestedTarget = target;
 
     // Process each candidate point.

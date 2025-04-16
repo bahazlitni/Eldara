@@ -19,7 +19,7 @@ public:
     }
 
     void updateData(){
-        QString text = group->dataString("id");
+        const QString text = group->getAttr(Attr::ID).toString();
 
         if (clipText && !text.isEmpty()) {
             // Get available width for the label

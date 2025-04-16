@@ -1,5 +1,5 @@
 #include "Command.h"
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
 class App;
 class SplitDipoleCommand: public Command {

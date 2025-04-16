@@ -1,7 +1,7 @@
 #pragma once
 #include "Object.h"
 #include <memory>
-#include "../utils/Types.h"
+#include "../utils/Globals.h"
 #include "utils/Geometry.h"
 
 class App;
@@ -14,6 +14,18 @@ public:
     WorldPoint(QPointF p): point(std::make_shared<QPointF>(p)) {}
     WorldPoint(const SharedPoint &p): point(p) {}
 
+    WorldPoint(float x, float y, const QBrush &brush, const QPen &pen): Object(brush, pen), point(std::make_shared<QPointF>(QPointF(x, y))) {}
+    WorldPoint(QPointF p, const QBrush &brush, const QPen &pen): Object(brush, pen), point(std::make_shared<QPointF>(p)) {}
+    WorldPoint(const SharedPoint &p, const QBrush &brush, const QPen &pen): Object(brush, pen), point(p) {}
+
+    WorldPoint(float x, float y, const QBrush &brush): Object(brush), point(std::make_shared<QPointF>(QPointF(x, y))) {}
+    WorldPoint(QPointF p, const QBrush &brush): Object(brush), point(std::make_shared<QPointF>(p)) {}
+    WorldPoint(const SharedPoint &p, const QBrush &brush): Object(brush), point(p) {}
+
+    WorldPoint(float x, float y, const QPen &pen): Object(pen), point(std::make_shared<QPointF>(QPointF(x, y))) {}
+    WorldPoint(QPointF p, const QPen &pen): Object(pen), point(std::make_shared<QPointF>(p)) {}
+    WorldPoint(const SharedPoint &p, const QPen &pen): Object(pen), point(p) {}
+
     bool inside(const QRectF &box, [[maybe_unused]] const float zoom) override { return PinR(p(), box); }
     bool visible(const QRectF &viewport, [[maybe_unused]] const float zoom) override { return PinR(p(), viewport); }
 
@@ -22,33 +34,39 @@ public:
     operator SharedPoint() const { return point; }
 
     // Getters
-    float x() const { return point->x(); }
-    float y() const { return point->y(); }
-    QPointF p() const { return QPointF(x(), y()); }
-    SharedPoint share() const { return point; }
+    inline float x() const { return point->x(); }
+    inline float y() const { return point->y(); }
+    inline QPointF p() const { return QPointF(x(), y()); }
+    inline SharedPoint share() const { return point; }
 
     // Setters
-    void setX(float x) { point->setX(x); }
-    void setY(float y) { point->setY(y); }
-    void setShared(const SharedPoint &p){ point = p; }
+    inline void setX(float x) { point->setX(x); }
+    inline void setY(float y) { point->setY(y); }
+    inline void setP(const QPointF &p) { setX(p.x()); setY(p.y()); }
+    inline void setShared(const SharedPoint &p){ point = p; }
 
     // Transformations
-    void translateX(float dx) { setX(x() + dx); }
-    void translateY(float dy) { setY(y() + dy); }
-    void translate(float dx, float dy) { translateX(dx); translateY(dy); }
-    void translate(const QPointF& delta) { translate(delta.x(), delta.y()); }
+    inline void translateX(float dx) { setX(x() + dx); }
+    inline void translateY(float dy) { setY(y() + dy); }
+    inline void translate(float dx, float dy) { translateX(dx); translateY(dy); }
+    inline void translate(const QPointF& delta) { translate(delta.x(), delta.y()); }
 
 
     // UI
-    QString dataString(const QString &key) const override {
-        if(key == "x") return QString::number(x());
-        if(key == "y") return QString::number(y());
-        return Object::dataString(key);
+    QVariant getAttr(const Attr attr) const override {
+        switch(attr){
+        case Attr::X: return x();
+        case Attr::Y: return y();
+        case Attr::P: return p();
+        default: return Object::getAttr(attr);
+        }
     }
-
-    void setData(const QString &key, const QString &value) override {
-        if(key == "x") setX(value.toFloat());
-        else if(key == "y") setY(value.toFloat());
-        else Object::setData(key, value);
+    void setAttr(const Attr attr, const QVariant &v) override {
+        switch(attr){
+        case Attr::X: setX(v.toFloat()); return;
+        case Attr::Y: setY(v.toFloat()); return;
+        case Attr::P: setP(v.toPointF()); return;
+        default: Object::setAttr(attr, v); return;
+        }
     }
 };

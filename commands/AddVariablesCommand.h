@@ -1,32 +1,22 @@
 #pragma once
 #include "Command.h"
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
-#include <QSet>
-
-
-#include <QHash>
-
-
-class App;
+class VariablesTab;
 class AddVariablesCommand: public Command {
 public:
     AddVariablesCommand(
-        App *app,
+        VariablesTab *variablesTab,
         const QVector<QString> &names,
         const QVector<QVariant> values,
-        const QVector<VariableType> types
-    ):
-        Command(app),
-        _names(names),
-        _values(values),
-        _types(types)
-    {}
+        const QVector<VariableType> &types
+    );
 
     void execute() override;
     void undo() override;
 
 private:
+    VariablesTab *_variablesTab;
     const QVector<QString> _names;
     const QVector<QVariant> _values;
     const QVector<VariableType> _types;

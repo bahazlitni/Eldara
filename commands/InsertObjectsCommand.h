@@ -1,18 +1,18 @@
 #pragma once
 #include "Command.h"
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
 #include <QHash>
 
 class App;
 class InsertObjectsCommand: public Command {
 public:
-    InsertObjectsCommand(App *app, const LockedSelection &selection):
+    InsertObjectsCommand(App *app, const Selection &selection):
         Command(app), _selection(selection) {}
 
     void execute() override;
     void undo() override;
 
 private:
-    LockedSelection _selection;
+    Selection _selection;
 };

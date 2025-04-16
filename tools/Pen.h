@@ -1,9 +1,9 @@
 #pragma once
-#include <QCursor>
+#include "utils/Globals.h"
+
 #include "Grid.h"
 #include "MouseTool.h"
 #include "objects/BCPath.h"
-#include "utils/Types.h"
 
 enum ConstructionMode {
     PROHIBITED = -1,
@@ -16,10 +16,7 @@ enum ConstructionMode {
     SWITCH_PREVIOUS = 6
 };
 
-const QColor NOT_ALLOWED_CONSTRUCTION_COLOR = QColor(255, 76, 76);
-
 class ComboCommand;
-
 class Command;
 class Node;
 class Dipole;
@@ -49,14 +46,25 @@ public:
     void draw(QPainter *painter) override;
     void setCursor(const ToolState state) override;
 
-    QString dataString(const QString &key) const override;
-    void setData(const QString &key, const QString &value) override;
+    QVariant getAttr(const Attr attr) const override;
+    void setAttr(const Attr attr, const QVariant &v) override;
 
     bool onControl() const { return _state == INITIAL_CONTROLLING || _state == CONTROLLING; };
 
-    QColor fillColor() const { return _fillColor; }
-    QColor strokeColor() const { return _strokeColor; }
-    int dotRadius() const { return _dotRadius; }
+    inline QPen pen() const { return _pen; }
+    inline QBrush brush() const { return _brush; }
+    inline QColor fillColor() const { return _brush.color(); }
+    inline QColor strokeColor() const { return _pen.color(); }
+    inline int strokeWidth() const { return _pen.width(); }
+
+    inline void setPen(const QPen &pen) { _pen = pen; }
+    inline void setBrush(const QBrush &brush) { _brush = brush; }
+    inline void setFillColor(const QColor &color) { _brush.setColor(color); }
+    inline void setStrokeColor(const QColor &color) { _pen.setColor(color); }
+    inline void setStrokeWidth(const int w) { _pen.setWidth(w); }
+
+    inline int radius() const { return _radius; }
+    inline void setRadius(const int r) { _radius = r; }
 
     BCPath path() const { return _path; }
     void setType(ObjectType type);
@@ -82,21 +90,12 @@ protected:
     void analyze();
     void construct();
 
-    void drawAliasPreview(const QColor &color);
-    void drawDipolePreview(const QColor &color);
-    void drawSplittedPreview(const QColor &color);
-    void drawResultantPreview(const QColor &color);
-    void drawHoveredAlias(){ drawHoveredAlias(WORLD_OBJECT_HOVER_COLOR); }
-    void drawHoveredDipole(){ drawHoveredDipole(WORLD_OBJECT_HOVER_COLOR); }
-    void drawHoveredAlias(const QColor &color);
-    void drawHoveredDipole(const QColor &color);
-
     SharedDipole hoveredDipole();
     SharedAlias hoveredAlias();
 
-    QColor _fillColor = QColor(222,222,222);
-    QColor _strokeColor = QColor(188,188,188);
-    int _dotRadius;
+    QPen _pen;
+    QBrush _brush;
+    int _radius;
 
     ConstructionMode mode;
 
@@ -104,7 +103,6 @@ protected:
 
     const QCursor penCursor, constructingCursor, constructingPlusCursor;
 
-    QString address();
     SharedAlias MakeAlias(const QPointF &p);
     SharedDipole MakeDipole(const SharedAlias &A, const SharedAlias &B){ return MakeDipole(A, B, type); }
     SharedDipole MakeDipole(const SharedAlias &A, const SharedAlias &B, ObjectType type);
@@ -117,6 +115,20 @@ protected:
 
     ObjectType type;
 
-    void drawDipole(const ObjectType type, const QPointF &A, const QPointF &B, const QColor &color);
-    void drawDipole(const ObjectType type, const QPointF &A, const QPointF &B, const QColor &color, const QString &label);
+    void drawDipole(
+        const ObjectType type,
+        const QPointF &A,
+        const QPointF &B,
+        const QPen &pen,
+        const QString &label = ""
+    );
+
+    void drawAliasPreview(const QColor &color);
+    void drawDipolePreview(const QColor &color);
+    void drawSplittedPreview(const QColor &color);
+    void drawResultantPreview(const QColor &color);
+    void drawHoveredAlias(){ drawHoveredAlias(Palette::HOVER); }
+    void drawHoveredDipole(){ drawHoveredDipole(Palette::HOVER); }
+    void drawHoveredAlias(const QColor &color);
+    void drawHoveredDipole(const QColor &color);
 };

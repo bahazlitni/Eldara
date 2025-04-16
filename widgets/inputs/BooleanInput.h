@@ -2,12 +2,13 @@
 #include <QPushButton>
 #include "widgets/groups/InputGroup.h"
 #include "App.h"
+#include "widgets/MainPanel.h"
 
 class BooleanInput : public QPushButton {
     Q_OBJECT
 
 private:
-    const QString key;
+    const Attr attr;
     InputGroup *group;
     QIcon checkedIcon;
     QIcon uncheckedIcon;
@@ -26,8 +27,8 @@ private:
 
 public:
     // Constructor without icons
-    BooleanInput(InputGroup *group, const QString &key, QWidget *parent = nullptr)
-        : QPushButton(parent), key(key), group(group) {
+    BooleanInput(InputGroup *group, const Attr attr, QWidget *parent = nullptr)
+        : QPushButton(parent), attr(attr), group(group) {
         setCheckable(true);
         connect(this, &QPushButton::toggled, this, &BooleanInput::onCheckStateChanged);
         setCursor(Qt::PointingHandCursor);
@@ -38,13 +39,13 @@ public:
     // Constructor with icons
     BooleanInput(
         InputGroup *group,
-        const QString &key,
+        const Attr attr,
         const QIcon &checkedIcon,
         const QIcon &uncheckedIcon,
         const QSize &size,
         QWidget *parent = nullptr
     )
-        : QPushButton(parent), key(key), group(group), checkedIcon(checkedIcon), uncheckedIcon(uncheckedIcon), hasIcons(true) {
+        : QPushButton(parent), attr(attr), group(group), checkedIcon(checkedIcon), uncheckedIcon(uncheckedIcon), hasIcons(true) {
         setCheckable(true);
         connect(this, &QPushButton::toggled, this, &BooleanInput::onCheckStateChanged);
         setCursor(Qt::PointingHandCursor);
@@ -57,20 +58,15 @@ public:
     }
 
     void updateData() {
-        if (group->isEmpty()) {
-            setCheckInternally(false);
-            setEnabled(false);
-        } else {
-            const QString data = group->dataString(key);
-            setEnabled(true);
-            setCheckInternally(data == "1");
-        }
+        const bool isEmpty = group->isEmpty();
+        setEnabled(!isEmpty);
+        setCheckInternally(!isEmpty && group->getAttr(attr).toBool());
     }
 
 private slots:
     void onCheckStateChanged(bool checked) {
-        group->apply(key, checked ? "1" : "0");
-        group->app->update();
+        group->setAttr(attr, checked);
+        group->mainPanel->app->update();
         updateIcon();
     }
 };

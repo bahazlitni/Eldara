@@ -23,8 +23,8 @@ void RemoveObjectsCommand::execute(){
             const auto &dipole = std::static_pointer_cast<Dipole>(obj);
             if(visitedDipoles.contains(dipole)) continue;
             visitedDipoles.insert(dipole);
-            if(const auto &A = dipole->a().lock()) A->disconnect(dipole);
-            if(const auto &B = dipole->b().lock()) B->disconnect(dipole);
+            if(const auto &A = dipole->A()) A->disconnect(dipole);
+            if(const auto &B = dipole->B()) B->disconnect(dipole);
         }
     }
 
@@ -50,8 +50,8 @@ void RemoveObjectsCommand::undo(){
             const auto &dipole = std::static_pointer_cast<Dipole>(obj);
             if(visitedDipoles.contains(dipole)) continue;
             visitedDipoles.insert(dipole);
-            if(const auto &A = dipole->a().lock()) A->connect(dipole);
-            if(const auto &B = dipole->b().lock()) B->connect(dipole);
+            if(const auto &A = dipole->A()) A->connect(dipole);
+            if(const auto &B = dipole->B()) B->connect(dipole);
             dipole->dirtyVisibleCheckFlag = app->grid.getDirtyVisibleCheckFlagInitial();
         }
     }

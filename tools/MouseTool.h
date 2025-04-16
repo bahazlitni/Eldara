@@ -1,12 +1,5 @@
 #pragma once
-#include <QCursor>
-#include <QKeyEvent>
-#include <QMouseEvent>
-#include <QObject>
-#include <QPainter>
-#include <QPainterPath>
-#include <QWheelEvent>
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
 const int DBL_CLICK_GAP_MS = 500;
 const int CLICK_GAP_MS = 300;
@@ -62,8 +55,8 @@ public:
     virtual void draw([[maybe_unused]] QPainter *painter){}
     virtual void setCursor([[maybe_unused]]  const ToolState state){}
 
-    virtual QString dataString([[maybe_unused]] const QString &key) const { return ""; }
-    virtual void setData([[maybe_unused]] const QString &key, [[maybe_unused]] const QString &value){}
+    virtual QVariant getAttr([[maybe_unused]] const Attr attr) const { return ""; }
+    virtual void setAttr([[maybe_unused]] const Attr attr, [[maybe_unused]] const QVariant &v){}
 
     void setCursor(){ setCursor(_state); }
     void drawIndicators(QPainter *painter);

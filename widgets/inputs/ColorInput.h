@@ -18,12 +18,10 @@ private:
     QPushButton *previewButton;
 
     InputGroup *group;
-    const QString key;  // The original color key for this row.
     QColor currentColor;
 
 public:
-    // Constructor: 'group' is the ColorsGroup container; 'key' is the original color.
-    ColorInput(InputGroup* group, const QString &key, QWidget *parent = nullptr);
+    ColorInput(InputGroup *group, QWidget *parent = nullptr);
 
     // Set a new color and update the UI.
     void setColor(const QColor &newColor);

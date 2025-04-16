@@ -1,27 +1,27 @@
 #pragma once
 #include "Command.h"
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
-#include <QSet>
+class VariablesTab;
 
-
-#include <QHash>
-
-
-class App;
-class RemoveVariablesCommand: public Command {
+class RemoveVariablesCommand : public Command {
 public:
-    RemoveVariablesCommand(App *app, const QVector<QString> &names, const QVector<VariableType> types);
+    RemoveVariablesCommand(VariablesTab *variablesTab, const QVector<QString> &names);
 
     void execute() override;
     void undo() override;
 
 private:
-    inline QVector<QVariant> valuesOf(const QVector<QString> &names, const QVector<VariableType> types);
-    inline QHash<QString, QVector<SharedUnitDipole>> cacheData(const QVector<QString> &names);
+    // Struct to encapsulate all backup data for a variable.
+    struct VariableBackup {
+        QString name;
+        QVariant value;
+        VariableType type;
+        QVector<SharedDipole> dipoles;
+        QVector<QVector<Param>> params;
+    };
 
-    const QVector<QString> _names;
-    const QVector<QVariant> _values;
-    const QVector<VariableType> _types;
-    const QHash<QString, QVector<SharedUnitDipole>> _cache;
+    VariablesTab *_variablesTab;
+    // Backup information for each variable being removed.
+    QVector<VariableBackup> _backup;
 };

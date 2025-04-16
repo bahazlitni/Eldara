@@ -3,7 +3,7 @@
 #include <QColor>
 #include <iostream>
 #include <QPainter>
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
 class Object {
 public:
@@ -56,7 +56,16 @@ public:
         }
     }
 
-    Object() = default;
+protected:
+    QBrush _brush;
+    QPen _pen;
+
+public:
+    Object(const QBrush &brush, const QPen &pen): _brush(brush), _pen(pen) {}
+    Object(): _brush(Qt::NoBrush), _pen(Qt::NoPen) {}
+    Object(const QBrush &brush): _brush(brush), _pen(Qt::NoPen) {}
+    Object(const QPen &pen): _brush(Qt::NoBrush), _pen(pen) {}
+
     virtual ~Object() = default;
     virtual ObjectType type() const { return VOID; };
     virtual ObjectCategory category() const { return _VOID; };
@@ -64,21 +73,48 @@ public:
     virtual bool inside(const QRectF &box, [[maybe_unused]] const float zoom) = 0;
     virtual bool visible(const QRectF &viewport, [[maybe_unused]] const float zoom) = 0;
 
-    virtual void setColor([[maybe_unused]] const QColor &color){}
-    virtual QColor color() const { return Qt::white; };
+    inline bool hasPen() const { return _pen.style() != Qt::NoPen; }
+    inline bool hasBrush() const { return _brush.style() != Qt::NoBrush; }
 
-    virtual QString dataString(const QString &key) const {
-        if(key == "color") return color().name();
-        if(key == "name") return name();
-        return "";
+    inline QPen pen() const { return _pen; }
+    inline QBrush brush() const { return _brush; }
+    inline QColor fillColor() const { return _brush.color(); }
+    inline QColor strokeColor() const { return _pen.color(); }
+    inline int strokeWidth() const { return _pen.width(); }
+
+    inline void setPen(const QPen &pen) { _pen = pen; }
+    inline void setBrush(const QBrush &brush) { _brush = brush; }
+    inline void setFillColor(const QColor &color) { _brush.setColor(color); }
+    inline void setStrokeColor(const QColor &color) { _pen.setColor(color); }
+    inline void setStrokeWidth(const int w) { _pen.setWidth(w); }
+
+    inline virtual void setShowLabel([[maybe_unused]] const bool b) {}
+    inline virtual bool showLabel() const { return false; }
+    inline virtual QString label() const { return ""; }
+
+    virtual QVariant getAttr(const Attr attr) const {
+        switch (attr) {
+        case Attr::ShowLabel: return showLabel();
+        case Attr::Label: return label();
+        case Attr::Name: return name();
+        case Attr::StrokeColor: return fillColor();
+        case Attr::FillColor: return strokeColor();
+        case Attr::StrokeWidth: return strokeWidth();
+        default: return "";
+        }
     }
 
-    virtual void setData(const QString &key, const QString &value){
-        if(key == "color") setColor(QColor(value));
+    virtual void setAttr(const Attr attr, const QVariant &v){
+        switch (attr) {
+        case Attr::ShowLabel: return setShowLabel(v.toBool()); return;
+        case Attr::StrokeColor: setFillColor(v.toString()); return;
+        case Attr::FillColor: setStrokeColor(v.toString()); return;
+        case Attr::StrokeWidth: setStrokeWidth(v.toUInt()); return;
+        default: return;
+        }
     }
 
-    virtual QString name() const { return Object::name(type()); };
-
+    inline QString name() const { return Object::name(type()); };
     friend std::ostream& operator<<(std::ostream& os, const Object& p) {
         return os << p.name().toStdString();
     }

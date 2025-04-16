@@ -1,26 +1,36 @@
 #pragma once
 #include <QGroupBox>
-#include "InputGroup.h"
+#include "ColorsGroup.h"
 
 class RadiusInput;
 class ColorInput;
 class BooleanInput;
 class App;
+class MainPanel;
 
 class PenGroup: public InputGroup {
     Q_OBJECT
 
 protected:
     RadiusInput *Radius;
-    ColorInput *StrokeColor;
-    ColorInput *FillColor;
     BooleanInput *ShowLabel;
 
-public:
-    PenGroup(App *app, QWidget *parent = nullptr);
+    ColorInput *StrokeColor;
+    ColorInput *FillColor;
 
-    QString dataString(const QString &key) const override;
-    void apply(const QString &key, const QString &value) override;
-    void onEditingFinishedApply(const QString &key, const QString &value) override { apply(key, value); }
+public:
+    PenGroup(MainPanel *mainPanel, QWidget *parent = nullptr);
+
+    QVariant getAttr(const Attr attr) const override;
+    void setAttr(const Attr attr, const QVariant &v) override;
+    void confirmAttr(const Attr attr, const QVariant &v) override;
+
+    bool isMixed([[maybe_unused]] const Attr attr) const override { return false; }
+    bool isEmpty() const override { return false; }
+
     void updateData() override;
+
+    QColor getColor(ColorInput *colorInput) const override;
+    void setColor(ColorInput *colorInput, const QColor &newColor) override;
+    void confirmColor(ColorInput *colorInput, const QColor &newColor) override;
 };

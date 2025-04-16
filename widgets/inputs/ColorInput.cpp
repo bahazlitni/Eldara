@@ -1,20 +1,14 @@
 #include "ColorInput.h"
 #include "widgets/groups/InputGroup.h"
 #include "App.h"
+#include "widgets/MainPanel.h"
+#include "widgets/groups/InputGroup.h"
 
-#include <QRegularExpressionValidator>
-#include <QRegularExpression>
-
-#include <QWheelEvent>
-
-
-ColorInput::ColorInput(InputGroup* group, const QString &key, QWidget *parent)
-    : QWidget(parent),
-      hexCodeText(new QLineEdit(this)),
-      previewButton(new QPushButton(this)),
-      group(group),
-      key(key),
-      currentColor(QColor(key))
+ColorInput::ColorInput(InputGroup *group, QWidget *parent):
+    QWidget(parent),
+    hexCodeText(new QLineEdit(this)),
+    previewButton(new QPushButton(this)),
+    group(group)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
 
@@ -42,23 +36,24 @@ ColorInput::ColorInput(InputGroup* group, const QString &key, QWidget *parent)
 }
 
 void ColorInput::setColor(const QColor &newColor){
+    const QString colorName = newColor.name().toUpper();
     currentColor = newColor;
-    hexCodeText->setText(currentColor.name().toUpper());
-    previewButton->setStyleSheet(QString("background-color: %1; border-radius: 2px; border: none;").arg(currentColor.name()));
+    hexCodeText->setText(colorName);
+    previewButton->setStyleSheet(
+        QString("background-color: %1; border-radius: 2px; border: none;").arg(colorName)
+    );
 }
 
 void ColorInput::updateData(){
-    const QColor color = QColor(group->dataString(key));
-    if(color.isValid()) currentColor = color;
-    setColor(currentColor);
+    setColor(group->getColor(this));
 }
 
 void ColorInput::onHexEditingFinished(){
     QColor newColor(hexCodeText->text());
     if(newColor.isValid()){
         setColor(newColor);
-        group->onEditingFinishedApply(key, newColor.name().toUpper());
-        group->app->update();
+        group->setColor(this, newColor);
+        group->mainPanel->app->update();
     } else {
         hexCodeText->setText(currentColor.name().toUpper());
     }
@@ -77,9 +72,8 @@ void ColorInput::onPreviewClicked(){
     QColor color = QColorDialog::getColor(currentColor, this, "Select Color");
     if(color.isValid()){
         setColor(color);
-        group->apply(key, color.name().toUpper());
-        if(group->app)
-            group->app->update();
+        group->setColor(this, color);
+        group->mainPanel->app->update();
     }
 }
 

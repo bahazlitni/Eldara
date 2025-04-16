@@ -1,6 +1,5 @@
 #include "objects/Alias.h"
 #include "objects/Dipole.h"
-#include "objects/Wire.h"
 
 #include "objects/BCPoint.h"
 #include "objects/BCControlPoint.h"
@@ -16,36 +15,9 @@ inline void ProcessAlias(
     ){
     processedAliases->insert(alias);
     set->insert(alias->share());
-
-    for (const auto &dipole : alias->connections()){
-        if(dipole->type() != WIRE) continue;
-        const auto &wire = std::static_pointer_cast<Wire>(dipole);
-        const auto &bcp = wire->path();
-        if(bcp.isEmpty()) continue;
-
-        const auto &A = wire->A();
-        const auto &B = wire->B();
-
-        if(processedAliases->contains(wire->other(alias))){
-            auto cur = bcp.first();
-            while(cur){
-                if(const auto &ctrlBefore = cur->before())
-                    set->insert(ctrlBefore->share());
-                set->insert(cur->share());
-                if(const auto &ctrlAfter = cur->after())
-                    set->insert(ctrlAfter->share());
-                cur = cur->next();
-            }
-        } else {
-            if(alias == A && bcp.first())
-                if(bcp.first()->after()) set->insert(bcp.first()->after()->share());
-            if(alias == B && bcp.last())
-                if(bcp.last()->before()) set->insert(bcp.last()->before()->share());
-        }
-    }
 }
 
-QSet<SharedPoint> GetWorldPointSelection(const LockedSelection &selection){
+QSet<SharedPoint> GetWorldPointSelection(const Selection &selection){
     QSet<SharedPoint> set;
     QSet<SharedAlias> processedAliases;
     for (const auto &obj : selection){
@@ -79,8 +51,8 @@ QSet<SharedPoint> GetWorldPointSelection(const LockedSelection &selection){
     return set;
 }
 
-LockedSelection GetDeepSelection(const LockedSelection &selection){
-    LockedSelection slc;
+Selection GetDeepSelection(const Selection &selection){
+    Selection slc;
     slc.reserve(selection.size());
     for(const auto &obj : selection){
         switch(obj->category()){
@@ -112,7 +84,7 @@ LockedSelection GetDeepSelection(const LockedSelection &selection){
 
 inline SharedAlias getAliasCopy(
     App *app,
-    LockedSelection &copy,
+    Selection &copy,
     QHash<SharedAlias, SharedAlias> &aliasCopyCache,
     const SharedAlias &original,
     const QPointF &dp = QPointF(0.0, 0.0),
@@ -127,13 +99,13 @@ inline SharedAlias getAliasCopy(
     return copied;
 }
 
-LockedSelection copySelection(
+Selection copySelection(
     App *app,
-    const LockedSelection &selection,
+    const Selection &selection,
     const QPointF &dp,
     const bool generateNewAddresses
 ){
-    LockedSelection copy;
+    Selection copy;
     QHash<SharedAlias, SharedAlias> aliasCopyCache;
     QSet<SharedDipole> visitedDipoles;
     copy.reserve(selection.size());

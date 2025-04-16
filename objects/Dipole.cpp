@@ -15,38 +15,50 @@ bool Dipole::hover(const QPointF &p, const float zoom){
 bool Dipole::visible(const QRectF &viewport, [[maybe_unused]] const float zoom){ return LinR(line(), viewport); }
 bool Dipole::inside(const QRectF &box, [[maybe_unused]] const float zoom){ return LinR(line(), box); }
 
-int Dipole::x1() const { return _A.expired() ? 0 : A()->x(); }
-int Dipole::x2() const { return _B.expired() ? 0 : B()->x(); }
-int Dipole::y1() const { return _A.expired() ? 0 : A()->y(); }
-int Dipole::y2() const { return _B.expired() ? 0 : B()->y(); }
+float Dipole::x1() const { return _A.expired() ? 0 : A()->x(); }
+float Dipole::x2() const { return _B.expired() ? 0 : B()->x(); }
+float Dipole::y1() const { return _A.expired() ? 0 : A()->y(); }
+float Dipole::y2() const { return _B.expired() ? 0 : B()->y(); }
+
+void Dipole::setX1(const float v) {
+    if(auto A = _A.lock()) A->setX(v);
+}
+void Dipole::setX2(const float v) {
+    if(auto B = _B.lock()) B->setX(v);
+}
+void Dipole::setY1(const float v) {
+    if(auto A = _A.lock()) A->setY(v);
+}
+void Dipole::setY2(const float v) {
+    if(auto B = _B.lock()) B->setY(v);
+}
+
 QPointF Dipole::p2() const { return _B.expired() ? QPointF() : *B(); }
 QPointF Dipole::p1() const { return _A.expired() ? QPointF() : *A(); }
 
 
-// UI
-QString Dipole::dataString(const QString &key) const {
-    if(key == "id") return _A.expired() || _B.expired() ? "Null" : A()->dataString("id") + ":" + B()->dataString("id");
-    if(key == "a") return _A.expired() ? "Null" : A()->dataString("id");
-    if(key == "b") return _B.expired() ? "Null" : B()->dataString("id");
-    if(key == "x1") return QString::number(x1());
-    if(key == "y1") return QString::number(y1());
-    if(key == "x2") return QString::number(x2());
-    if(key == "y2") return QString::number(y2());
-    return Object::dataString(key);
+QVariant Dipole::getAttr(const Attr attr) const {
+    switch (attr) {
+    case Attr::X1: return x1();
+    case Attr::X2: return x2();
+    case Attr::Y1: return y1();
+    case Attr::Y2: return y2();
+    case Attr::Length: return length();
+    case Attr::Angle: return angle();
+    case Attr::Width: return width();
+    case Attr::Height: return height();
+    case Attr::Size: return size();
+    case Attr::Rect: return rect();
+    default: return Object::getAttr(attr);
+    }
 }
 
-void Dipole::setData(const QString &key, const QString &value){
-    if(key == "x1"){
-        if(!_A.expired()) A()->setX(value.toFloat());
+void Dipole::setAttr(const Attr attr, const QVariant &v){
+    switch (attr) {
+    case Attr::X1: setX1(v.toFloat()); return;
+    case Attr::X2: setX2(v.toFloat()); return;
+    case Attr::Y1: setY1(v.toFloat()); return;
+    case Attr::Y2: setY2(v.toFloat()); return;
+    default: Object::setAttr(attr, v); return;
     }
-    else if(key == "y1"){
-        if(!_A.expired()) A()->setY(value.toFloat());
-    }
-    else if(key == "x2"){
-        if(!_B.expired()) B()->setX(value.toFloat());
-    }
-    else if(key == "y2"){
-        if(!_B.expired()) B()->setY(value.toFloat());
-    }
-    else Object::setData(key, value);
 }

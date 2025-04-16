@@ -1,7 +1,6 @@
 #include "Grid.h"
 #include "App.h"
 #include "objects/Alias.h"
-#include "objects/Wire.h"
 #include "objects/Resistor.h"
 #include "objects/Capacitor.h"
 #include "objects/Inductor.h"
@@ -11,20 +10,10 @@
 
 #include "tools/MouseTool.h"
 #include "utils/Geometry.h"
-#include "utils/Functions.h"
 
 #include "objects/BCPath.h"
 #include "objects/BCPoint.h"
 #include "objects/BCControlPoint.h"
-
-#include <QGraphicsPixmapItem>
-
-#include <QtConcurrent/QtConcurrent>
-#include <QFuture>
-#include <QMutex>
-#include <memory>
-#include <QString>
-#include <QRegularExpression>
 
 
 Grid::Grid(App *app): app(app) {
@@ -67,9 +56,11 @@ void Grid::updateGridTile() {
     gridTile = newTile;
 }
 
-void Grid::drawLabelText(const QString &LABEL, const int HEIGHT){
+void Grid::drawLabelText(const QString &label, const int height){
+    if(label.isEmpty()) return;
+
     painter.save();
-    painter.translate(midp - N*(HEIGHT + 12));
+    painter.translate(midp - N*(height + 12));
 
     // Rotate
     if (ANGLE > DEG90)  painter.rotate(ANGLE/DEG1 - 180);
@@ -78,8 +69,8 @@ void Grid::drawLabelText(const QString &LABEL, const int HEIGHT){
 
     // Draw the text
     QFontMetrics metrics(painter.font());
-    const int textWidth = metrics.horizontalAdvance(LABEL);
-    painter.drawText(QPoint(-textWidth/2, 0), LABEL);
+    const int textWidth = metrics.horizontalAdvance(label);
+    painter.drawText(QPoint(-textWidth/2, 0), label);
     painter.restore();
 }
 
@@ -90,17 +81,17 @@ void Grid::setupPainterMode(PainterMode type, QPainter &painter){
     case SELECTION_BOX:
         painter.setRenderHint(QPainter::Antialiasing, false);
         painter.setPen(1);
-        painter.setPen(WORLD_OBJECT_SELECTION_COLOR);
+        painter.setPen(Palette::SELECT);
         painter.setBrush(QColor(
-            WORLD_OBJECT_SELECTION_COLOR.red(),
-            WORLD_OBJECT_SELECTION_COLOR.green(),
-            WORLD_OBJECT_SELECTION_COLOR.blue(),
+            Palette::SELECT.red(),
+            Palette::SELECT.green(),
+            Palette::SELECT.blue(),
             25
         ));
         break;
     case INDICATOR_STROKE:
         painter.setRenderHint(QPainter::Antialiasing, false);
-        pen.setColor(WORLD_INDICATOR_COLOR);
+        pen.setColor(Palette::INDICATOR_STROKE);
         pen.setStyle(Qt::DashLine);
         pen.setWidth(1);
         painter.setPen(pen);
@@ -108,7 +99,7 @@ void Grid::setupPainterMode(PainterMode type, QPainter &painter){
         break;
     case SELECTED_OBJECT_STROKE:
         painter.setRenderHint(QPainter::Antialiasing, true);
-        pen.setColor(WORLD_SELECTION_BOX_OUTLINE_COLOR);
+        pen.setColor(Palette::RUBBER_BAND_FILL);
         pen.setStyle(Qt::DashLine);
         pen.setWidth(1);
         painter.setPen(pen);
@@ -116,14 +107,14 @@ void Grid::setupPainterMode(PainterMode type, QPainter &painter){
         break;
     case GRID_STROKE:
         painter.setRenderHint(QPainter::Antialiasing, false);
-        pen.setColor(GRID_STROKE_COLOR);
+        pen.setColor(Palette::GRID_STROKE);
         pen.setWidth(1);
         painter.setPen(pen);
         painter.setBrush(Qt::NoBrush);
         break;
     case MERGE_INDICATOR:
         painter.setRenderHint(QPainter::Antialiasing, true);
-        pen.setColor(MERGE_INDICATOR_STROKE_COLOR);
+        pen.setColor(Palette::MERGE_INDICATOR_STROKE);
         pen.setWidth(2);
         painter.setPen(pen);
         painter.setBrush(Qt::NoBrush);
@@ -133,149 +124,33 @@ void Grid::setupPainterMode(PainterMode type, QPainter &painter){
     }
 }
 
-void Grid::setupDipolePainter(const QColor &color, QPainter &painter){
-    QPen pen;
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    pen.setWidth(STROKE_WIDTH);
-    pen.setColor(color);
-    painter.setPen(pen);
-    painter.setBrush(Qt::NoBrush);
-}
-void Grid::setupDipoleDashedPainter(const QColor &color, QPainter &painter){
-    QPen pen;
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    pen.setWidth(STROKE_WIDTH);
-    pen.setColor(color);
-    pen.setStyle(Qt::DotLine);
-    painter.setPen(pen);
-    painter.setBrush(Qt::NoBrush);
-}
 
-void Grid::setupNodePainter(const QColor &color, QPainter &painter){
-    painter.setRenderHint(QPainter::Antialiasing, true);
+// NODE
+void Grid::drawAlias(const QPointF &center, const QBrush &brush, const int radius, const QString &label) {
+    painter.setBrush(brush);
     painter.setPen(Qt::NoPen);
-    painter.setBrush(color);
-};
-
-
-
-// WIRE
-void Grid::drawBCControlPoint(const QPointF &p, const QColor &strokeColor){
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    painter.setPen(strokeColor);
-    QColor brushColor = strokeColor;
-    brushColor.setAlpha(40);
-
-    QPainterPath path;
-    path.moveTo(p.x() - BC_EDIT_CONTROL_POINT_DIAGONAL_WIDTH, p.y());
-    path.lineTo(p.x(), p.y() - BC_EDIT_CONTROL_POINT_DIAGONAL_WIDTH);
-    path.lineTo(p.x() + BC_EDIT_CONTROL_POINT_DIAGONAL_WIDTH, p.y());
-    path.lineTo(p.x(), p.y() + BC_EDIT_CONTROL_POINT_DIAGONAL_WIDTH);
-    path.closeSubpath();
-
-    painter.setBrush(brushColor);
-    painter.drawPath(path);
-}
-
-void Grid::drawBCPoint(const QPointF &p, const QColor &strokeColor){
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    painter.setPen(strokeColor);
-    QColor brushColor = strokeColor;
-    brushColor.setAlpha(80);
-    painter.setBrush(brushColor);
-    painter.drawEllipse(
-        p.x() - HALF_BC_EDIT_CONTROL_POINT_WIDTH,
-        p.y() - HALF_BC_EDIT_CONTROL_POINT_WIDTH,
-        BC_EDIT_CONTROL_POINT_WIDTH,
-        BC_EDIT_CONTROL_POINT_WIDTH
+    painter.drawEllipse(center.x()-radius, center.y()-radius, radius*2, radius*2);
+    if (label.isEmpty()) return;
+    QFontMetrics fm(painter.font());
+    const int textWidth = fm.horizontalAdvance(label);
+    const int textHeight = fm.height();
+    painter.setPen(isDarkColor(brush.color()) ? Qt::white : Qt::black);
+    painter.drawText(
+        center.x() - textWidth/2,
+        center.y() - textHeight/2,
+        textWidth, textHeight,
+        Qt::AlignCenter, label
     );
-}
-
-void Grid::drawBCControlLine(const QPointF &point, const QPointF &controlPoint, const QColor &strokeColor){
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    painter.setPen(strokeColor);
-    painter.setBrush(Qt::NoBrush);
-    painter.drawLine(point.x(), point.y(), controlPoint.x(), controlPoint.y());
-}
-
-
-QPainterPath Grid::constructPath(const BCPath &bcp){
-    QPainterPath path;
-    auto cur = bcp.first();
-    path.moveTo(toScreen(cur->p()));
-    while (true) {
-        auto next = cur->next();
-        if (!next)
-            break;
-
-        auto ctrlAfter = cur->after();
-        auto ctrlBefore = next->before();
-        if (!ctrlAfter || !ctrlBefore)
-            break;
-
-        const QPointF p1 = toScreen(ctrlAfter->p());
-        const QPointF p2 = toScreen(ctrlBefore->p());
-        const QPointF p3 = toScreen(next->p());
-
-        path.cubicTo(p1, p2, p3);
-        cur = next;
-    }
-    return path;
-}
-
-void Grid::drawBCPath(const BCPath &bcp, const QColor &color) {
-    if (bcp.isEmpty()) return;
-    setupDipolePainter(color);
-    painter.drawPath(constructPath(bcp));
-}
-void Grid::drawBCPath(const BCPath &bcp, const QColor &color, const QPointF &preview){
-    if (bcp.isEmpty()) return;
-    QPainterPath path = constructPath(bcp);
-    if(bcp.last() && bcp.last()->after())
-        path.cubicTo(toScreen(bcp.last()->after()->p()), toScreen(preview), toScreen(preview));
-
-    setupDipolePainter(color);
-    painter.drawPath(path);
-};
-
-void Grid::drawBCPathEdits(const BCPath &bcp) {
-    if (bcp.isEmpty())
-        return;
-
-    auto cur = bcp.first();
-    while (cur) {
-        auto next = cur->next();
-        const QPointF p0 = toScreen(cur->p());
-        if (auto ctrlBefore = cur->before()) {
-            const QPointF pbef = toScreen(ctrlBefore->p());
-            drawBCControlLine(p0, pbef, BC_CONTROL_POINT_COLOR);
-            drawBCControlPoint(pbef, BC_CONTROL_POINT_COLOR);
-        }
-        if (auto ctrlAfter = cur->after()) {
-            const QPointF paft = toScreen(ctrlAfter->p());
-            drawBCControlLine(p0, paft, BC_CONTROL_POINT_COLOR);
-            drawBCControlPoint(paft, BC_CONTROL_POINT_COLOR);
-        }
-        drawBCPoint(p0, BC_POINT_COLOR);
-
-        cur = cur->next();
-    }
-}
-
-
-
-void Grid::drawNode(const QPointF &center, const QColor &color, int radius) {
-    setupNodePainter(color);
-    painter.drawEllipse(PtoR(center, radius));
 }
 
 
 // GND
-void Grid::drawGround(const QPointF &center, const QColor &color, int radius){
-    drawNode(center, color, radius);
+void Grid::drawGround(const QPointF &center, const QBrush &brush, const int radius, const QString &label) {
+    drawAlias(center, brush, radius, label);
+    QPen pen(brush.color());
+    pen.setWidth(1);
 
-    painter.setPen(1);
-    painter.setPen(color);
+    painter.setPen(pen);
     painter.setBrush(Qt::NoBrush);
 
     int y = center.y() + (int) radius;
@@ -301,8 +176,10 @@ void Grid::drawGround(const QPointF &center, const QColor &color, int radius){
 }
 
 // Resistor
-void Grid::drawResistor(const QPointF &A, const QPointF &B, const QColor &color){
-    setupDipolePainter(color);
+void Grid::drawResistor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
     setupDipoleDrawingGeometry(A, B);
     const QPointF H(N*HALF_RESISTOR_HEIGHT);
 
@@ -337,16 +214,15 @@ void Grid::drawResistor(const QPointF &A, const QPointF &B, const QColor &color)
     path.lineTo(B);
 
     painter.drawPath(path);
+
+    drawLabelText(label, HALF_RESISTOR_HEIGHT);
 }
 
-
-
-
-
-
 // Capacitor
-void Grid::drawCapacitor(const QPointF &A, const QPointF &B, const QColor &color){
-    setupDipolePainter(color);
+void Grid::drawCapacitor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
     setupDipoleDrawingGeometry(A, B);
     const QPointF H(N*HALF_CAPACITOR_HEIGHT);
 
@@ -363,11 +239,15 @@ void Grid::drawCapacitor(const QPointF &A, const QPointF &B, const QColor &color
     path.moveTo(P1);
     path.lineTo(B);
     painter.drawPath(path);
+
+    drawLabelText(label, HALF_CAPACITOR_HEIGHT);
 }
 
 // Inductor
-void Grid::drawInductor(const QPointF &A, const QPointF &B, const QColor &color){
-    setupDipolePainter(color);
+void Grid::drawInductor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
     setupDipoleDrawingGeometry(A, B);
 
     constexpr float K = 0.5522847498;
@@ -411,12 +291,15 @@ void Grid::drawInductor(const QPointF &A, const QPointF &B, const QColor &color)
     path.lineTo(B);
 
     painter.drawPath(path);
+
+    drawLabelText(label, HALF_INDUCTOR_HEIGHT);
 };
 
-
 // Battery
-void Grid::drawBattery(const QPointF &A, const QPointF &B, const QColor &color){
-    setupDipolePainter(color);
+void Grid::drawBattery(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
     setupDipoleDrawingGeometry(A, B);
 
     QPointF P0 = midp - T*HALF_BATTERY_WIDTH;
@@ -426,12 +309,15 @@ void Grid::drawBattery(const QPointF &A, const QPointF &B, const QColor &color){
     painter.drawLine(P1, B);
     painter.drawLine(P0 - N*HALF_BATTERY_NEGATIVE_HEIGHT, P0 + N*HALF_BATTERY_NEGATIVE_HEIGHT);
     painter.drawLine(P1 - N*HALF_BATTERY_POSITIVE_HEIGHT, P1 + N*HALF_BATTERY_POSITIVE_HEIGHT);
+
+    drawLabelText(label, HALF_BATTERY_POSITIVE_HEIGHT);
 }
 
-
 // DC_VoltageGenerator
-void Grid::drawDC_VoltageGenerator(const QPointF &A, const QPointF &B, const QColor &color){
-    setupDipolePainter(color);
+void Grid::drawDC_VoltageGenerator(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
     setupDipoleDrawingGeometry(A, B);
 
     const QPointF v1 = -QPointF(std::cos(ANGLE-DEFAULT_ARROW_ANGLE), std::sin(ANGLE-DEFAULT_ARROW_ANGLE));
@@ -457,13 +343,15 @@ void Grid::drawDC_VoltageGenerator(const QPointF &A, const QPointF &B, const QCo
     painter.drawPath(path);
 
     painter.drawEllipse(midp, DEFAULT_CIRCLE_RADIUS, DEFAULT_CIRCLE_RADIUS);
+
+    drawLabelText(label, DEFAULT_CIRCLE_RADIUS);
 }
 
-
-
 // DC_CurrentGenerator
-void Grid::drawDC_CurrentGenerator(const QPointF &A, const QPointF &B, const QColor &color){
-    setupDipolePainter(color);
+void Grid::drawDC_CurrentGenerator(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
     setupDipoleDrawingGeometry(A, B);
 
     const QPointF P0 = midp - DEFAULT_CIRCLE_RADIUS*T;
@@ -481,132 +369,35 @@ void Grid::drawDC_CurrentGenerator(const QPointF &A, const QPointF &B, const QCo
     painter.drawPath(path);
 
     painter.drawEllipse(midp, DEFAULT_CIRCLE_RADIUS, DEFAULT_CIRCLE_RADIUS);
-}
-
-
-
-void Grid::drawNode(const QPointF &center, const QColor &color, int radius, const QString &label) {
-    drawNode(center, color, radius);
-    if (label.isEmpty()) return;
-    QFontMetrics fm(painter.font());
-    const int textWidth = fm.horizontalAdvance(label);
-    const int textHeight = fm.height();
-    painter.setPen(isDarkColor(color) ? Qt::white : Qt::black);
-    painter.drawText(
-        center.x() - textWidth/2,
-        center.y() - textHeight/2,
-        textWidth, textHeight,
-        Qt::AlignCenter, label
-    );
-}
-
-
-// GND
-void Grid::drawGround(const QPointF &center, const QColor &color, int radius, const QString &label) {
-    drawNode(center, color, radius, label);
-}
-
-// Resistor
-void Grid::drawResistor(const QPointF &A, const QPointF &B, const QColor &color, const QString &label){
-    drawResistor(A, B, color);
-    drawLabelText(label, HALF_RESISTOR_HEIGHT);
-}
-
-// Capacitor
-void Grid::drawCapacitor(const QPointF &A, const QPointF &B, const QColor &color,  const QString &label){
-    drawCapacitor(A, B, color);
-    drawLabelText(label, HALF_CAPACITOR_HEIGHT);
-}
-
-// Inductor
-void Grid::drawInductor(const QPointF &A, const QPointF &B, const QColor &color,  const QString &label){
-    drawInductor(A, B, color);
-    drawLabelText(label, HALF_INDUCTOR_HEIGHT);
-};
-
-// Battery
-void Grid::drawBattery(const QPointF &A, const QPointF &B, const QColor &color,  const QString &label){
-    drawBattery(A, B, color);
-    drawLabelText(label, HALF_BATTERY_POSITIVE_HEIGHT);
-}
-
-// DC_VoltageGenerator
-void Grid::drawDC_VoltageGenerator(const QPointF &A, const QPointF &B, const QColor &color, const QString &label){
-    drawDC_VoltageGenerator(A, B, color);
     drawLabelText(label, DEFAULT_CIRCLE_RADIUS);
 }
 
-// DC_CurrentGenerator
-void Grid::drawDC_CurrentGenerator(const QPointF &A, const QPointF &B, const QColor &color, const QString &label){
-    drawDC_CurrentGenerator(A, B, color);
-    drawLabelText(label, DEFAULT_CIRCLE_RADIUS);
-}
-
-
-void Grid::drawDipole(const ObjectType type, const QPointF &A, const QPointF &B, const QColor &color, const QString &label){
+void Grid::drawDipole(const ObjectType type, const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
     switch (type) {
-    case RESISTOR: return drawResistor(A, B, color, label);
-    case CAPACITOR: return drawCapacitor(A, B, color, label);
-    case INDUCTOR: return drawInductor(A, B, color, label);
-    case BATTERY: return drawBattery(A, B, color, label);
-    case DC_VOLTAGE_GENERATOR: return drawDC_VoltageGenerator(A, B, color, label);
-    case DC_CURRENT_GENERATOR: return drawDC_CurrentGenerator(A, B, color, label);
+    case RESISTOR: return drawResistor(A, B, pen, label);
+    case CAPACITOR: return drawCapacitor(A, B, pen, label);
+    case INDUCTOR: return drawInductor(A, B, pen, label);
+    case BATTERY: return drawBattery(A, B, pen, label);
+    case DC_VOLTAGE_GENERATOR: return drawDC_VoltageGenerator(A, B, pen, label);
+    case DC_CURRENT_GENERATOR: return drawDC_CurrentGenerator(A, B, pen, label);
     default: return;
     }
 }
 
-void Grid::drawDipole(const ObjectType type, const QPointF &A, const QPointF &B, const QColor &color) {
-    switch (type) {
-    case RESISTOR: return drawResistor(A, B, color);
-    case CAPACITOR: return drawCapacitor(A, B, color);
-    case INDUCTOR: return drawInductor(A, B, color);
-    case BATTERY: return drawBattery(A, B, color);
-    case DC_VOLTAGE_GENERATOR: return drawDC_VoltageGenerator(A, B, color);
-    case DC_CURRENT_GENERATOR: return drawDC_CurrentGenerator(A, B, color);
-    default: return;
-    }
-}
-
-
-void Grid::drawObject(const SharedObject &obj, const QColor &color){
-    switch(obj->type()){
-    case ALIAS: {
-        auto alias = static_pointer_cast<Alias>(obj);
-        if(alias->showLabel()) drawNode(toScreen(alias->p()), color, alias->radius(), alias->name());
-        else drawNode(toScreen(alias->p()), color, alias->radius());
-        break;
-    }
-    case WIRE:
-        drawBCPath(static_pointer_cast<Wire>(obj)->path(), color);
-        break;
-    case RESISTOR:
-    case CAPACITOR:
-    case INDUCTOR:
-    case BATTERY:
-    case DC_VOLTAGE_GENERATOR:
-    case DC_CURRENT_GENERATOR: {
-        auto dipole = static_pointer_cast<UnitDipole>(obj);
-        if(dipole->showLabel()){
-            const QString varname = app->varManager.varname(dipole->share());
-            drawDipole(
-                dipole->type(),
-                toScreen(dipole->A()->p()),
-                toScreen(dipole->B()->p()),
-                color,
-                varname.isEmpty()? VariablesManager::displayDouble(dipole->value(), varTypeOf(dipole->type())) : varname
-            );
-        }
-        else
-            drawDipole(
-                dipole->type(),
-                toScreen(dipole->A()->p()),
-                toScreen(dipole->B()->p()),
-                color
-            );
-        break;
-    }
-    default: break;
-    }
+void Grid::drawObject(const SharedObject &obj, const QPen &pen, const QBrush &brush){
+    if(const auto &a = dynamic_pointer_cast<Alias>(obj))
+        drawAlias(
+            toScreen(a->p()), brush,
+            a->radius(),
+            a->showLabel() ? a->label() : ""
+        );
+    else if(const auto &d = dynamic_pointer_cast<Dipole>(obj))
+        drawDipole(
+            d->type(),
+            toScreen(d->p1()),
+            toScreen(d->p2()),
+            pen, d->showLabel()? d->label() : ""
+        );
 }
 
 // Update the grid size and then update the grid cache.
@@ -757,12 +548,16 @@ void Grid::render([[maybe_unused]] QPaintEvent *event){
     // Draw objects.
     for (const auto &dipole : visibleDipoles){
         if(app->mouse->willDraw(dipole)) continue;
-        drawObject(dipole, dipole->color());
+        drawObject(dipole, dipole->pen(), dipole->brush());
     }
 
     for (const auto &alias : visibleAliases){
         if (app->mouse->willDraw(alias)) continue;
-        drawObject(alias, alias->color());
+        drawAlias(
+            toScreen(alias->p()), alias->brush(),
+            alias->radius(),
+            alias->showLabel() ? alias->label() : ""
+        );
     }
 
     app->mouse->draw(&painter);

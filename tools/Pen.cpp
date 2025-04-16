@@ -11,11 +11,9 @@
 #include "objects/DC_VoltageGenerator.h"
 #include "objects/Inductor.h"
 #include "objects/Resistor.h"
-#include "objects/Wire.h"
 #include "objects/WorldPoint.h"
 
 #include "utils/Geometry.h"
-#include "utils/Functions.h"
 
 #include "commands/Command.h"
 #include "commands/SplitDipoleCommand.h"
@@ -26,42 +24,40 @@
 #include "tools/Selector.h"
 
 
-
 Pen::Pen(App *app): MouseTool(app),
     penCursor(QCursor(QPixmap(":assets/cursor/pen.png"), 0, 0)),
     constructingCursor(QCursor(QPixmap(":assets/cursor/pen_constructing.png"), 0, 0)),
     constructingPlusCursor(QCursor(QPixmap(":assets/cursor/pen_constructing_plus.png"), 0, 0))
 {
-    _dotRadius = 10;
-    _showLabel = true;
+    setFillColor(QColor(255,255,255));
+    setStrokeColor(QColor(222,222,222));
+    setStrokeWidth(2);
+    setRadius(10);
+
+    _brush.setStyle(Qt::BrushStyle::SolidPattern);
+    _pen.setStyle(Qt::PenStyle::SolidLine);
 }
 
-QString Pen::dataString(const QString &key) const {
-    if(key == "radius") return QString::number(_dotRadius);
-    if(key == "fill") return _fillColor.name();
-    if(key == "stroke") return _strokeColor.name();
-    if(key == "type") return Object::name(type);
-    if(key == "show-label") return showLabel()? "1" : "0";
-    return MouseTool::dataString(key);
+QVariant Pen::getAttr(const Attr attr) const {
+    switch(attr){
+    case Attr::Radius : return radius();
+    case Attr::FillColor : return fillColor();
+    case Attr::StrokeColor : return strokeColor();
+    case Attr::StrokeWidth : return strokeWidth();
+    case Attr::ShowLabel : return showLabel();
+    default: return MouseTool::getAttr(attr);
+    }
 }
-void Pen::setData(const QString &key, const QString &value) {
-    if(key == "radius") _dotRadius = value.toInt();
-    else if(key == "fill") {
-        const QColor color = QColor(value);
-        if(color.isValid()) _fillColor = color;
+void Pen::setAttr(const Attr attr, const QVariant &v) {
+    switch(attr){
+    case Attr::Radius : setRadius(v.toUInt()); return;
+    case Attr::FillColor : setFillColor(v.toString()); return;
+    case Attr::StrokeColor : setStrokeColor(v.toString()); return;
+    case Attr::StrokeWidth : setStrokeWidth(v.toUInt()); return;
+    case Attr::ShowLabel : setShowLabel(v.toBool()); return;
+    default: MouseTool::setAttr(attr, v); return;
     }
-    else if(key == "stroke") {
-        const QColor color = QColor(value);
-        if(color.isValid()) _strokeColor = color;
-    }
-    else if(key == "type") {
-        const ObjectType parsedType = Object::parseType(key);
-        if(parsedType != VOID) type = parsedType;
-    }
-    else if(key == "show-label") setShowLabel(value == "1");
-    else MouseTool::setData(key, value);
 }
-
 
 
 void Pen::deepRemoval(const SharedObject &obj) {
@@ -106,22 +102,30 @@ void Pen::move(){
     }
 }
 
-QString Pen::address(){
-    return previous && (type == WIRE || (type == ALIAS && alt())) ? previous->address() : app->address();
-}
 SharedAlias Pen::MakeAlias(const QPointF &p){
-    return std::make_shared<Alias>(app->id(), address(), p.x(), p.y(), _dotRadius, _fillColor, _showLabel);
+    const QString address = previous && type == ALIAS && alt() ? previous->address() : app->address();
+    return std::make_shared<Alias>(app->id(), address, p.x(), p.y(), radius(), brush(), showLabel());
 }
 SharedDipole Pen::MakeDipole(const SharedAlias &A, const SharedAlias &B, ObjectType type){
-    SharedDouble v = std::make_shared<double>(defaultOf(varTypeOf(type)).toDouble());
     switch(type){
-    case WIRE: return std::make_shared<Wire>(A, B, _strokeColor, _path.clone());
-    case RESISTOR: return std::make_shared<Resistor>(A, B, _strokeColor, v, _showLabel);
-    case CAPACITOR: return std::make_shared<Capacitor>(A, B, _strokeColor, v, _showLabel);
-    case INDUCTOR: return std::make_shared<Inductor>(A, B, _strokeColor, v, _showLabel);
-    case BATTERY: return std::make_shared<Battery>(A, B, _strokeColor, v, _showLabel);
-    case DC_VOLTAGE_GENERATOR: return std::make_shared<DC_VoltageGenerator>(A, B, _strokeColor, v, _showLabel);
-    case DC_CURRENT_GENERATOR: return std::make_shared<DC_CurrentGenerator>(A, B, _strokeColor, v, _showLabel);
+    case RESISTOR:
+        return std::make_shared<Resistor>(A, B, pen(), showLabel(), DEFAULT_RESISTANCE_VALUE);
+
+    case CAPACITOR:
+        return std::make_shared<Capacitor>(A, B, pen(), showLabel(), DEFAULT_CAPACITANCE_VALUE, 0.0);
+
+    case INDUCTOR:
+        return std::make_shared<Inductor>(A, B, pen(), showLabel(), DEFAULT_INDUCTANCE_VALUE, 0.0);
+
+    case BATTERY:
+        return std::make_shared<Battery>(A, B, pen(), showLabel(), DEFAULT_BATTERY_VALUE);
+
+    case DC_VOLTAGE_GENERATOR:
+        return std::make_shared<DC_VoltageGenerator>(A, B, pen(), showLabel(), DEFAULT_DC_VOLTAGE_GENERATOR_VALUE);
+
+    case DC_CURRENT_GENERATOR:
+        return std::make_shared<DC_CurrentGenerator>(A, B, pen(), showLabel(), DEFAULT_DC_CURRENT_GENERATOR_VALUE);
+
     default: return nullptr;
     }
 }
@@ -200,11 +204,11 @@ void Pen::construct(){
     case PROHIBITED: return;
     case ALIAS_ONLY:
         previous = MakeAlias(t());
-        app->execute(std::make_unique<InsertObjectsCommand>(app, LockedSelection({previous})));
+        app->execute(std::make_unique<InsertObjectsCommand>(app, Selection({previous})));
         break;
     case ALIAS_AND_DIPOLE: {
         const auto &newAlias = MakeAlias(t());
-        app->execute(std::make_unique<InsertObjectsCommand>(app, LockedSelection({newAlias, MakeDipole(previous, newAlias)})));
+        app->execute(std::make_unique<InsertObjectsCommand>(app, Selection({newAlias, MakeDipole(previous, newAlias)})));
         previous = newAlias;
         break;
     }
@@ -212,7 +216,7 @@ void Pen::construct(){
         const auto &hoveredAlias = static_pointer_cast<Alias>(hoveredObject());
         app->execute(
             std::make_unique<InsertObjectsCommand>(
-                app, LockedSelection({MakeDipole(previous, hoveredAlias)})
+                app, Selection({MakeDipole(previous, hoveredAlias)})
             )
         );
         previous = hoveredAlias;
@@ -225,7 +229,7 @@ void Pen::construct(){
 
         auto cmd = std::make_unique<ComboCommand>();
         cmd->addCommand(
-            std::make_unique<InsertObjectsCommand>(app, LockedSelection({splitter, resultant}))
+            std::make_unique<InsertObjectsCommand>(app, Selection({splitter, resultant}))
         );
         cmd->addCommand(
             std::make_unique<SplitDipoleCommand>(app, splitted, resultant, splitter)
@@ -242,7 +246,7 @@ void Pen::construct(){
 
         auto cmd = std::make_unique<ComboCommand>();
         cmd->addCommand(
-            std::make_unique<InsertObjectsCommand>(app, LockedSelection({splitter, resultant, normal}))
+            std::make_unique<InsertObjectsCommand>(app, Selection({splitter, resultant, normal}))
         );
         cmd->addCommand(
             std::make_unique<SplitDipoleCommand>(app, splitted, resultant, splitter)
@@ -258,7 +262,7 @@ void Pen::construct(){
 
         auto cmd = std::make_unique<ComboCommand>();
         cmd->addCommand(
-            std::make_unique<InsertObjectsCommand>(app, LockedSelection({splitter, resultant}))
+            std::make_unique<InsertObjectsCommand>(app, Selection({splitter, resultant}))
         );
         cmd->addCommand(
             std::make_unique<SplitDipoleCommand>(app, splitted, resultant, splitter)
@@ -373,7 +377,7 @@ void Pen::updateMovement(){
         for(const auto &alias : app->grid.visibleAliases)
             points.append(alias->p());
 
-        setTarget(indicateTarget(app, _indicators, t(), points));
+        setTarget(indicateTarget(app, _indicators, t(), points, app->grid.zoom()));
         break;
 
     case CONSTRUCTING:
@@ -403,7 +407,7 @@ void Pen::updateMovement(){
                 cur = cur->next();
             }
         }
-        setTarget(indicateTarget(app, _indicators, t(), points));
+        setTarget(indicateTarget(app, _indicators, t(), points, app->grid.zoom()));
         break;
 
     case INITIAL_CONTROLLING:
@@ -434,8 +438,8 @@ void Pen::updateMovement(){
             cur = cur->next();
         }
 
-        setTarget(indicateTarget(app, _indicators, t(), points));
-        setTarget(2*last->p() - indicateTarget(app, _indicators, 2*last->p() - t(), points));
+        setTarget(indicateTarget(app, _indicators, t(), points, app->grid.zoom()));
+        setTarget(2*last->p() - indicateTarget(app, _indicators, 2*last->p() - t(), points, app->grid.zoom()));
 
         break;
     }
@@ -492,9 +496,6 @@ void Pen::keyDown([[maybe_unused]] Qt::Key key){
     case Qt::Key_P:
         setType(ALIAS);
         break;
-    case Qt::Key_W:
-        setType(WIRE);
-        break;
     case Qt::Key_R:
         setType(RESISTOR);
         break;
@@ -523,11 +524,15 @@ void Pen::keyPress([[maybe_unused]] Qt::Key key){}
 void Pen::keyUp([[maybe_unused]] Qt::Key key){}
 
 void Pen::drawAliasPreview(const QColor &color){
-    app->grid.drawNode(app->grid.toScreen(t()), color, _dotRadius, "");
+    QBrush b = brush();
+    b.setColor(color);
+    app->grid.drawAlias(app->grid.toScreen(t()), b, radius(), "");
 }
 
 
 void Pen::drawDipolePreview(const QColor &color){
+    QPen p = pen();
+    p.setColor(color);
     app->grid.drawDipole(type, app->grid.toScreen(previous->p()), app->grid.toScreen(t()), color);
 }
 
@@ -560,7 +565,9 @@ void Pen::drawSplittedPreview(const QColor &color){
         return;
     }
 
-    app->grid.drawDipole(dipole->type(), app->grid.toScreen(A), app->grid.toScreen(B), color);
+    QPen p = pen();
+    p.setColor(color);
+    app->grid.drawDipole(dipole->type(), app->grid.toScreen(A), app->grid.toScreen(B), p);
 }
 
 void Pen::drawResultantPreview(const QColor &color){
@@ -581,44 +588,54 @@ void Pen::drawResultantPreview(const QColor &color){
         return;
     }
 
-    app->grid.drawDipole(dipole->type(), app->grid.toScreen(A), app->grid.toScreen(B), color);
+    QPen p = pen();
+    p.setColor(color);
+    app->grid.drawDipole(dipole->type(), app->grid.toScreen(A), app->grid.toScreen(B), p);
 }
 
-void Pen::drawHoveredAlias(const QColor &color){ app->grid.drawObject(hoveredAlias(), color); }
-void Pen::drawHoveredDipole(const QColor &color){ app->grid.drawObject(hoveredDipole(), color); }
+void Pen::drawHoveredAlias(const QColor &color){
+    QBrush b = brush();
+    b.setColor(color);
+    app->grid.drawObject(hoveredAlias(), Qt::NoPen, b);
+}
+void Pen::drawHoveredDipole(const QColor &color){
+    QPen p = pen();
+    p.setColor(color);
+    app->grid.drawObject(hoveredDipole(), p, Qt::NoBrush);
+}
 
 void Pen::draw(QPainter *painter){
     switch(mode){
     case ALIAS_ONLY:
-        drawAliasPreview(_fillColor);
+        drawAliasPreview(fillColor());
         drawIndicators(painter);
         break;
     case DIPOLE_ONLY:
-        drawDipolePreview(_strokeColor);
+        drawDipolePreview(strokeColor());
         drawHoveredAlias();
         break;
     case ALIAS_AND_DIPOLE:
-        drawDipolePreview(_strokeColor);
-        drawAliasPreview(_fillColor);
+        drawDipolePreview(strokeColor());
+        drawAliasPreview(fillColor());
         drawIndicators(painter);
         break;
     case ALIAS_SPLIT:
-        drawSplittedPreview(WORLD_OBJECT_HOVER_COLOR);
-        drawResultantPreview(WORLD_OBJECT_HOVER_COLOR);
-        drawAliasPreview(_fillColor);
+        drawSplittedPreview(Palette::HOVER);
+        drawResultantPreview(Palette::HOVER);
+        drawAliasPreview(fillColor());
         drawIndicators(painter);
         break;
     case NORMAL_SPLIT:
-        drawSplittedPreview(WORLD_OBJECT_HOVER_COLOR);
-        drawResultantPreview(WORLD_OBJECT_HOVER_COLOR);
-        drawDipolePreview(_strokeColor);
-        drawAliasPreview(_fillColor);
+        drawSplittedPreview(Palette::HOVER);
+        drawResultantPreview(Palette::HOVER);
+        drawDipolePreview(strokeColor());
+        drawAliasPreview(fillColor());
         drawIndicators(painter);
         break;
     case OVER_SPLIT:
-        drawSplittedPreview(WORLD_OBJECT_HOVER_COLOR);
-        drawDipolePreview(_strokeColor);
-        drawAliasPreview(_fillColor);
+        drawSplittedPreview(Palette::HOVER);
+        drawDipolePreview(strokeColor());
+        drawAliasPreview(fillColor());
         drawIndicators(painter);
         break;
     case SWITCH_PREVIOUS: {
@@ -626,9 +643,9 @@ void Pen::draw(QPainter *painter){
         break;
     }
     case PROHIBITED:
-        drawAliasPreview(NOT_ALLOWED_CONSTRUCTION_COLOR);
-        if(_state == CONSTRUCTING) drawDipolePreview(NOT_ALLOWED_CONSTRUCTION_COLOR);
-        if(_hoverCategory == _DIPOLE) drawHoveredDipole(NOT_ALLOWED_CONSTRUCTION_COLOR);
+        drawAliasPreview(Palette::CONSTRUCTION_PROHIBITED);
+        if(_state == CONSTRUCTING) drawDipolePreview(Palette::CONSTRUCTION_PROHIBITED);
+        if(_hoverCategory == _DIPOLE) drawHoveredDipole(Palette::CONSTRUCTION_PROHIBITED);
         break;
     }
 }

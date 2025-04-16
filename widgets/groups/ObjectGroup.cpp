@@ -1,16 +1,18 @@
 #include "ObjectGroup.h"
 #include "tools/Selector.h"
 #include "objects/Object.h"
-#include "App.h"
 
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QStringList>
 #include <QStyle>
-#include "commands/ChangeAttributeCommand.h"
+
+#include "widgets/MainPanel.h"
+#include "App.h"
+
 
 void ObjectGroup::updateData(){
-    updateSelection(app->selector.filter(type()));
+    updateSelection(mainPanel->app->selector.filter(type()));
 }
 
 QString ObjectGroup::baseTitle() const {
@@ -27,32 +29,30 @@ void ObjectGroup::updateBasicData(){
     headerButton->setText(title());
 }
 
-bool ObjectGroup::isMixed(const QString &key) const {
+bool ObjectGroup::isMixed(const Attr attr) const {
     if (selection.isEmpty()) return false;
-    const auto &firstValue = (*selection.constBegin())->dataString(key).toLower();
+    const auto &firstValue = (*selection.constBegin())->getAttr(attr);
     return std::any_of(selection.begin(), selection.end(), [&](const auto &obj) {
-        return obj->dataString(key).toLower() != firstValue;
+        return obj->getAttr(attr) != firstValue;
     });
 }
 
-void ObjectGroup::apply(const QString &key, const QString &value){
-    for(const auto &obj : selection) obj->setData(key, value);
-}
-
-void ObjectGroup::onEditingFinishedApply(const QString &key, const QString &value){
-    if(lastApplied.contains(key) && lastApplied[key] == value) return;
-    app->execute(std::make_unique<ChangeAttributeCommand>(app, selection, key, value));
-    lastApplied[key] = value;
-}
-
-QString ObjectGroup::dataString(const QString &key) const {
+QVariant ObjectGroup::getAttr(const Attr attr) const {
     if(isEmpty()) return "";
-    if (key == "id") {
+    if (attr == Attr::ID) {
         QStringList ids;
         std::transform(selection.begin(), selection.end(), std::back_inserter(ids),
-        [](const auto &obj) { return obj->dataString("id"); });
+        [](const auto &obj) { return obj->getAttr(Attr::ID).toString(); });
         if (ids.isEmpty()) return "";
         return ids.size() == 1? ids[0] : QString("{%1}").arg(ids.join(", "));
     }
-    return isMixed(key)? "Mixed" : (*selection.constBegin())->dataString(key);
+    return (*selection.constBegin())->getAttr(attr);
 }
+void ObjectGroup::setAttr(const Attr attr, const QVariant &v) {
+    for(const auto &obj : selection) obj->setAttr(attr, v);
+}
+void ObjectGroup::confirmAttr(const Attr attr, const QVariant &v) {
+    for(const auto &obj : selection) obj->setAttr(attr, v);
+}
+
+

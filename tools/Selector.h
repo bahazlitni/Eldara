@@ -3,7 +3,7 @@
 #include <QMap>
 #include <QPointF>
 #include <QSet>
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
 class App;
 class Selector: public MouseTool {
@@ -35,8 +35,8 @@ public:
     SharedObject first(ObjectType type) const noexcept;
     SharedObject first(ObjectCategory cat) const noexcept;
 
-    LockedSelection filter(ObjectType type) const noexcept;
-    LockedSelection filter(ObjectCategory cat) const noexcept;
+    Selection filter(ObjectType type) const noexcept;
+    Selection filter(ObjectCategory cat) const noexcept;
 
     void add(const SharedObject &obj){ _selection.insert(obj); }
     void remove(const SharedObject &obj){ _selection.remove(obj); }
@@ -47,18 +47,18 @@ public:
 
     void selectInsideBox();
 
-    void select(const LockedSelection &selection){
+    void select(const Selection &selection){
         _selection.unite(selection);
         emit selectionChanged();
     }
-    void unselect(const LockedSelection &selection){
+    void unselect(const Selection &selection){
         _selection.subtract(selection);
         emit selectionChanged();
     }
 
     void deepRemoval(const SharedObject &obj) override;
 
-    LockedSelection selection() const { return _selection; }
+    Selection selection() const { return _selection; }
 
 signals:
     void selectionChanged();
@@ -76,9 +76,9 @@ protected:
 
     MergeMap mergeMap;
     SharedObject draggingObject;
-    LockedSelection deepSelection;
-    LockedSelection toCopySelection;
-    LockedSelection _selection;
+    Selection deepSelection;
+    Selection toCopySelection;
+    Selection _selection;
     MovementMap movementMap;
 
     QRectF box;
@@ -87,4 +87,7 @@ protected:
 
     bool initKeyDrag = false;
     QPointF unitDisplacement(const Qt::Key key);
+
+
+    void drawObject(const SharedObject &obj, const QColor &color);
 };

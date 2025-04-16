@@ -12,7 +12,6 @@
 #include "objects/Alias.h"
 #include "objects/Dipole.h"
 #include "objects/Object.h"
-#include "utils/Functions.h"
 #include "utils/Selection.h"
 
 Selector::Selector(App *app) : MouseTool(app),
@@ -122,7 +121,7 @@ void Selector::updateMovement(){
                 if(!_selection.contains(alias)) points.append(alias->p());
             }
 
-            setTarget(indicateTarget(app, _indicators, movementMap[draggingAlias->share()].first + dp, points));
+            setTarget(indicateTarget(app, _indicators, movementMap[draggingAlias->share()].first + dp, points, app->grid.zoom()));
             break;
         }
         case _DIPOLE: {
@@ -142,7 +141,7 @@ void Selector::updateMovement(){
 
             setTarget(t() - B0 - dp +
                 indicateTarget(app, _indicators, B0 - A0 +
-                indicateTarget(app, _indicators, A0 + dp, points), points)
+                indicateTarget(app, _indicators, A0 + dp, points, app->grid.zoom()), points, app->grid.zoom())
             );
             break;
         }
@@ -355,16 +354,27 @@ void Selector::keyUp(Qt::Key key){
     }
 }
 
+void Selector::drawObject(const SharedObject &obj, const QColor &color){
+    QPen pen(obj->pen());
+    QBrush brush(obj->brush());
+    brush.setColor(color);
+    pen.setColor(color);
+    app->grid.drawObject(obj, pen, brush);
+}
+
 void Selector::draw(QPainter *painter){
     if(_state != DRAGGING){
         const auto &hovered = hoveredObject();
         for(const auto &obj : _selection){
-            if(obj->category() == _DIPOLE && hovered != obj) app->grid.drawObject(obj, WORLD_OBJECT_SELECTION_COLOR);
+            if(obj->category() == _DIPOLE && hovered != obj)
+               drawObject(obj, Palette::SELECT);
         }
         for(const auto &obj : _selection){
-            if(obj->category() == _NODE && hovered != obj)  app->grid.drawObject(obj, WORLD_OBJECT_SELECTION_COLOR);
+            if(obj->category() == _NODE && hovered != obj)
+                drawObject(obj, Palette::SELECT);
         }
-        if(_hoverCategory != _VOID)  app->grid.drawObject(hoveredObject(), WORLD_OBJECT_HOVER_COLOR);
+        if(_hoverCategory != _VOID)
+            drawObject(hoveredObject(), Palette::HOVER);
     }
 
     switch(_state){
@@ -374,14 +384,13 @@ void Selector::draw(QPainter *painter){
         break;
     }
     case DRAGGING: {
-
         for(const auto &obj : _selection){
             if(obj->category() != _DIPOLE || mergeMap.contains(obj)) continue;
-            app->grid.drawObject(obj, WORLD_OBJECT_SELECTION_COLOR);
+            drawObject(obj, Palette::SELECT);
         }
         for(const auto &obj : _selection){
             if(obj->category() != _NODE || mergeMap.contains(obj)) continue;
-            app->grid.drawObject(obj, WORLD_OBJECT_SELECTION_COLOR);
+            drawObject(obj, Palette::SELECT);
         }
 
         drawIndicators(painter);
@@ -398,7 +407,7 @@ void Selector::draw(QPainter *painter){
                 break;
             }
             default:
-                app->grid.drawObject(merging, MERGE_INDICATOR_STROKE_COLOR);
+                drawObject(merging, Palette::MERGE_INDICATOR_STROKE);
                 break;
             }
         }
@@ -465,8 +474,8 @@ SharedObject Selector::first(ObjectCategory cat) const noexcept {
     return SharedObject();
 }
 
-LockedSelection Selector::filter(ObjectType type) const noexcept {
-    LockedSelection result;
+Selection Selector::filter(ObjectType type) const noexcept {
+    Selection result;
     for (const auto &obj : _selection) {
         if (obj->type() == type)
             result.insert(obj);
@@ -474,8 +483,8 @@ LockedSelection Selector::filter(ObjectType type) const noexcept {
     return result;
 }
 
-LockedSelection Selector::filter(ObjectCategory cat) const noexcept {
-    LockedSelection result;
+Selection Selector::filter(ObjectCategory cat) const noexcept {
+    Selection result;
     for (const auto &obj : _selection) {
         if (obj->category() == cat)
             result.insert(obj);

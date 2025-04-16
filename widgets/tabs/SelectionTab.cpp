@@ -1,24 +1,16 @@
 #include "SelectionTab.h"
+#include "widgets/MainPanel.h"
 #include "App.h"
 
 #include "widgets/groups/ObjectGroup.h"
 #include "widgets/groups/AliasGroup.h"
-#include "widgets/groups/UnitDipoleGroup.h"
+#include "widgets/groups/DipoleGroup.h"
 #include "widgets/groups/ColorsGroup.h"
 
-#include <QVBoxLayout>
-#include <QToolButton>
-#include <QGroupBox>
-#include <QScrollArea>
-#include <QTabWidget>
-#include <QLabel>
-#include <QGuiApplication>
-
-SelectionTab::SelectionTab(App *app, QWidget *parent) :
-    QWidget(parent),
-    app(app),
+SelectionTab::SelectionTab(MainPanel *mainPanel) :
+    QWidget(mainPanel),
+    mainPanel(mainPanel),
     mainLayout(new QVBoxLayout(this)),
-    colorsGroup(new ColorsGroup(this->app)),
     scrollArea(new QScrollArea(this))
 {
     setObjectName("SelectionTab");
@@ -31,25 +23,24 @@ SelectionTab::SelectionTab(App *app, QWidget *parent) :
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
 
     // Create a container widget to hold all content
-    QWidget *contentWidget = new QWidget();
+    QWidget *contentWidget = new QWidget(scrollArea);
     QVBoxLayout *contentLayout = new QVBoxLayout(contentWidget);
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(0);
     contentLayout->setAlignment(Qt::AlignTop);
 
     // Add object groups
-    objectGroups.append(new AliasGroup(this->app));
-    unitDipoleGroups.append(new UnitDipoleGroup(this->app, RESISTOR));
-    unitDipoleGroups.append(new UnitDipoleGroup(this->app, CAPACITOR));
-    unitDipoleGroups.append(new UnitDipoleGroup(this->app, INDUCTOR));
-    unitDipoleGroups.append(new UnitDipoleGroup(this->app, BATTERY));
-    unitDipoleGroups.append(new UnitDipoleGroup(this->app, DC_CURRENT_GENERATOR));
-    unitDipoleGroups.append(new UnitDipoleGroup(this->app, DC_VOLTAGE_GENERATOR));
+    inputGroups.append(new ColorsGroup(mainPanel));
+    inputGroups.append(new AliasGroup(mainPanel));
+    inputGroups.append(new DipoleGroup(mainPanel, RESISTOR));
+    inputGroups.append(new DipoleGroup(mainPanel, CAPACITOR));
+    inputGroups.append(new DipoleGroup(mainPanel, INDUCTOR));
+    inputGroups.append(new DipoleGroup(mainPanel, BATTERY));
+    inputGroups.append(new DipoleGroup(mainPanel, DC_CURRENT_GENERATOR));
+    inputGroups.append(new DipoleGroup(mainPanel, DC_VOLTAGE_GENERATOR));
 
-    for (auto unitDipoleGroup : unitDipoleGroups) objectGroups.append(unitDipoleGroup);
-    for (auto objectGroup : objectGroups) contentLayout->addWidget(objectGroup);
-
-    contentLayout->addWidget(colorsGroup);
+    for(InputGroup *inputGroup : inputGroups)
+        contentLayout->addWidget(inputGroup);
 
     // Set container widget inside the scroll area
     contentWidget->setLayout(contentLayout);
@@ -63,14 +54,15 @@ SelectionTab::SelectionTab(App *app, QWidget *parent) :
 }
 
 void SelectionTab::updateData() {
-    for (auto objectGroup : objectGroups)
-        objectGroup->updateData();
-    colorsGroup->updateData();
+    for (auto inputGroup : inputGroups)
+        inputGroup->updateData();
 }
 
 void SelectionTab::updateCoordinates() {
-    for (auto objectGroup : objectGroups)
-        objectGroup->updateCoordinates();
+    for(const auto &inputGroup : inputGroups){
+        if(const auto &dipoleGroup = dynamic_cast<DipoleGroup*>(inputGroup))
+            dipoleGroup->updateCoordinates();
+    }
 }
 
 void SelectionTab::onAddVariables(
@@ -78,21 +70,25 @@ void SelectionTab::onAddVariables(
     const QVector<QVariant> &values,
     const QVector<VariableType> &types
 ){
-    for(const auto &unitDipoleGroup : unitDipoleGroups)
-        unitDipoleGroup->onAddVariables(names, values, types);
+    for(const auto &inputGroup : inputGroups){
+        if(const auto &dipoleGroup = dynamic_cast<DipoleGroup*>(inputGroup))
+            dipoleGroup->onAddVariables(names, values, types);
+    }
 }
 void SelectionTab::onChangeVariables(
     const QVector<QString> &names,
-    const QVector<QVariant> &newValues,
-    [[maybe_unused]] const QVector<VariableType> &types
+    const QVector<QVariant> &newValues
 ){
-    for(const auto &unitDipoleGroup : unitDipoleGroups)
-        unitDipoleGroup->onChangeVariables(names, newValues, types);
+    for(const auto &inputGroup : inputGroups){
+        if(const auto &dipoleGroup = dynamic_cast<DipoleGroup*>(inputGroup))
+            dipoleGroup->onChangeVariables(names, newValues);
+    }
 }
 void SelectionTab::onRemoveVariables(
-    const QVector<QString> &names,
-    [[maybe_unused]] const QVector<VariableType> &types
+    const QVector<QString> &names
 ){
-    for(const auto &unitDipoleGroup : unitDipoleGroups)
-        unitDipoleGroup->onRemoveVariables(names, types);
+    for(const auto &inputGroup : inputGroups){
+        if(const auto &dipoleGroup = dynamic_cast<DipoleGroup*>(inputGroup))
+            dipoleGroup->onRemoveVariables(names);
+    }
 }

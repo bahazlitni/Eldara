@@ -1,11 +1,9 @@
 #pragma once
-#include <QLineEdit>
 #include "widgets/custom/CustomSpinBox.h"
-#include "utils/Types.h"
+#include "utils/Globals.h"
 #include "widgets/groups/InputGroup.h"
 #include "App.h"
-
-#include <QWheelEvent>
+#include "widgets/MainPanel.h"
 
 
 class RadiusInput: public CustomSpinBox {
@@ -20,14 +18,14 @@ public:
         setRange(6, 18);
 
         connect(this, &CustomSpinBox::editingFinished, [this](){
-            this->group->onEditingFinishedApply("radius", QString::number(this->value()));
+            this->group->confirmAttr(Attr::Radius, this->value());
             this->updateData();
-            this->group->app->update();
+            this->group->mainPanel->app->update();
         });
 
         connect(this, &CustomSpinBox::valueChanged, [this](int newValue){
-            this->group->apply("radius", QString::number(newValue));
-            this->group->app->update();
+            this->group->setAttr(Attr::Radius, newValue);
+            this->group->mainPanel->app->update();
         });
     }
 
@@ -36,12 +34,11 @@ public:
     }
 
     void updateData(){
-        const QString data = group->dataString("radius");
-        if(data == "Mixed"){
+        if(group->isMixed(Attr::Radius)){
             lineEdit()->clear();
-            lineEdit()->setPlaceholderText(data);
+            lineEdit()->setPlaceholderText("Mixed");
             return;
         }
-        setValue(data.toInt());
+        setValue(group->getAttr(Attr::Radius).toInt());
     }
 };

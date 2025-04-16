@@ -1,17 +1,17 @@
 #pragma once
-#include "UnitDipole.h"
-#include "utils/Types.h"
+#include "DC_VoltageGenerator.h"
+#include "utils/Globals.h"
 
 class Node;
-class Battery: public UnitDipole {
+class Battery: public DC_VoltageGenerator {
 public:
     Battery(
         const SharedAlias &A,
         const SharedAlias &B,
-        const QColor &color,
-        const SharedDouble &value,
-        const bool showLabel
-    ): UnitDipole(A, B, color, value, showLabel) {}
+        const QPen &pen,
+        const bool showLabel,
+        const double V
+    ): DC_VoltageGenerator(A, B, pen, showLabel, V){}
 
     int boxWidth() const override { return BATTERY_WIDTH; }
     int boxHeight() const override { return BATTERY_POSITIVE_HEIGHT; }
@@ -21,6 +21,8 @@ public:
     ObjectType type() const override { return BATTERY; }
 
     SharedDipole clone(const SharedAlias &A, const SharedAlias &B) override {
-        return std::make_shared<Battery>(A, B, color(), share(), showLabel());
+        return std::make_shared<Battery>(A, B, _pen, _showLabel, _V);
     }
 };
+
+

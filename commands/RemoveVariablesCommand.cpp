@@ -1,42 +1,80 @@
 #include "RemoveVariablesCommand.h"
+#include "widgets/tabs/VariablesTab.h"
 #include "App.h"
-#include "VariablesManager.h"
+#include "objects/Alias.h"
+#include "objects/Dipole.h"
+#include "widgets/MainPanel.h"
 
-inline QVector<QVariant> RemoveVariablesCommand::valuesOf(
-    const QVector<QString> &names,
-    const QVector<VariableType> types
-){
-    QVector<QVariant> values;
-    for(int i = 0; i < names.size(); ++i)
-        values.append(app->varManager.varvalue(names[i], types[i]));
-    return values;
+RemoveVariablesCommand::RemoveVariablesCommand(VariablesTab *variablesTab, const QVector<QString> &names)
+    : Command(variablesTab->mainPanel->app),
+    _variablesTab(variablesTab)
+{
+    // Cache backup for each impacted variable.
+    for (const QString &name : names) {
+        VariableBackup vb;
+        vb.name = name;
+        vb.value = variablesTab->value(name);
+        vb.type = variablesTab->vartype(name);
+
+        QSet<SharedDipole> visited;
+        // Scan through each alias and dipole to collect dipoles and their associated params.
+        for (const auto &alias : app->aliases) {
+            for (const auto &dipole : alias->connections()) {
+                if (visited.contains(dipole)) continue;
+                visited.insert(dipole);
+
+                QVector<Param> matchedParams = dipole->varnameParams(name);
+                if (!matchedParams.isEmpty()) {
+                    vb.dipoles.append(dipole);
+                    vb.params.append(matchedParams);
+                }
+            }
+        }
+        _backup.append(vb);
+    }
 }
-
-inline QHash<QString, QVector<SharedUnitDipole>> RemoveVariablesCommand::cacheData(
-    const QVector<QString> &names
-){
-    QHash<QString, QVector<SharedUnitDipole>> cache;
-    for(int i = 0; i < names.size(); ++i)
-        cache.insert(names[i], app->varManager.unitDipoles(names[i]));
-    return cache;
-}
-
-RemoveVariablesCommand::RemoveVariablesCommand(
-    App *app, const QVector<QString> &names, const QVector<VariableType> types
-):  Command(app),
-    _names(names),
-    _values(valuesOf(names, types)),
-    _types(types),
-    _cache(cacheData(names))
-{}
 
 void RemoveVariablesCommand::execute(){
     Command::execute();
-    app->varManager.removeVariables(_names, _types);
+    // Extract names from our backup for removal.
+    QVector<QString> names;
+    for (const auto &vb : _backup) {
+        names.append(vb.name);
+    }
+
+    // Clear the variable name in every related dipole's parameter.
+    for (const auto &vb : _backup) {
+        for (int j = 0; j < vb.dipoles.size(); ++j) {
+            for (const Param &param : vb.params[j]) {
+                vb.dipoles[j]->setParamVarname(param, "");
+            }
+        }
+    }
+
+    _variablesTab->removeVariables(names);
 }
 
 void RemoveVariablesCommand::undo(){
     Command::undo();
-    app->varManager.addVariables(_names, _values, _types, _cache);
+    // Reconstruct names, values, and types to restore the variables.
+    QVector<QString> names;
+    QVector<QVariant> values;
+    QVector<VariableType> types;
+    for (const auto &vb : _backup) {
+        names.append(vb.name);
+        values.append(vb.value);
+        types.append(vb.type);
+    }
 
+    // Restore each dipole's parameter with the original name and value.
+    for (const auto &vb : _backup) {
+        for (int j = 0; j < vb.dipoles.size(); ++j) {
+            for (const Param &param : vb.params[j]) {
+                vb.dipoles[j]->setParamVarname(param, vb.name);
+                vb.dipoles[j]->setParamValue(param, vb.value.toDouble());
+            }
+        }
+    }
+
+    _variablesTab->addVariables(names, values, types);
 }

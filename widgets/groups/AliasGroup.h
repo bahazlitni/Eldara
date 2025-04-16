@@ -1,14 +1,14 @@
 #pragma once
 #include <QGroupBox>
 #include "ObjectGroup.h"
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
 class IDLabel;
 class AddressInput;
 class CoordinateInput;
 class RadiusInput;
 class BooleanInput;
-class App;
+class MainPanel;
 
 class AliasGroup: public ObjectGroup {
     Q_OBJECT
@@ -19,11 +19,11 @@ protected:
     RadiusInput *Radius;
 
 public:
-    AliasGroup(App *app);
+    AliasGroup(MainPanel *mainPanel);
 
     ObjectType type() const override { return ALIAS; }
     ObjectCategory category() const override { return _NODE; }
 
-    void updateSelection(const LockedSelection &selection) override;
+    void updateSelection(const Selection &selection) override;
     void updateCoordinates() override;
 };

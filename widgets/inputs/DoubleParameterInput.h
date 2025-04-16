@@ -1,8 +1,5 @@
 #pragma once
-#include "widgets/groups/InputGroup.h"
-#include "App.h"
-#include <QWidget>
-#include <QStringListModel>
+#include "widgets/groups/ObjectGroup.h"
 
 
 class CustomDoubleSpinBox;
@@ -18,7 +15,7 @@ class DoubleParameterInput : public QWidget {
     Q_OBJECT
 
 public:
-    DoubleParameterInput(InputGroup* group, VariableType type, QWidget* parent = nullptr);
+    DoubleParameterInput(ObjectGroup* group, Param param, const QString label, QWidget* parent = nullptr);
     void updateData();
 
     // State
@@ -28,23 +25,21 @@ public:
 
     void onAddVariables(
         const QVector<QString> &names,
-        [[maybe_unused]]  const QVector<QVariant> &values,
-        [[maybe_unused]]  const QVector<VariableType> &types
+        const QVector<QVariant> &values,
+        const QVector<VariableType> &types
     );
     void onChangeVariables(
-        [[maybe_unused]] const QVector<QString> &names,
-        [[maybe_unused]] const QVector<QVariant> &newValues,
-        [[maybe_unused]] const QVector<VariableType> &types
-    );
-    void onRemoveVariables(
         const QVector<QString> &names,
-        [[maybe_unused]] const QVector<VariableType> &types
+        const QVector<QVariant> &newValues
     );
+    void onRemoveVariables(const QVector<QString> &names);
 
 private:
-    InputGroup* group;
-    const VariableType vartype;
+    ObjectGroup* group;
+    const QString label;
+    const Param param;
     const SIUnit unit;
+    const VariableType vartype;
     const QPair<int, int> magnitudeRange;
     const double maxValue;
     const double minValue;

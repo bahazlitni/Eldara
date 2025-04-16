@@ -1,35 +1,34 @@
 #pragma once
 #include "InputGroup.h"
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
-class App;
+class MainPanel;
 class ObjectGroup : public InputGroup {
     Q_OBJECT
 private:
-    QHash<QString, QString> lastApplied;
     void updateBasicData();
 
 public:
-    LockedSelection selection;
+    Selection selection;
 
-    ObjectGroup(App *app, QWidget *parent = nullptr): InputGroup(app, parent) {}
+    ObjectGroup(MainPanel *mainPanel, QWidget *parent = nullptr): InputGroup(mainPanel, parent) {}
 
-    virtual ObjectType type() const { return VOID; }
-    virtual ObjectCategory category() const { return _VOID; }
+    virtual ObjectType type() const = 0;
+    virtual ObjectCategory category() const = 0;
     virtual void updateCoordinates(){}
 
     QString baseTitle() const override;
 
     bool isEmpty() const override { return selection.isEmpty(); }
-    bool isMixed(const QString &key) const override;
-    QString dataString(const QString &key) const override;
+    bool isMixed(const Attr attr) const override;
 
-    void apply(const QString &key, const QString &value) override;
-    void onEditingFinishedApply(const QString &key, const QString &value) override;
+    QVariant getAttr(const Attr attr) const override;
+    void setAttr(const Attr attr, const QVariant &v) override;
+    void confirmAttr(const Attr attr, const QVariant &v) override;
 
     void updateData() override;
 
-    virtual void updateSelection(const LockedSelection &selection){
+    virtual void updateSelection(const Selection &selection){
         this->selection = QSet(selection);
         updateBasicData();
     }

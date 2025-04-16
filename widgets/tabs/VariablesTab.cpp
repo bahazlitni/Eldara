@@ -1,45 +1,40 @@
 #include "VariablesTab.h"
-#include <QHeaderView>
-#include <QComboBox>
-#include <QHBoxLayout>
-#include <QTableWidgetItem>
 #include "commands/ChangeVariablesCommand.h"
 #include "commands/RemoveVariablesCommand.h"
 #include "commands/AddVariablesCommand.h"
+#include "widgets/MainPanel.h"
 #include "App.h"
 
+#include "SelectionTab.h"
 
 inline void VariablesTab::exe_changeVariables(
-    const QVector<QString> &names, const QVector<QVariant> newValues, const QVector<VariableType> types
+    const QVector<QString> &names, const QVector<QVariant> &newValues
 ){
-    app->execute(std::make_unique<ChangeVariablesCommand>(app, names, newValues, types));
+    mainPanel->app->execute(std::make_unique<ChangeVariablesCommand>(this, names, newValues));
 }
-inline void VariablesTab::exe_removeVariables(
-    const QVector<QString> &names, const QVector<VariableType> types
-){
-    app->execute(std::make_unique<RemoveVariablesCommand>(app, names, types));
+inline void VariablesTab::exe_removeVariables(const QVector<QString> &names){
+    mainPanel->app->execute(std::make_unique<RemoveVariablesCommand>(this, names));
 }
 inline void VariablesTab::exe_addVariables(
-    const QVector<QString> &names, const QVector<QVariant> values, const QVector<VariableType> types
+    const QVector<QString> &names, const QVector<QVariant> &values, const QVector<VariableType> &types
 ){
-    app->execute(std::make_unique<AddVariablesCommand>(app, names, values, types));
+    mainPanel->app->execute(std::make_unique<AddVariablesCommand>(this, names, values, types));
 }
 inline void VariablesTab::exe_replaceVariables(
     const QVector<QString> &oldNames,
     const QVector<QString> &newNames,
-    const QVector<QVariant> newValues,
-    const QVector<VariableType> oldTypes,
-    const QVector<VariableType> newTypes
+    const QVector<QVariant> &newValues,
+    const QVector<VariableType> &newTypes
 ){
     std::unique_ptr<ComboCommand> cmd = std::make_unique<ComboCommand>();
-    cmd->addCommand(std::make_unique<RemoveVariablesCommand>(app, oldNames, oldTypes));
-    cmd->addCommand(std::make_unique<AddVariablesCommand>(app, newNames, newValues, newTypes));
-    app->execute(std::move(cmd));
+    cmd->addCommand(std::make_unique<RemoveVariablesCommand>(this, oldNames));
+    cmd->addCommand(std::make_unique<AddVariablesCommand>(this, newNames, newValues, newTypes));
+    mainPanel->app->execute(std::move(cmd));
 }
 
 // Constructor
-VariablesTab::VariablesTab(App *app, QWidget *parent)
-    : QWidget(parent), app(app), table(new QTableWidget(this)),
+VariablesTab::VariablesTab(MainPanel *mainPanel)
+    : QWidget(mainPanel), mainPanel(mainPanel), table(new QTableWidget(this)),
     addButton(new QPushButton("Add")), removeButton(new QPushButton("Remove")),
     noDataLabel(new QLabel("No variables are found.", this)),
     lastEnteredType(VAR_RESISTANCE) // default type
@@ -130,8 +125,7 @@ void VariablesTab::buildRow(const int row, const QString &name, const QVariant &
             QVector{nameItem->data(Qt::UserRole).toString()},
             QVector{QString("")},
             QVector{valueItem->data(Qt::UserRole)},
-            QVector{static_cast<VariableType>(typeCombo->currentData().toInt())},
-            QVector{lastEnteredType}
+            QVector{static_cast<VariableType>(index)}
         );
     });
 }
@@ -204,14 +198,12 @@ void VariablesTab::onCellChanged(const int row, int) {
             QVector{originalName},
             QVector{validatedName},
             QVector{validatedValue},
-            QVector{type},
             QVector{type}
         );
     else if(originalValue != validatedValue)
         exe_changeVariables(
             QVector{originalName},
-            QVector{validatedValue},
-            QVector{type}
+            QVector{validatedValue}
         );
 }
 
@@ -237,24 +229,20 @@ void VariablesTab::onRemoveVariable() {
         return;
 
     std::sort(selectedRanges.begin(), selectedRanges.end(),
-              [](const QTableWidgetSelectionRange &a, const QTableWidgetSelectionRange &b) {
-                  return a.bottomRow() > b.bottomRow();
-              });
+        [](const QTableWidgetSelectionRange &a, const QTableWidgetSelectionRange &b) {
+        return a.bottomRow() > b.bottomRow();
+    });
 
     QVector<QString> names;
-    QVector<VariableType> types;
-
     for(const QTableWidgetSelectionRange &range : selectedRanges) {
         for (int row = range.bottomRow(); row >= range.topRow(); --row){
-            QComboBox *typeCombo = qobject_cast<QComboBox*>(table->cellWidget(row, 2));
             QTableWidgetItem *nameItem = table->item(row, 0);
-            if(!nameItem || !typeCombo) continue;
-            names.append(nameItem->data(Qt::UserRole).toString());
-            types.append(static_cast<VariableType>(typeCombo->currentData().toInt()));
+            if(nameItem)
+                names.append(nameItem->data(Qt::UserRole).toString());
         }
     }
 
-    exe_removeVariables(names, types);
+    exe_removeVariables(names);
 
     if (isEmpty()) {
         table->setVisible(false);
@@ -263,7 +251,7 @@ void VariablesTab::onRemoveVariable() {
     }
 }
 
-void VariablesTab::onAddVariables(
+void VariablesTab::addVariables(
     const QVector<QString> &names,
     const QVector<QVariant> &values,
     const QVector<VariableType> &types
@@ -274,11 +262,11 @@ void VariablesTab::onAddVariables(
         validateNewData(names[i], values[i], types[i], &validatedName, &validatedValue);
         buildRow(0, validatedName, validatedValue, types[i]);
     }
+    mainPanel->selectionTab->onAddVariables(names, values, types);
 }
-void VariablesTab::onChangeVariables(
+void VariablesTab::changeVariables(
     const QVector<QString> &names,
-    const QVector<QVariant> &newValues,
-    [[maybe_unused]] const QVector<VariableType> &types
+    const QVector<QVariant> &newValues
 ){
     for(int i = 0; i < names.size(); ++i){
         const int row = rowOfName(names[i]);
@@ -288,19 +276,20 @@ void VariablesTab::onChangeVariables(
         valueItem->setData(Qt::UserRole, newValues[i]);
         table->blockSignals(false);
     }
+
+    mainPanel->selectionTab->onChangeVariables(names, newValues);
 }
-void VariablesTab::onRemoveVariables(
-    const QVector<QString> &names,
-    [[maybe_unused]] const QVector<VariableType> &types
-){
+void VariablesTab::removeVariables(const QVector<QString> &names){
     for(int i = 0; i < names.size(); ++i)
         table->removeRow(rowOfName(names[i]));
+
+    mainPanel->selectionTab->onRemoveVariables(names);
 }
 
 
 
 // Returns the row of a given type combo in the Type column.
-int VariablesTab::rowOfTypeComboBox(QComboBox *typeCombo) {
+int VariablesTab::rowOfTypeComboBox(QComboBox *typeCombo) const {
     for (int row = 0; row < table->rowCount(); ++row) {
         QComboBox *combo = qobject_cast<QComboBox*>(table->cellWidget(row, 2));
         if (combo == typeCombo)
@@ -322,7 +311,7 @@ bool VariablesTab::containsName(const QString &name, int ignoreRow) {
 }
 
 // Returns the row index for the given name (if needed).
-int VariablesTab::rowOfName(const QString &name) {
+int VariablesTab::rowOfName(const QString &name) const {
     for (int row = 0; row < table->rowCount(); ++row) {
         QTableWidgetItem *item = table->item(row, 0);
         if (item && item->text() == name)
@@ -528,4 +517,14 @@ int VariablesTab::count(const VariableType type) const {
 }
 
 
+QVariant VariablesTab::value(const int row) const {
+    auto valueItem = table->item(row, 1);
+    if(valueItem) return valueItem->data(Qt::UserRole);
+    return "";
+}
+VariableType VariablesTab::vartype(const int row) const {
+    auto combo = qobject_cast<QComboBox*>(table->cellWidget(row, 2));
+    if(combo) return static_cast<VariableType>(combo->currentData().toInt());
+    return VAR_NULL;
+}
 

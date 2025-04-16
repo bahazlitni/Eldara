@@ -1,6 +1,6 @@
 #pragma once
 #include "Command.h"
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
 #include <QHash>
 

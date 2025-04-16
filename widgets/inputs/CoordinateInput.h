@@ -4,8 +4,7 @@
 #include <QLineEdit>
 #include "widgets/groups/InputGroup.h"
 #include "App.h"
-#include <QWheelEvent>
-
+#include "widgets/MainPanel.h"
 
 class CoordinateInput: public CustomDoubleSpinBox {
     Q_OBJECT
@@ -13,19 +12,19 @@ class CoordinateInput: public CustomDoubleSpinBox {
 private:
     double lastValue = 0.0;
     InputGroup *group;
-    const QString key;
+    const Attr attr;
 
 public:
-    CoordinateInput(InputGroup *group, const QString &key, QWidget *parent = nullptr):
-        CustomDoubleSpinBox(parent), group(group), key(key) {
+    CoordinateInput(InputGroup *group, const Attr attr, QWidget *parent = nullptr):
+        CustomDoubleSpinBox(parent), group(group), attr(attr) {
         setAlignment(Qt::AlignCenter);
         setRange(-Grid::MAX_COORDINATE_RANGE, Grid::MAX_COORDINATE_RANGE);
         setDecimals(2);
 
         connect(this, &CustomDoubleSpinBox::editingFinished, [this](){
-            this->group->onEditingFinishedApply(this->key, QString::number(this->value(), 'f', 2));
+            this->group->confirmAttr(this->attr, this->value());
             this->updateData();
-            this->group->app->update();
+            this->group->mainPanel->app->update();
         });
     }
 
@@ -35,30 +34,29 @@ public:
 
     void updateCrement(){
         const double newValue = value();
-        this->group->apply(this->key, QString::number(newValue, 'f', 2));
+        this->group->setAttr(this->attr, newValue);
         lastValue = newValue;
-        this->group->app->update();
+        this->group->mainPanel->app->update();
     }
 
     void increment() override {
-        setValue(group->app->grid.snap(value() + group->app->grid.tileSize()));
+        setValue(group->mainPanel->app->grid.snap(value() + group->mainPanel->app->grid.tileSize()));
         updateCrement();
     }
     void decrement() override {
-        setValue(group->app->grid.snap(value() - group->app->grid.tileSize()));
+        setValue(group->mainPanel->app->grid.snap(value() - group->mainPanel->app->grid.tileSize()));
         updateCrement();
     }
 
 
     void updateData(){
-        const QString data = group->dataString(key);
-        if(group->isEmpty() || group->isMixed(key)) {
+        if(group->isEmpty() || group->isMixed(attr)) {
             lineEdit()->clear();
-            lineEdit()->setText(data);
+            lineEdit()->setText("Mixed");
             setEnabled(false);
             return;
         }
-        setValue(data.toFloat());
+        setValue(group->getAttr(attr).toFloat());
         setEnabled(true);
         lastValue = value();
     }

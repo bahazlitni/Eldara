@@ -1,16 +1,16 @@
 #pragma once
 #include "Command.h"
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
 class App;
 class RemoveObjectsCommand: public Command {
 public:
-    RemoveObjectsCommand(App *app, const LockedSelection &selection):
+    RemoveObjectsCommand(App *app, const Selection &selection):
         Command(app), _selection(selection) {}
 
     void execute() override;
     void undo() override;
 
 private:
-    LockedSelection _selection;
+    Selection _selection;
 };

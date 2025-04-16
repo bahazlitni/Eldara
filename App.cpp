@@ -5,7 +5,6 @@
 
 App::App(QWidget *parent):
     QWidget(parent),
-    varManager(VariablesManager(this)),
     grid(Grid(this)),
     pen(Pen(this)),
     selector(Selector(this)),

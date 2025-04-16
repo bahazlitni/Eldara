@@ -3,15 +3,13 @@
 #include "widgets/inputs/AddressInput.h"
 #include "widgets/inputs/CoordinateInput.h"
 #include "widgets/inputs/RadiusInput.h"
-#include "App.h"
+#include "widgets/MainPanel.h"
 
-#include <QLabel>
-
-AliasGroup::AliasGroup(App *app):
-    ObjectGroup(app),
+AliasGroup::AliasGroup(MainPanel *mainPanel):
+    ObjectGroup(mainPanel),
     Address(new AddressInput(this)),
-    X(new CoordinateInput(this, "x")),
-    Y(new CoordinateInput(this, "y")),
+    X(new CoordinateInput(this, Attr::X)),
+    Y(new CoordinateInput(this, Attr::Y)),
     Radius(new RadiusInput(this))
 {
 
@@ -35,7 +33,7 @@ AliasGroup::AliasGroup(App *app):
 }
 
 
-void AliasGroup::updateSelection(const LockedSelection &selection){
+void AliasGroup::updateSelection(const Selection &selection){
     ObjectGroup::updateSelection(selection);
     Address->updateData();
     X->updateData();

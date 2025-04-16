@@ -1,15 +1,5 @@
 #pragma once
-#include <QVector>
-#include <QWidget>
-#include <QPainter>
-#include <QMouseEvent>
-#include <QTimer>
-#include <QElapsedTimer>
-#include <QStack>
-#include <atomic>
-#include <QMap>
-#include <cstdint>
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
 #include "Grid.h"
 #include "commands/Timeline.h"
@@ -18,10 +8,7 @@
 #include "tools/Selector.h"
 #include "tools/Grabber.h"
 
-#include "VariablesManager.h"
-
 class VariablesTab;
-
 class App : public QWidget {
     Q_OBJECT
 
@@ -29,7 +16,6 @@ public:
     App(QWidget *parent = nullptr);
     ~App() = default;
 
-    VariablesManager varManager;
     Grid grid;
     Pen pen;
     Selector selector;
@@ -108,8 +94,8 @@ public:
 private:
     Timeline timeline;
 
-    std::atomic<uint64_t> trackid = 0;
-    std::atomic<uint64_t> trackAddress = 0;
+    IDTracker trackid = 0;
+    IDTracker trackAddress = 0;
 
     MouseTool *prevMouse = nullptr;
     Qt::Key returningKey;

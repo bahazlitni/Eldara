@@ -1,13 +1,28 @@
 #include "AddVariablesCommand.h"
 #include "App.h"
-#include "VariablesManager.h"
+#include "widgets/tabs/VariablesTab.h"
+#include "widgets/MainPanel.h"
+
+AddVariablesCommand::AddVariablesCommand(
+    VariablesTab *variablesTab,
+    const QVector<QString> &names,
+    const QVector<QVariant> values,
+    const QVector<VariableType> &types
+):
+    Command(variablesTab->mainPanel->app),
+    _variablesTab(variablesTab),
+    _names(names),
+    _values(values),
+    _types(types)
+{}
+
 
 void AddVariablesCommand::execute(){
     Command::execute();
-    app->varManager.addVariables(_names, _values, _types);
+    _variablesTab->addVariables(_names, _values, _types);
 }
 
 void AddVariablesCommand::undo(){
     Command::undo();
-    app->varManager.removeVariables(_names, _types);
+    _variablesTab->removeVariables(_names);
 }

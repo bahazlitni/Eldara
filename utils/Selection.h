@@ -1,12 +1,12 @@
 #pragma once
-#include "Types.h"
+#include "Globals.h"
 
 class App;
-QSet<SharedPoint> GetWorldPointSelection(const LockedSelection &selection);
-LockedSelection GetDeepSelection(const LockedSelection &selection);
-LockedSelection copySelection(
+QSet<SharedPoint> GetWorldPointSelection(const Selection &selection);
+Selection GetDeepSelection(const Selection &selection);
+Selection copySelection(
     App *app,
-    const LockedSelection &selection,
+    const Selection &selection,
     const QPointF &dp = QPointF(0.0, 0.0),
     const bool generateNewAddresses = true
 );

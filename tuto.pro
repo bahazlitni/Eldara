@@ -9,13 +9,11 @@ greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
 
 SOURCES += \
     Grid.cpp \
-    VariablesManager.cpp \
     Window.cpp \
     App.cpp \
     commands/AddVariablesCommand.cpp \
-    commands/ChangeAttributeCommand.cpp \
     commands/ChangeVariablesCommand.cpp \
-    commands/EntangleValueToObjectsCommand.cpp \
+    commands/EmbedParamCommand.cpp \
     commands/InsertObjectsCommand.cpp \
     commands/MergeSelectionCommand.cpp \
     commands/MovePointsCommand.cpp \
@@ -25,13 +23,12 @@ SOURCES += \
     commands/Timeline.cpp \
     objects/BCPath.cpp \
     objects/Dipole.cpp \
-    objects/Wire.cpp \
     tools/MouseTool.cpp \
     tools/Selector.cpp \
     tools/Grabber.cpp \
     tools/Pen.cpp \
-    utils/Functions.cpp \
     utils/Geometry.cpp \
+    utils/Globals.cpp \
     utils/Selection.cpp \
     main.cpp \
     widgets/MainPanel.cpp \
@@ -43,7 +40,6 @@ SOURCES += \
     widgets/groups/InputGroup.cpp \
     widgets/groups/ObjectGroup.cpp \
     widgets/groups/PenGroup.cpp \
-    widgets/groups/UnitDipoleGroup.cpp \
     widgets/inputs/ColorInput.cpp \
     widgets/inputs/DoubleParameterInput.cpp \
     widgets/tabs/QuickSettingsTab.cpp \
@@ -53,13 +49,11 @@ SOURCES += \
 HEADERS += \
     Grid.h \
     App.h \
-    VariablesManager.h \
     Window.h \
     commands/AddVariablesCommand.h \
-    commands/ChangeAttributeCommand.h \
     commands/ChangeVariablesCommand.h \
     commands/Command.h \
-    commands/EntangleValueToObjectsCommand.h \
+    commands/EmbedParamCommand.h \
     commands/InsertObjectsCommand.h \
     commands/MergeSelectionCommand.h \
     commands/MovePointsCommand.h \
@@ -79,17 +73,14 @@ HEADERS += \
     objects/Inductor.h \
     objects/Object.h \
     objects/Resistor.h \
-    objects/UnitDipole.h \
-    objects/Wire.h \
     objects/WorldPoint.h \
     tools/MouseTool.h \
     tools/Grabber.h \
     tools/Pen.h \
     tools/Selector.h \
-    utils/Functions.h \
     utils/Geometry.h \
     utils/Selection.h \
-    utils/Types.h \
+    utils/Globals.h \
     widgets/MainPanel.h \
     widgets/custom/CustomDoubleSpinBox.h \
     widgets/custom/CustomSpinBox.h \
@@ -99,14 +90,12 @@ HEADERS += \
     widgets/groups/InputGroup.h \
     widgets/groups/ObjectGroup.h \
     widgets/groups/PenGroup.h \
-    widgets/groups/UnitDipoleGroup.h \
     widgets/inputs/AddressInput.h \
     widgets/inputs/BooleanInput.h \
     widgets/inputs/ColorInput.h \
     widgets/inputs/CoordinateInput.h \
     widgets/inputs/DoubleParameterInput.h \
     widgets/inputs/IDLabel.h \
-    widgets/inputs/ObjectTypeInput.h \
     widgets/inputs/RadiusInput.h \
     widgets/tabs/QuickSettingsTab.h \
     widgets/tabs/SelectionTab.h \

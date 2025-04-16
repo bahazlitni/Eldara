@@ -2,26 +2,53 @@
 #include "InputGroup.h"
 #include <QHash>
 #include <QVector>
-#include "utils/Types.h"
+#include "utils/Globals.h"
 
-class App;
 class ColorInput;
+class MainPanel;
 
 class ColorsGroup : public InputGroup {
     Q_OBJECT
 
-private:
-    QHash<QString, QString> lastApplied;
-
 protected:
-    // Maps a color key (e.g. "#FF00AA") to the selection of objects having that color.
-    QHash<QString, LockedSelection> colorsSelection;
-    QVector<ColorInput*> colorInputs;
+
+    struct ColorSet {
+        Selection selection;
+        ColorInput *input;
+        bool isStroke;
+
+        ColorSet(const Selection &slc, ColorInput *inp, bool s):
+            selection(slc), input(inp), isStroke(s){}
+    };
+
+
+    QVector<ColorSet> colorSets;
+
+    // New member variables for the section widgets and layouts.
+    QWidget *fillSection;
+    QVBoxLayout *fillLayout;
+    QLabel *fillHeader;
+    QWidget *fillBody;
+    QVBoxLayout *fillBodyLayout;
+
+    QWidget *strokeSection;
+    QVBoxLayout *strokeLayout;
+    QLabel *strokeHeader;
+    QWidget *strokeBody;
+    QVBoxLayout *strokeBodyLayout;
+
+    void clear();
 
 public:
-    ColorsGroup(App *app, QWidget *parent = nullptr);
+    ColorsGroup(MainPanel *mainPanel, QWidget *parent = nullptr);
     void updateData() override;
-    bool isEmpty() const override { return colorsSelection.isEmpty(); }
-    void apply(const QString &key, const QString &value) override;
-    void onEditingFinishedApply(const QString &key, const QString &value) override;
+    bool isEmpty() const override { return colorSets.isEmpty(); }
+    bool isMixed([[maybe_unused]] const Attr attr) const override { return false; }
+    QVariant getAttr([[maybe_unused]] const Attr attr) const override { return ""; }
+    void setAttr([[maybe_unused]] const Attr attr, [[maybe_unused]] const QVariant &v) override {}
+    void confirmAttr([[maybe_unused]] const Attr attr, [[maybe_unused]] const QVariant &v) override {}
+
+    QColor getColor(ColorInput *colorInput) const override;
+    void setColor(ColorInput *colorInput, const QColor &newColor) override;
+    void confirmColor(ColorInput *colorInput, const QColor &newColor) override;
 };

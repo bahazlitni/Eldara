@@ -32,7 +32,7 @@ public:
         group(group),
         ShowLabel(
             new BooleanInput(
-                group, "show-label",
+                group, Attr::ShowLabel,
                 QIcon(":/assets/icons/eye_opened.png"),
                 QIcon(":/assets/icons/eye_shut.png"),
                 QSize(16,16),
@@ -70,21 +70,22 @@ public:
             }
 
             if (!newText.contains(QRegularExpression("^[A-Za-z0-9]+$"))) {
-                this->input->clear();  // Clear input if invalid characters are found
+                this->input->clear();
                 return;
             }
 
-            this->group->onEditingFinishedApply("address", newText);
+            this->group->confirmAttr(Attr::Address, newText);
             this->updateData();
         });
     }
     void updateData(){
-        const QString data = group->dataString("address");
-        if(group->isMixed("address")) {
+        if(group->isMixed(Attr::Address)) {
             input->clear();
-            input->setPlaceholderText(data);
+            input->setPlaceholderText("Mixed");
         }
-        else input->setText(data);
+        else {
+            input->setText(group->getAttr(Attr::Address).toString());
+        }
         ShowLabel->updateData();
     }
 
@@ -100,7 +101,7 @@ private:
         }
 
         QStringList filteredAddresses;
-        for(const auto &alias : group->app->aliases){
+        for(const auto &alias : group->mainPanel->app->aliases){
             const QString &address = alias->address();
             if (address.startsWith(input, Qt::CaseInsensitive))
                 filteredAddresses.append(address);

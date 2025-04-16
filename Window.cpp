@@ -8,7 +8,6 @@
 #include "tools/Pen.h"
 
 #include "widgets/tabs/VariablesTab.h"
-#include "VariablesManager.h"
 
 #include <QFrame>
 #include <QSplitter>
@@ -46,20 +45,6 @@ void Window::setupSplitter(){
 }
 
 void Window::setupConnections(){
-    connect(
-        &app->varManager, &VariablesManager::variablesAdded,
-        mainPanel, &MainPanel::onAddVariables
-    );
-    connect(
-        &app->varManager, &VariablesManager::variablesChanged,
-        mainPanel, &MainPanel::onChangeVariables
-    );
-    connect(
-        &app->varManager, &VariablesManager::variablesRemoved,
-        mainPanel, &MainPanel::onRemoveVariables
-    );
-
-
     connect(
         &app->selector, &Selector::selectionChanged,
         mainPanel->selectionTab, &SelectionTab::updateData

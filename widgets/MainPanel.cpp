@@ -9,23 +9,12 @@
 #include "widgets/tabs/SelectionTab.h"
 #include "widgets/tabs/VariablesTab.h"
 
-
-#include <QVBoxLayout>
-#include <QToolButton>
-#include <QGroupBox>
-#include <QScrollArea>
-#include <QTabWidget>
-#include <QLabel>
-#include <QGuiApplication>
-
-#include <QFile>
-
 MainPanel::MainPanel(App *app, QWidget *parent) :
     QTabWidget(parent),
     app(app),
-    quickSettingsTab(new QuickSettingsTab(app, this)),
-    selectionTab(new SelectionTab(app, this)),
-    variablesTab(new VariablesTab(app, this))
+    quickSettingsTab(new QuickSettingsTab(this)),
+    selectionTab(new SelectionTab(this)),
+    variablesTab(new VariablesTab(this))
 {
     setObjectName("MainPanel");
     setMinimumWidth(300);
@@ -49,29 +38,4 @@ void MainPanel::loadStyleSheet() {
         setStyleSheet(styleSheet);
         file.close();
     }
-}
-
-
-void MainPanel::onAddVariables(
-    const QVector<QString> &names,
-    const QVector<QVariant> &values,
-    const QVector<VariableType> &types
-){
-    selectionTab->onAddVariables(names, values, types);
-    variablesTab->onAddVariables(names, values, types);
-}
-void MainPanel::onChangeVariables(
-    const QVector<QString> &names,
-    const QVector<QVariant> &newValues,
-    const QVector<VariableType> &types
-){
-    selectionTab->onChangeVariables(names, newValues, types);
-    variablesTab->onChangeVariables(names, newValues, types);
-}
-void MainPanel::onRemoveVariables(
-    const QVector<QString> &names,
-    const QVector<VariableType> &types
-){
-    selectionTab->onRemoveVariables(names, types);
-    variablesTab->onRemoveVariables(names, types);
 }
