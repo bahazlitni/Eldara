@@ -1,28 +1,28 @@
 #include "MouseTool.h"
-#include "App.h"
+#include "Scene.h"
 #include "objects/Object.h"
 #include "Grid.h"
 
-float MouseTool::x() const {return app->x(); }
-float MouseTool::y() const {return app->y(); }
-float MouseTool::dx() const {return app->dx(); }
-float MouseTool::dy() const {return app->dy(); }
-QPointF MouseTool::p() const {return app->p(); }
-QPointF MouseTool::dp() const {return app->dp(); }
+float MouseTool::x() const {return scene->x(); }
+float MouseTool::y() const {return scene->y(); }
+float MouseTool::dx() const {return scene->dx(); }
+float MouseTool::dy() const {return scene->dy(); }
+QPointF MouseTool::p() const {return scene->p(); }
+QPointF MouseTool::dp() const {return scene->dp(); }
 
-QPointF MouseTool::pDown(const Qt::MouseButton btn) const { return app->pDown(btn); }
-QPointF MouseTool::pUp(const Qt::MouseButton btn) const { return app->pUp(btn); }
+QPointF MouseTool::pDown(const Qt::MouseButton btn) const { return scene->pDown(btn); }
+QPointF MouseTool::pUp(const Qt::MouseButton btn) const { return scene->pUp(btn); }
 
-bool MouseTool::pressed(Qt::Key key) const { return app->pressed(key); }
-bool MouseTool::shift() const { return app->shift(); }
-bool MouseTool::ctrl() const { return app->ctrl(); }
-bool MouseTool::alt() const { return app->alt(); }
+bool MouseTool::pressed(Qt::Key key) const { return scene->pressed(key); }
+bool MouseTool::shift() const { return scene->shift(); }
+bool MouseTool::ctrl() const { return scene->ctrl(); }
+bool MouseTool::alt() const { return scene->alt(); }
 
 QPointF MouseTool::worldP() const {
-    return app->worldP();
+    return scene->worldP();
 }
 QPointF MouseTool::clientT() const {
-    return app->grid.toScreen(t());
+    return scene->grid.toScreen(t());
 }
 
 bool MouseTool::isHovered(const SharedObject &obj) const {
@@ -31,6 +31,6 @@ bool MouseTool::isHovered(const SharedObject &obj) const {
 }
 
 void MouseTool::drawIndicators(QPainter *painter){
-    app->grid.setupPainterMode(INDICATOR_STROKE, *painter);
+    scene->grid.setupPainterMode(INDICATOR_STROKE, *painter);
     painter->drawPath(_indicators);
 }

@@ -9,12 +9,12 @@
 #include "tools/Grabber.h"
 
 class VariablesTab;
-class App : public QWidget {
+class Scene : public QWidget {
     Q_OBJECT
 
 public:
-    App(QWidget *parent = nullptr);
-    ~App() = default;
+    Scene(QWidget *parent = nullptr);
+    ~Scene() = default;
 
     Grid grid;
     Pen pen;
@@ -89,6 +89,43 @@ public:
         }
         return s;
     }
+
+
+private:
+    struct Settings {
+        bool   snapPosition             ;
+        bool   allowMerging             ;
+        bool   showGrid                 ;
+        bool   displayRawValues         ;
+        int    tileSize                 ;
+        QColor backgroundColor          ;
+        QColor gridStrokeColor          ;
+    };
+
+    Settings settings;
+
+public:
+    inline void setSnapPosition     ( const bool v   ) { settings.snapPosition     = v; }
+    inline void setAllowMerging     ( const bool v   ) { settings.allowMerging     = v; }
+    inline void setShowGrid         ( const bool v   ) { settings.showGrid         = v; }
+    inline void setDisplayRawValues ( const bool v   ) { settings.displayRawValues = v; }
+    inline void setTileSize         ( const int  v   ) {
+        settings.tileSize = v;
+        grid.updateGridTile();
+    }
+    inline void setBackgroundColor  ( const QColor &v) { settings.backgroundColor  = v; }
+    inline void setGridStrokeColor  ( const QColor &v) {
+        settings.gridStrokeColor = v;
+        grid.updateGridTile();
+    }
+
+    inline bool   snapPosition     () const { return settings.snapPosition    ; }
+    inline bool   allowMerging     () const { return settings.allowMerging    ; }
+    inline bool   showGrid         () const { return settings.showGrid        ; }
+    inline bool   displayRawValues () const { return settings.displayRawValues; }
+    inline int    tileSize         () const { return settings.tileSize        ; }
+    inline QColor backgroundColor  () const { return settings.backgroundColor ; }
+    inline QColor gridStrokeColor  () const { return settings.gridStrokeColor ; }
 
 
 private:

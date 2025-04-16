@@ -1,5 +1,5 @@
 #include "AddVariablesCommand.h"
-#include "App.h"
+#include "Scene.h"
 #include "widgets/tabs/VariablesTab.h"
 #include "widgets/MainPanel.h"
 
@@ -9,7 +9,7 @@ AddVariablesCommand::AddVariablesCommand(
     const QVector<QVariant> values,
     const QVector<VariableType> &types
 ):
-    Command(variablesTab->mainPanel->app),
+    Command(variablesTab->mainPanel->scene),
     _variablesTab(variablesTab),
     _names(names),
     _values(values),

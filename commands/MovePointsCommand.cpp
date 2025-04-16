@@ -1,12 +1,12 @@
 #include "MovePointsCommand.h"
 #include "utils/Selection.h"
-#include "App.h"
+#include "Scene.h"
 
 
 MovePointsCommand::MovePointsCommand(
-    App *app, const MovementMap &movementMap
+    Scene *scene, const MovementMap &movementMap
 ):
-    Command(app), movementMap(movementMap)
+    Command(scene), movementMap(movementMap)
 {}
 
 void MovePointsCommand::execute(){

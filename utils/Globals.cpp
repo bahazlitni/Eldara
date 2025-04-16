@@ -1,8 +1,8 @@
 #include "Globals.h"
-#include "App.h"
+#include "Scene.h"
 
 QPointF indicateTarget(
-    App *app,
+    Scene *scene,
     QPainterPath &indicators,
     const QPointF &target,
     const QVector<QPointF> &points,
@@ -42,13 +42,13 @@ QPointF indicateTarget(
     if (!found[0][0] && !found[0][1] && !found[1][0] && !found[1][1]) return target;
 
     QPointF client_refp[2][2] = {
-        {app->grid.toScreen(refp[0][0]),
-         app->grid.toScreen(refp[0][1])},
-        {app->grid.toScreen(refp[1][0]),
-         app->grid.toScreen(refp[1][1])}
+        {scene->grid.toScreen(refp[0][0]),
+         scene->grid.toScreen(refp[0][1])},
+        {scene->grid.toScreen(refp[1][0]),
+         scene->grid.toScreen(refp[1][1])}
     };
 
-    QPointF client_target = app->grid.toScreen(target);
+    QPointF client_target = scene->grid.toScreen(target);
 
     // Create horizontal segments in the painter path.
     if (found[0][0] && found[0][1]) {

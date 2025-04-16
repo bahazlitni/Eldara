@@ -13,45 +13,45 @@ public:
     constexpr static char CAPACITOR_DISPLAY_NAME[] = "Capacitor";
     constexpr static char INDUCTOR_DISPLAY_NAME[] = "Inductor";
     constexpr static char BATTERY_DISPLAY_NAME[] = "Battery";
-    constexpr static char DC_VOLTAGE_GENERATOR_DISPLAY_NAME[] = "DCV Generator";
-    constexpr static char DC_CURRENT_GENERATOR_DISPLAY_NAME[] = "DCI Generator";
+    constexpr static char DCV_DISPLAY_NAME[] = "DCV Generator";
+    constexpr static char DCI_DISPLAY_NAME[] = "DCI Generator";
 
     static ObjectType parseType(const QString &type) {
-        if(type == ALIAS_DISPLAY_NAME) return ALIAS;
-        if(type == WIRE_DISPLAY_NAME) return WIRE;
-        if(type == RESISTOR_DISPLAY_NAME) return RESISTOR;
-        if(type == CAPACITOR_DISPLAY_NAME) return CAPACITOR;
-        if(type == INDUCTOR_DISPLAY_NAME) return INDUCTOR;
-        if(type == BATTERY_DISPLAY_NAME) return BATTERY;
-        if(type == DC_VOLTAGE_GENERATOR_DISPLAY_NAME) return DC_VOLTAGE_GENERATOR;
-        if(type == DC_CURRENT_GENERATOR_DISPLAY_NAME) return DC_CURRENT_GENERATOR;
-        return VOID;
+        if(type == ALIAS_DISPLAY_NAME) return ObjectType::Alias;
+        if(type == WIRE_DISPLAY_NAME) return ObjectType::Wire;
+        if(type == RESISTOR_DISPLAY_NAME) return ObjectType::Resistor;
+        if(type == CAPACITOR_DISPLAY_NAME) return ObjectType::Capacitor;
+        if(type == INDUCTOR_DISPLAY_NAME) return ObjectType::Inductor;
+        if(type == BATTERY_DISPLAY_NAME) return ObjectType::Battery;
+        if(type == DCV_DISPLAY_NAME) return ObjectType::DCV;
+        if(type == DCI_DISPLAY_NAME) return ObjectType::DCI;
+        return ObjectType::Void;
     }
 
     static QString name(ObjectType type) {
         switch(type){
-        case ALIAS: return QString(ALIAS_DISPLAY_NAME);
-        case WIRE: return QString(WIRE_DISPLAY_NAME);
-        case RESISTOR: return QString(RESISTOR_DISPLAY_NAME);
-        case CAPACITOR: return QString(CAPACITOR_DISPLAY_NAME);
-        case INDUCTOR: return QString(INDUCTOR_DISPLAY_NAME);
-        case BATTERY: return QString(BATTERY_DISPLAY_NAME);
-        case DC_VOLTAGE_GENERATOR: return QString(DC_VOLTAGE_GENERATOR_DISPLAY_NAME);
-        case DC_CURRENT_GENERATOR: return QString(DC_CURRENT_GENERATOR_DISPLAY_NAME);
+        case ObjectType::Alias: return QString(ALIAS_DISPLAY_NAME);
+        case ObjectType::Wire: return QString(WIRE_DISPLAY_NAME);
+        case ObjectType::Resistor: return QString(RESISTOR_DISPLAY_NAME);
+        case ObjectType::Capacitor: return QString(CAPACITOR_DISPLAY_NAME);
+        case ObjectType::Inductor: return QString(INDUCTOR_DISPLAY_NAME);
+        case ObjectType::Battery: return QString(BATTERY_DISPLAY_NAME);
+        case ObjectType::DCV: return QString(DCV_DISPLAY_NAME);
+        case ObjectType::DCI: return QString(DCI_DISPLAY_NAME);
         default: return "";
         }
     }
 
     static QString pluralName(ObjectType type) {
         switch(type){
-        case ALIAS: return "Aliases";
-        case WIRE: return "Wires";
-        case RESISTOR: return "Resistors";
-        case CAPACITOR: return "Capacitors";
-        case INDUCTOR: return "Inductors";
-        case BATTERY: return "Batteries";
-        case DC_VOLTAGE_GENERATOR: return "DCV Generators";
-        case DC_CURRENT_GENERATOR: return "DCI Generators";
+        case ObjectType::Alias: return "Aliases";
+        case ObjectType::Wire: return "Wires";
+        case ObjectType::Resistor: return "Resistors";
+        case ObjectType::Capacitor: return "Capacitors";
+        case ObjectType::Inductor: return "Inductors";
+        case ObjectType::Battery: return "Batteries";
+        case ObjectType::DCV: return "DCV Generators";
+        case ObjectType::DCI: return "DCI Generators";
         default: return "";
         }
     }
@@ -67,8 +67,8 @@ public:
     Object(const QPen &pen): _brush(Qt::NoBrush), _pen(pen) {}
 
     virtual ~Object() = default;
-    virtual ObjectType type() const { return VOID; };
-    virtual ObjectCategory category() const { return _VOID; };
+    virtual ObjectType type() const { return ObjectType::Void; };
+    virtual ObjectCategory category() const { return ObjectCategory::Void; };
     virtual bool hover(const QPointF &p, [[maybe_unused]] const float zoom) = 0;
     virtual bool inside(const QRectF &box, [[maybe_unused]] const float zoom) = 0;
     virtual bool visible(const QRectF &viewport, [[maybe_unused]] const float zoom) = 0;
@@ -90,7 +90,7 @@ public:
 
     inline virtual void setShowLabel([[maybe_unused]] const bool b) {}
     inline virtual bool showLabel() const { return false; }
-    inline virtual QString label() const { return ""; }
+    inline virtual QString label([[maybe_unused]] const bool raw = true) const { return ""; }
 
     virtual QVariant getAttr(const Attr attr) const {
         switch (attr) {

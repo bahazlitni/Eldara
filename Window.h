@@ -1,15 +1,12 @@
 #pragma once
 #include <QMainWindow>
-#include <QToolBar>
-#include <QAction>
-#include <QMenu>
-#include <QComboBox>
-#include <QPainter>
-#include <QTimer>
 #include <QSplitter>
+#include <QMenu>
+#include <QAction>
 
-class App;
+class Scene;
 class MainPanel;
+
 class Window : public QMainWindow {
     Q_OBJECT
 
@@ -18,14 +15,26 @@ public:
 
 private:
     QSplitter *splitter;
-    QToolBar *toolbar;
-    App *app;
+    QMenu *fileMenu;
+    QMenu *editMenu;
+    QAction *openAction;
+    QAction *saveAction;
+    QAction *saveAsAction;
+    QAction *preferencesAction;
+    Scene *scene;
     MainPanel *mainPanel;
 
+    void setupMenuBar();
     void setupSplitter();
-    void setupToolBar();
     void setupConnections();
 
+private slots:
+    void openFile();
+    void saveFile();
+    void saveFileAs();
+    void openPreferences();
+    void applySettings();
+
 protected:
-    void closeEvent([[maybe_unused]] QCloseEvent *event) override {};
+    void closeEvent(QCloseEvent *event) override;
 };

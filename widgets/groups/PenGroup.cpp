@@ -4,7 +4,7 @@
 #include "widgets/inputs/ColorInput.h"
 #include "widgets/inputs/BooleanInput.h"
 #include "widgets/MainPanel.h"
-#include "App.h"
+#include "Scene.h"
 
 
 PenGroup::PenGroup(MainPanel *mainPanel, QWidget *parent):
@@ -41,17 +41,17 @@ PenGroup::PenGroup(MainPanel *mainPanel, QWidget *parent):
 }
 
 QColor PenGroup::getColor(ColorInput *colorInput) const {
-    if(colorInput == StrokeColor) return mainPanel->app->pen.strokeColor();
-    return mainPanel->app->pen.fillColor();
+    if(colorInput == StrokeColor) return mainPanel->scene->pen.strokeColor();
+    return mainPanel->scene->pen.fillColor();
 }
 QVariant PenGroup::getAttr([[maybe_unused]] const Attr attr) const {
-    return mainPanel->app->pen.getAttr(attr);
+    return mainPanel->scene->pen.getAttr(attr);
 }
 void PenGroup::setAttr(const Attr attr, const QVariant &v) {
-    mainPanel->app->pen.setAttr(attr, v);
+    mainPanel->scene->pen.setAttr(attr, v);
 }
 void PenGroup::confirmAttr(const Attr attr, const QVariant &v) {
-    mainPanel->app->pen.setAttr(attr, v);
+    mainPanel->scene->pen.setAttr(attr, v);
 }
 
 

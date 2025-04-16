@@ -3,7 +3,7 @@
 #include "tools/Selector.h"
 #include "objects/Object.h"
 #include "widgets/MainPanel.h"
-#include "App.h"
+#include "Scene.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -81,7 +81,7 @@ void ColorsGroup::clear() {
 void ColorsGroup::updateData() {
     clear();
 
-    Selection selection = mainPanel->app->selector.selection();
+    Selection selection = mainPanel->scene->selector.selection();
     if (selection.isEmpty()) {
         setVisible(false);
         return;
@@ -138,7 +138,7 @@ QColor ColorsGroup::getColor(ColorInput *colorInput) const {
     return Qt::black;
 }
 
-// Applies the new color to the objects associated with the provided ColorInput.
+// Scenelies the new color to the objects associated with the provided ColorInput.
 void ColorsGroup::setColor(ColorInput *colorInput, const QColor &newColor) {
     if (!colorInput)
         return;

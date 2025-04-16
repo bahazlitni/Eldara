@@ -44,10 +44,10 @@ public:
     int halfBoxWidth() const override { return HALF_RESISTOR_WIDTH; }
     int halfBoxHeight() const override { return HALF_RESISTOR_HEIGHT; }
 
-    ObjectType type() const override { return RESISTOR; }
+    ObjectType type() const override { return ObjectType::Resistor; }
 
-    inline QString label() const override {
-        return _nameR.isEmpty() ? formatDouble(_R, 2, OHM) : _nameR;
+    inline QString label(const bool raw) const override {
+        return _nameR.isEmpty() ? formatDouble(_R, 2, OHM, raw) : _nameR;
     }
 
     SharedDipole clone(const SharedAlias &A, const SharedAlias &B) override {

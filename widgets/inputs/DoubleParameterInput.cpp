@@ -2,7 +2,7 @@
 #include "widgets/custom/CustomDoubleSpinBox.h"
 #include "widgets/inputs/BooleanInput.h"
 #include "widgets/MainPanel.h"
-#include "App.h"
+#include "Scene.h"
 #include "widgets/tabs/VariablesTab.h"
 
 inline int indexToMagnitude(const QPair<int,int> &range, int index){
@@ -321,21 +321,21 @@ void DoubleParameterInput::finalizeVariableEdit() {
     if(validateVarname(newVarname)) {
         group->confirmParamVarname(param, newVarname);
         varnameLineEdit->setStyleSheet("color: white;");
-        group->mainPanel->app->update();
+        group->mainPanel->scene->update();
     }
 }
 
 void DoubleParameterInput::handleValueSpinValueChanged(const double value){
     rawValue = value*multiplier;
     group->setParamValue(param, rawValue);
-    group->mainPanel->app->update();
+    group->mainPanel->scene->update();
 }
 
 void DoubleParameterInput::handleMagnitudeChange(int index){
     currentOrder = indexToMagnitude(magnitudeRange, index);
     updateSpinAndMagnitude();
     group->setParamValue(param, rawValue);
-    group->mainPanel->app->update();
+    group->mainPanel->scene->update();
 }
 
 void DoubleParameterInput::toggleRaw() {
@@ -356,7 +356,7 @@ void DoubleParameterInput::handleValueSpinEditingFinished(){
     currentOrder = isRaw() ? 0 : magnitude(rawValue);
     updateSpinAndMagnitude();
     group->confirmParamValue(param, rawValue);
-    group->mainPanel->app->update();
+    group->mainPanel->scene->update();
 }
 
 

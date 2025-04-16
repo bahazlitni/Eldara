@@ -1,80 +1,96 @@
 #pragma once
 
 // =============================================
-// Includes
-// =============================================
 // Standard C++ headers
+// =============================================
 #include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <memory>
 
+// =============================================
 // Qt Core
-#include <QVector>
+// =============================================
+#include <QtMath>
+#include <QVariant>
+#include <QPointF>
+#include <QLineF>
 #include <QHash>
 #include <QMap>
-#include <QPointF>
 #include <QSet>
 #include <QString>
 #include <QStringList>
 #include <QStringListModel>
-#include <QVariant>
-#include <QLineF>
-#include <QObject>
-#include <QtMath>
-#include <QFile>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
+#include <QSettings>
+#include <QTimer>
+#include <QElapsedTimer>
+#include <QFuture>
+#include <QMutex>
+#include <QtConcurrent/QtConcurrent>
 
-// Qt Gui
+// =============================================
+// Qt GUI
+// =============================================
 #include <QColor>
 #include <QCursor>
 #include <QImage>
 #include <QPainter>
 #include <QPainterPath>
 #include <QTransform>
-#include <QRgb>
 #include <QGraphicsColorizeEffect>
 #include <QSvgRenderer>
 #include <QGuiApplication>
+#include <QGraphicsPixmapItem>
+#include <QKeyEvent>
+#include <QWheelEvent>
 
+// =============================================
 // Qt Widgets
+// =============================================
 #include <QWidget>
-#include <QButtonGroup>
+#include <QMainWindow>
+#include <QDialog>
+#include <QPushButton>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QGridLayout>
-#include <QHeaderView>
 #include <QHBoxLayout>
-#include <QIcon>
+#include <QVBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMouseEvent>
-#include <QPushButton>
 #include <QScrollArea>
+#include <QSpinBox>
+#include <QTabWidget>
+#include <QToolButton>
+#include <QDialogButtonBox>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QSplitter>
+#include <QFrame>
+#include <QCompleter>
+#include <QStyle>
 #include <QStack>
 #include <QTableWidget>
 #include <QTableWidgetItem>
-#include <QTabWidget>
-#include <QToolButton>
-#include <QVBoxLayout>
-#include <QWheelEvent>
-#include <QKeyEvent>
-#include <QTimer>
-#include <QElapsedTimer>
-#include <QCompleter>
-#include <QStyle>
+#include <QButtonGroup>
 #include <QBoxLayout>
-#include <QRegularExpressionValidator>
-#include <QRegularExpression>
+#include <QMouseEvent>
+#include <QColorDialog>
+#include <QHeaderView>
 
-
-#include <QGraphicsPixmapItem>
-#include <QtConcurrent/QtConcurrent>
-#include <QFuture>
-#include <QMutex>
+// =============================================
+// File Handling
+// =============================================
+#include <QFile>
 
 
 // Using standard namespace
@@ -89,7 +105,7 @@ class Dipole;
 class Wire;
 class BCPoint;
 class WorldPoint;
-class App;
+class Scene;
 
 // =============================================
 // Type Aliases
@@ -125,30 +141,13 @@ using Selection  = QSet<shared_ptr<Object>>;
 // =============================================
 // Enumerations
 // =============================================
-enum ObjectCategory {
-    _VOID = -1,
-    _NODE = 0,
-    _DIPOLE = 1,
-    _EDIT = 2
-};
+enum class ObjectCategory { Void = -1, Node, Dipole, Edit };
 
-enum ObjectType {
-    VOID = -1,
-    ALIAS,
-    WIRE,
-    RESISTOR,
-    CAPACITOR,
-    INDUCTOR,
-    DIODE,
-    DC_VOLTAGE_GENERATOR,
-    BATTERY,
-    AC_VOLTAGE_SOURCE,
-    GROUND,
-    DC_CURRENT_GENERATOR,
-    AC_CURRENT_SOURCE,
-    NODE,
-    BC_POINT,
-    BC_CONTROL_POINT
+enum class ObjectType {
+    Void = -1, Alias, Ground, Wire, Resistor,
+    Capacitor, Inductor, Battery,
+    DCV, ACV, DCI, ACI, Diode,
+    BCP, BCCP
 };
 
 enum VariableType {
@@ -174,17 +173,6 @@ enum class Attr {
     Width, Height, Size, Radius, Diameter, Rect,
     Length, Angle
 };
-
-// =============================================
-// Constants
-// =============================================
-// Default values for electrical components
-const double DEFAULT_RESISTANCE_VALUE = 1e3;
-const double DEFAULT_CAPACITANCE_VALUE = 1e-8;
-const double DEFAULT_INDUCTANCE_VALUE = 1e-4;
-const double DEFAULT_BATTERY_VALUE = 5;
-const double DEFAULT_DC_VOLTAGE_GENERATOR_VALUE = 15.0;
-const double DEFAULT_DC_CURRENT_GENERATOR_VALUE = 1e-3;
 
 // =============================================
 // Variable and SI Unit Helper Functions
@@ -305,21 +293,6 @@ inline bool varIsDouble(const VariableType type) {
     }
 }
 
-inline QVariant defaultOf(const VariableType type) {
-    switch (type) {
-    case VAR_RESISTANCE:  return DEFAULT_RESISTANCE_VALUE;
-    case VAR_CAPACITANCE: return DEFAULT_CAPACITANCE_VALUE;
-    case VAR_VOLTAGE:     return DEFAULT_INDUCTANCE_VALUE;
-    case VAR_INDUCTANCE:  return DEFAULT_BATTERY_VALUE;
-    case VAR_QUANTITY:    return DEFAULT_DC_VOLTAGE_GENERATOR_VALUE;
-    case VAR_INTENSITY:   return DEFAULT_DC_CURRENT_GENERATOR_VALUE;
-    case VAR_STRING:      return "";
-    case VAR_DOUBLE:      return 0.0;
-    case VAR_INT:         return 0;
-    default:              return -1;
-    }
-}
-
 inline SIUnit SIUnitOfVariable(const VariableType type) {
     switch (type) {
     case VAR_RESISTANCE:  return OHM;
@@ -334,12 +307,12 @@ inline SIUnit SIUnitOfVariable(const VariableType type) {
 
 inline VariableType varTypeOf(const ObjectType type) {
     switch (type) {
-    case RESISTOR: return VAR_RESISTANCE;
-    case CAPACITOR: return VAR_CAPACITANCE;
-    case INDUCTOR: return VAR_INDUCTANCE;
-    case BATTERY:
-    case DC_VOLTAGE_GENERATOR: return VAR_VOLTAGE;
-    case DC_CURRENT_GENERATOR: return VAR_INTENSITY;
+    case ObjectType::Resistor: return VAR_RESISTANCE;
+    case ObjectType::Capacitor: return VAR_CAPACITANCE;
+    case ObjectType::Inductor: return VAR_INDUCTANCE;
+    case ObjectType::Battery:
+    case ObjectType::DCV: return VAR_VOLTAGE;
+    case ObjectType::DCI: return VAR_INTENSITY;
     default: return VAR_NULL;
     }
 }
@@ -418,12 +391,12 @@ inline Param keyParam(const QString &key) {
 
 inline QVector<Param> objectParams(const ObjectType type){
     switch (type) {
-    case RESISTOR: return QVector<Param>{Param::R};
-    case CAPACITOR: return QVector<Param>{Param::C, Param::Q0};
-    case INDUCTOR: return QVector<Param>{Param::L, Param::I0};
-    case DC_VOLTAGE_GENERATOR:
-    case BATTERY: return QVector<Param>{Param::V};
-    case DC_CURRENT_GENERATOR: return QVector<Param>{Param::I};
+    case ObjectType::Resistor: return QVector<Param>{Param::R};
+    case ObjectType::Capacitor: return QVector<Param>{Param::C, Param::Q0};
+    case ObjectType::Inductor: return QVector<Param>{Param::L, Param::I0};
+    case ObjectType::DCV:
+    case ObjectType::Battery: return QVector<Param>{Param::V};
+    case ObjectType::DCI: return QVector<Param>{Param::I};
     default: return QVector<Param>();
     }
 }
@@ -455,7 +428,7 @@ inline VariableType paramVartype(const Param param){
 // =============================================
 // Miscellaneous Utility Functions
 // =============================================
-inline QString formatDouble(double value, int precision, SIUnit unit) {
+inline QString formatDouble(double value, int precision, SIUnit unit, const bool raw) {
     static constexpr int LENGTH = 11;
     static constexpr int i0 = 5;
     static const QString prefixes[LENGTH] = {
@@ -466,24 +439,26 @@ inline QString formatDouble(double value, int precision, SIUnit unit) {
 
     int i = i0;
 
-    if(value > 0){
-        while (value < 1 && i > 1) {
-            value *= 1000.0f;
-            --i;
+    if(!raw){
+        if(value > 0){
+            while (value < 1 && i > 1) {
+                value *= 1000.0f;
+                --i;
+            }
+            while (value >= 10.0 && i < LENGTH - 1) {
+                value /= 1000.0f;
+                ++i;
+            }
         }
-        while (value >= 10.0 && i < LENGTH - 1) {
-            value /= 1000.0f;
-            ++i;
-        }
-    }
-    else {
-        while (value > -1 && i > 1) {
-            value *= 1000.0f;
-            --i;
-        }
-        while (value <= -10.0 && i < LENGTH - 1) {
-            value /= 1000.0f;
-            ++i;
+        else {
+            while (value > -1 && i > 1) {
+                value *= 1000.0f;
+                --i;
+            }
+            while (value <= -10.0 && i < LENGTH - 1) {
+                value /= 1000.0f;
+                ++i;
+            }
         }
     }
 
@@ -500,7 +475,7 @@ inline long long now() {
 }
 
 QPointF indicateTarget(
-    App *app,
+    Scene *scene,
     QPainterPath &indicators,
     const QPointF &target,
     const QVector<QPointF> &points,
@@ -511,8 +486,7 @@ QPointF indicateTarget(
 // Colors
 // =============================================
 namespace Palette {
-    // Background and selection colors
-    const QColor BACKGROUND = QColor("#212121");
+    // BackObjectType::Ground and selection colors
     const QColor HOVER      = QColor("#50B4FF");
     const QColor SELECT     = QColor("#288CFF");
 
@@ -529,11 +503,8 @@ namespace Palette {
     const QColor CONSTRUCTION_PROHIBITED = QColor("#FF4C4C");
 
     // Bezier curve colors
-    const QColor BC_CONTROL_POINT = QColor("#2979FF");
-    const QColor BC_POINT         = QColor("#F5F5F5");
-
-    // Grid
-    const QColor GRID_STROKE = QColor(255,255,255,10);
+    const QColor BCCP = QColor("#2979FF");
+    const QColor BCP  = QColor("#F5F5F5");
 };
 
 

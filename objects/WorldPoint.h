@@ -4,7 +4,7 @@
 #include "../utils/Globals.h"
 #include "utils/Geometry.h"
 
-class App;
+class Scene;
 class WorldPoint: public Object {
 private:
     SharedPoint point;

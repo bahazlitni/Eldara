@@ -2,11 +2,11 @@
 #include "Command.h"
 #include "utils/Globals.h"
 
-class App;
+class Scene;
 class RemoveObjectsCommand: public Command {
 public:
-    RemoveObjectsCommand(App *app, const Selection &selection):
-        Command(app), _selection(selection) {}
+    RemoveObjectsCommand(Scene *scene, const Selection &selection):
+        Command(scene), _selection(selection) {}
 
     void execute() override;
     void undo() override;

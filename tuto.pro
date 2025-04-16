@@ -10,7 +10,7 @@ greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
 SOURCES += \
     Grid.cpp \
     Window.cpp \
-    App.cpp \
+    Scene.cpp \
     commands/AddVariablesCommand.cpp \
     commands/ChangeVariablesCommand.cpp \
     commands/EmbedParamCommand.cpp \
@@ -44,11 +44,12 @@ SOURCES += \
     widgets/inputs/DoubleParameterInput.cpp \
     widgets/tabs/QuickSettingsTab.cpp \
     widgets/tabs/SelectionTab.cpp \
-    widgets/tabs/VariablesTab.cpp
+    widgets/tabs/VariablesTab.cpp \
+    dialogs/PreferencesDialog.cpp
 
 HEADERS += \
     Grid.h \
-    App.h \
+    Scene.h \
     Window.h \
     commands/AddVariablesCommand.h \
     commands/ChangeVariablesCommand.h \
@@ -67,8 +68,8 @@ HEADERS += \
     objects/BCPoint.h \
     objects/Battery.h \
     objects/Capacitor.h \
-    objects/DC_CurrentGenerator.h \
-    objects/DC_VoltageGenerator.h \
+    objects/DCI.h \
+    objects/DCV.h \
     objects/Dipole.h \
     objects/Inductor.h \
     objects/Object.h \
@@ -99,7 +100,8 @@ HEADERS += \
     widgets/inputs/RadiusInput.h \
     widgets/tabs/QuickSettingsTab.h \
     widgets/tabs/SelectionTab.h \
-    widgets/tabs/VariablesTab.h
+    widgets/tabs/VariablesTab.h \
+    dialogs/PreferencesDialog.h
 
 # Deployment rules
 qnx: target.path = /tmp/$${TARGET}/bin

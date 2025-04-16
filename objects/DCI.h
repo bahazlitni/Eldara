@@ -3,13 +3,13 @@
 #include "utils/Globals.h"
 
 class Node;
-class DC_CurrentGenerator: public Dipole {
+class DCI: public Dipole {
 protected:
     double _I;
     QString _nameI;
 
 public:
-    DC_CurrentGenerator(
+    DCI(
         const SharedAlias &A,
         const SharedAlias &B,
         const QColor &color,
@@ -17,7 +17,7 @@ public:
         const double I
     ): Dipole(A, B, QPen(color), showLabel), _I(I) {}
 
-    DC_CurrentGenerator(
+    DCI(
         const SharedAlias &A,
         const SharedAlias &B,
         const QPen &pen,
@@ -52,10 +52,10 @@ public:
     int halfBoxWidth() const override { return DEFAULT_CIRCLE_RADIUS; }
     int halfBoxHeight() const override { return halfBoxWidth(); }
 
-    ObjectType type() const override { return DC_CURRENT_GENERATOR; }
+    ObjectType type() const override { return ObjectType::DCI; }
 
-    inline QString label() const override {
-        return _nameI.isEmpty() ? formatDouble(_I, 3, AMP) : _nameI;
+    inline QString label(const bool raw) const override {
+        return _nameI.isEmpty() ? formatDouble(_I, 3, AMP, raw) : _nameI;
     }
 
     bool hover(const QPointF &p, const float zoom) override {
@@ -66,6 +66,6 @@ public:
     }
 
     SharedDipole clone(const SharedAlias &A, const SharedAlias &B) override {
-        return std::make_shared<DC_CurrentGenerator>(A, B, _pen, _showLabel, _I);
+        return std::make_shared<DCI>(A, B, _pen, _showLabel, _I);
     }
 };

@@ -3,13 +3,13 @@
 #include "utils/Globals.h"
 
 class Node;
-class DC_VoltageGenerator: public Dipole {
+class DCV: public Dipole {
 protected:
     double _V;
     QString _nameV;
 
 public:
-    DC_VoltageGenerator(
+    DCV(
         const SharedAlias &A,
         const SharedAlias &B,
         const QColor &color,
@@ -17,7 +17,7 @@ public:
         const double V
     ): Dipole(A, B, QPen(color), showLabel), _V(V) {}
 
-    DC_VoltageGenerator(
+    DCV(
         const SharedAlias &A,
         const SharedAlias &B,
         const QPen &pen,
@@ -52,10 +52,10 @@ public:
     int halfBoxWidth() const override { return DEFAULT_CIRCLE_RADIUS; }
     int halfBoxHeight() const override { return halfBoxWidth(); }
 
-    ObjectType type() const override { return DC_VOLTAGE_GENERATOR; }
+    ObjectType type() const override { return ObjectType::DCV; }
 
-    inline QString label() const override {
-        return _nameV.isEmpty() ? formatDouble(_V, 2, VOLT) : _nameV;
+    inline QString label(const bool raw) const override {
+        return _nameV.isEmpty() ? formatDouble(_V, 2, VOLT, raw) : _nameV;
     }
 
     bool hover(const QPointF &p, const float zoom) override {
@@ -66,6 +66,6 @@ public:
     }
 
     SharedDipole clone(const SharedAlias &A, const SharedAlias &B) override {
-        return std::make_shared<DC_VoltageGenerator>(A, B, _pen, _showLabel, _V);
+        return std::make_shared<DCV>(A, B, _pen, _showLabel, _V);
     }
 };

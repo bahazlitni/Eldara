@@ -1,16 +1,16 @@
 #include "SplitDipoleCommand.h"
 #include "objects\Dipole.h"
 #include "objects\Alias.h"
-#include "App.h"
+#include "Scene.h"
 #include "Grid.h"
 
 SplitDipoleCommand::SplitDipoleCommand(
-    App *app,
+    Scene *scene,
     const SharedDipole &splitted,
     const SharedDipole &resultant,
     const SharedAlias &splitter
 ):
-    Command(app), splitted(splitted), resultant(resultant), splitter(splitter) {
+    Command(scene), splitted(splitted), resultant(resultant), splitter(splitter) {
     resultantA = resultant->A();
     resultantB = resultant->B();
     splittedA = splitted->A();
@@ -18,7 +18,7 @@ SplitDipoleCommand::SplitDipoleCommand(
 }
 
 SplitDipoleCommand::~SplitDipoleCommand(){
-    app->deepRemoval(resultant);
+    scene->deepRemoval(resultant);
 }
 
 
@@ -29,7 +29,7 @@ void SplitDipoleCommand::execute(){
     resultantB->connect(resultant);
     resultant->setA(resultantA);
     resultant->setB(resultantB);
-    resultant->dirtyVisibleCheckFlag = app->grid.getDirtyVisibleCheckFlagInitial();
+    resultant->dirtyVisibleCheckFlag = scene->grid.getDirtyVisibleCheckFlagInitial();
 
     if(resultantB == splitter){
         if(resultantA == splittedA){
@@ -62,5 +62,5 @@ void SplitDipoleCommand::undo(){
     splittedA->connect(splitted);
     splittedB->connect(splitted);
 
-    app->deepRemoval(resultant);
+    scene->deepRemoval(resultant);
 }

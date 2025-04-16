@@ -2,7 +2,7 @@
 #include "utils/Globals.h"
 
 class MainPanel;
-class App;
+class Scene;
 class VariablesTab : public QWidget {
     Q_OBJECT
 

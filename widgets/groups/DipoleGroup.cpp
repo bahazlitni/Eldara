@@ -8,7 +8,7 @@
 #include "objects/Dipole.h"
 
 #include "widgets/MainPanel.h"
-#include "App.h"
+#include "Scene.h"
 #include "widgets/tabs/VariablesTab.h"
 
 DipoleGroup::DipoleGroup(MainPanel *mainPanel, ObjectType type, QWidget *parent):
@@ -19,22 +19,22 @@ DipoleGroup::DipoleGroup(MainPanel *mainPanel, ObjectType type, QWidget *parent)
     contentLayout->addWidget(ID, 0, 1);
 
     switch(type){
-    case RESISTOR:
+    case ObjectType::Resistor:
         addParameter(Param::R, "Resistance");
         break;
-    case CAPACITOR:
+    case ObjectType::Capacitor:
         addParameter(Param::C, "Capacitance");
         addParameter(Param::Q0, "Initial Quantity");
         break;
-    case INDUCTOR:
+    case ObjectType::Inductor:
         addParameter(Param::L, "Inductance");
         addParameter(Param::I0, "Initial Current");
         break;
-    case BATTERY:
-    case DC_VOLTAGE_GENERATOR:
+    case ObjectType::Battery:
+    case ObjectType::DCV:
         addParameter(Param::V, "Voltage");
         break;
-    case DC_CURRENT_GENERATOR:
+    case ObjectType::DCI:
         addParameter(Param::I, "Current");
         break;
     default:

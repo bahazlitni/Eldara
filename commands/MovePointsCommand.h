@@ -1,11 +1,11 @@
 #include "Command.h"
 #include "utils/Globals.h"
 
-class App;
+class Scene;
 class MovePointsCommand: public Command {
 public:
     explicit MovePointsCommand(
-        App *app, const MovementMap &movementMap
+        Scene *scene, const MovementMap &movementMap
     );
 
     void undo() override;

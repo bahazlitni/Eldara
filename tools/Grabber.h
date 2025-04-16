@@ -1,12 +1,12 @@
 #pragma once
 #include "MouseTool.h"
 
-class App;
+class Scene;
 class Grabber: public MouseTool {
     Q_OBJECT
 
 public:
-    Grabber(App *app): MouseTool(app),
+    Grabber(Scene *scene): MouseTool(scene),
         grabberCursor(QCursor(QPixmap(":assets/cursor/grab.png"))),
         grabbingCursor(QCursor(QPixmap(":assets/cursor/grabbing.png")))
     {}

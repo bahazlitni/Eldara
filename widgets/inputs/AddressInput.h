@@ -2,7 +2,7 @@
 #include <QLineEdit>
 #include <QCompleter>
 #include "widgets/groups/InputGroup.h"
-#include "App.h"
+#include "Scene.h"
 #include "objects/Alias.h"
 
 #include "widgets/inputs/BooleanInput.h"
@@ -60,7 +60,7 @@ public:
 
         connect(input, &QLineEdit::textChanged, this, &AddressInput::updateSuggestions);
 
-        // Apply new value when editing finishes
+        // Scenely new value when editing finishes
         connect(input, &QLineEdit::editingFinished, [this]() {
             QString newText = this->input->text().trimmed().toUpper();
 
@@ -101,7 +101,7 @@ private:
         }
 
         QStringList filteredAddresses;
-        for(const auto &alias : group->mainPanel->app->aliases){
+        for(const auto &alias : group->mainPanel->scene->aliases){
             const QString &address = alias->address();
             if (address.startsWith(input, Qt::CaseInsensitive))
                 filteredAddresses.append(address);

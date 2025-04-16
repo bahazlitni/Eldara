@@ -2,7 +2,7 @@
 #include "widgets/custom/CustomSpinBox.h"
 #include "utils/Globals.h"
 #include "widgets/groups/InputGroup.h"
-#include "App.h"
+#include "Scene.h"
 #include "widgets/MainPanel.h"
 
 
@@ -20,12 +20,12 @@ public:
         connect(this, &CustomSpinBox::editingFinished, [this](){
             this->group->confirmAttr(Attr::Radius, this->value());
             this->updateData();
-            this->group->mainPanel->app->update();
+            this->group->mainPanel->scene->update();
         });
 
         connect(this, &CustomSpinBox::valueChanged, [this](int newValue){
             this->group->setAttr(Attr::Radius, newValue);
-            this->group->mainPanel->app->update();
+            this->group->mainPanel->scene->update();
         });
     }
 

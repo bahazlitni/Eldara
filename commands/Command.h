@@ -3,14 +3,14 @@
 #include <vector>
 #include <memory>
 
-class App;
+class Scene;
 class Command {
 private:
     bool _isExecuted = false;
 protected:
-    App *app;
+    Scene *scene;
 public:
-    Command(App *app): app(app) {}
+    Command(Scene *scene): scene(scene) {}
     virtual ~Command() = default;
     virtual void execute(){ _isExecuted = true; }
     virtual void undo(){ _isExecuted = false; }

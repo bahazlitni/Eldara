@@ -2,7 +2,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QFontMetrics>
-#include "App.h"
+#include "Scene.h"
 #include "widgets/groups/InputGroup.h"
 #include "objects/Object.h"
 

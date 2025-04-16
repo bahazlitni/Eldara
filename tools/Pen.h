@@ -28,7 +28,7 @@ class Pen: public MouseTool {
     Q_OBJECT
 
 public:
-    Pen(App *app);
+    Pen(Scene *scene);
 
     SharedAlias previous = nullptr;
 
@@ -51,39 +51,86 @@ public:
 
     bool onControl() const { return _state == INITIAL_CONTROLLING || _state == CONTROLLING; };
 
-    inline QPen pen() const { return _pen; }
-    inline QBrush brush() const { return _brush; }
-    inline QColor fillColor() const { return _brush.color(); }
-    inline QColor strokeColor() const { return _pen.color(); }
-    inline int strokeWidth() const { return _pen.width(); }
-
-    inline void setPen(const QPen &pen) { _pen = pen; }
-    inline void setBrush(const QBrush &brush) { _brush = brush; }
-    inline void setFillColor(const QColor &color) { _brush.setColor(color); }
-    inline void setStrokeColor(const QColor &color) { _pen.setColor(color); }
-    inline void setStrokeWidth(const int w) { _pen.setWidth(w); }
-
-    inline int radius() const { return _radius; }
-    inline void setRadius(const int r) { _radius = r; }
-
-    BCPath path() const { return _path; }
     void setType(ObjectType type);
 
     bool willDraw(const SharedObject &obj) const override { return isHovered(obj); }
 
     void deepRemoval(const SharedObject &obj) override;
 
-    bool showLabel() const { return _showLabel; }
-    void setShowLabel(const bool b) { _showLabel = b; }
+    inline BCPath path() const { return _path; }
+
+    inline QBrush brush() const {
+        QBrush b;
+        b.setStyle(Qt::BrushStyle::SolidPattern);
+        b.setColor(fillColor());
+        return b;
+    }
+
+    inline QPen pen() const {
+        QPen p;
+        p.setStyle(Qt::PenStyle::SolidLine);
+        p.setWidth(strokeWidth());
+        p.setColor(strokeColor());
+        return p;
+    }
 
 
+// Settings
+protected:
+    struct Settings {
+        bool   showLabel                ;
+        bool   allowSplitting           ;
+        bool   allowOnClickColoring     ;
+        double defaultResistance        ;
+        double defaultCapacitance       ;
+        double defaultInductance        ;
+        double defaultBatteryVoltage    ;
+        double defaultDCVoltage         ;
+        double defaultIntensity         ;
+        double defaultQuantity          ;
+        int    radius                   ;
+        int    strokeWidth              ;
+        QColor strokeColor              ;
+        QColor fillColor                ;
+    };
+
+    Settings settings;
+
+public:
+    inline void setShowLabel             ( const bool   v ){ settings.showLabel = v; }
+    inline void setAllowSplitting        ( const bool   v ){ settings.allowSplitting = v; }
+    inline void setAllowOnClickColoring  ( const bool   v ){ settings.allowOnClickColoring = v; }
+    inline void setDefaultResistance     ( const double v ){ settings.defaultResistance = v; }
+    inline void setDefaultCapacitance    ( const double v ){ settings.defaultCapacitance = v; }
+    inline void setDefaultInductance     ( const double v ){ settings.defaultInductance = v; }
+    inline void setDefaultBatteryVoltage ( const double v ){ settings.defaultBatteryVoltage = v; }
+    inline void setDefaultDCVoltage      ( const double v ){ settings.defaultDCVoltage = v; }
+    inline void setDefaultIntensity      ( const double v ){ settings.defaultIntensity = v; }
+    inline void setDefaultQuantity       ( const double v ){ settings.defaultQuantity = v; }
+    inline void setRadius                ( const int    v ){ settings.radius = v; }
+    inline void setStrokeWidth           ( const int    v ){ settings.strokeWidth = v; }
+    inline void setStrokeColor           ( const QColor &v){ settings.strokeColor = v; }
+    inline void setFillColor             ( const QColor &v){ settings.fillColor = v; }
+
+    inline bool showLabel               () const { return settings.showLabel; }
+    inline bool allowSplitting          () const { return settings.allowSplitting; }
+    inline bool allowOnClickColoring    () const { return settings.allowOnClickColoring; }
+    inline double defaultResistance     () const { return settings.defaultResistance; }
+    inline double defaultCapacitance    () const { return settings.defaultCapacitance; }
+    inline double defaultInductance     () const { return settings.defaultInductance; }
+    inline double defaultBatteryVoltage () const { return settings.defaultBatteryVoltage; }
+    inline double defaultDCVoltage      () const { return settings.defaultDCVoltage; }
+    inline double defaultIntensity      () const { return settings.defaultIntensity; }
+    inline double defaultQuantity       () const { return settings.defaultQuantity; }
+    inline int radius                   () const { return settings.radius; }
+    inline int strokeWidth              () const { return settings.strokeWidth; }
+    inline QColor strokeColor           () const { return settings.strokeColor; }
+    inline QColor fillColor             () const { return settings.fillColor; }
 
 signals:
     void dataChanged();
 
 protected:
-    bool _showLabel;
-
     void setState(const ToolState state) override;
 
     void updateHover();
@@ -93,12 +140,7 @@ protected:
     SharedDipole hoveredDipole();
     SharedAlias hoveredAlias();
 
-    QPen _pen;
-    QBrush _brush;
-    int _radius;
-
     ConstructionMode mode;
-
     BCPath _path;
 
     const QCursor penCursor, constructingCursor, constructingPlusCursor;

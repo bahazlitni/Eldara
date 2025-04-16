@@ -5,29 +5,29 @@ const int DBL_CLICK_GAP_MS = 500;
 const int CLICK_GAP_MS = 300;
 
 enum ToolState {
-    SELECTOR = 0,
-    SELECTING = 1,
-    DRAGGING = 2,
-    SELECTING_PLUS = 3,
-    PEN = 4,
-    CONSTRUCTING = 5,
-    CONTROLLING = 6,
-    INITIAL_CONTROLLING = 7,
-    BC_EDIT = 8,
-    BC_EDIT_CONTROLLING_POINT = 9,
-    BC_EDIT_CONTROLLING_CONTROL_POINT = 10,
-    GRABBER = 11,
-    GRABBING = 12,
-    GRABBER_TMP = 13,
-    GRABBING_TMP = 14
+    SELECTOR,
+    SELECTING,
+    DRAGGING,
+    SELECTING_PLUS,
+    PEN,
+    CONSTRUCTING,
+    CONTROLLING,
+    INITIAL_CONTROLLING,
+    BC_EDIT,
+    BC_EDIT_CONTROLLING_POINT,
+    BC_EDIT_CONTROLLING_CONTROL_POINT,
+    GRABBER,
+    GRABBING,
+    GRABBER_TMP,
+    GRABBING_TMP
 };
 
-class App;
+class Scene;
 class MouseTool: public QObject {
     Q_OBJECT
 
 public:
-    MouseTool(App *app): app(app) {}
+    MouseTool(Scene *scene): scene(scene) {}
 
 
     void init(){
@@ -137,7 +137,7 @@ public:
     ObjectCategory hoverCategory() const { return _hoverCategory; }
     void resetHover(){
         _hoveredObject.reset();
-        _hoverCategory = _VOID;
+        _hoverCategory = ObjectCategory::Void;
     }
 
     virtual void deepRemoval(const SharedObject &obj){
@@ -149,9 +149,9 @@ protected:
     QPointF _record[2][3];
     QPointF _t, _dt;
 
-    App *app;
+    Scene *scene;
     ToolState _state;
     WeakObject _hoveredObject;
-    ObjectCategory _hoverCategory = _VOID;
+    ObjectCategory _hoverCategory = ObjectCategory::Void;
     QPainterPath _indicators;
 };

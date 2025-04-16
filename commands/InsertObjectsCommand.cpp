@@ -1,6 +1,6 @@
 #include "InsertObjectsCommand.h"
 #include "utils/Selection.h"
-#include "App.h"
+#include "Scene.h"
 
 #include "objects/Object.h"
 #include "objects/Alias.h"
@@ -10,16 +10,16 @@ void InsertObjectsCommand::execute(){
     Command::execute();
     for(const auto &obj : _selection){
         switch(obj->category()){
-        case _NODE: {
+        case ObjectCategory::Node: {
             const SharedAlias alias = static_pointer_cast<Alias>(obj);
-            app->aliases.insert(alias->id(), alias);
+            scene->aliases.insert(alias->id(), alias);
             break;
         }
-        case _DIPOLE: {
+        case ObjectCategory::Dipole: {
             const SharedDipole dipole = static_pointer_cast<Dipole>(obj);
             if(auto A = dipole->A()) A->connect(dipole);
             if(auto B = dipole->B()) B->connect(dipole);
-            dipole->dirtyVisibleCheckFlag = app->grid.getDirtyVisibleCheckFlagInitial();
+            dipole->dirtyVisibleCheckFlag = scene->grid.getDirtyVisibleCheckFlagInitial();
             break;
         }
         default:
@@ -27,23 +27,23 @@ void InsertObjectsCommand::execute(){
         }
     }
 
-    if(app->mouse->state() == app->selector.state())
-        app->selector.select(_selection);
+    if(scene->mouse->state() == scene->selector.state())
+        scene->selector.select(_selection);
 }
 
 void InsertObjectsCommand::undo(){
     Command::undo();
     for(const auto &obj : _selection){
-        if(obj->category() == _DIPOLE){
+        if(obj->category() == ObjectCategory::Dipole){
             const SharedDipole dipole = static_pointer_cast<Dipole>(obj);
             const SharedAlias A = dipole->A();
             const SharedAlias B = dipole->B();
             if(auto A = dipole->A()) A->disconnect(dipole);
             if(auto B = dipole->B()) B->disconnect(dipole);
         }
-        app->deepRemoval(obj);
+        scene->deepRemoval(obj);
     }
 
-    if(app->mouse->state() == app->selector.state())
-        app->selector.unselect(_selection);
+    if(scene->mouse->state() == scene->selector.state())
+        scene->selector.unselect(_selection);
 }

@@ -5,7 +5,7 @@
 class RadiusInput;
 class ColorInput;
 class BooleanInput;
-class App;
+class Scene;
 class MainPanel;
 
 class PenGroup: public InputGroup {

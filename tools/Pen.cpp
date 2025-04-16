@@ -1,5 +1,5 @@
 #include "Pen.h"
-#include "App.h"
+#include "Scene.h"
 #include "objects/Object.h"
 #include "objects/Alias.h"
 #include "objects/BCControlPoint.h"
@@ -7,8 +7,8 @@
 #include "objects/BCPoint.h"
 #include "objects/Battery.h"
 #include "objects/Capacitor.h"
-#include "objects/DC_CurrentGenerator.h"
-#include "objects/DC_VoltageGenerator.h"
+#include "objects/DCI.h"
+#include "objects/DCV.h"
 #include "objects/Inductor.h"
 #include "objects/Resistor.h"
 #include "objects/WorldPoint.h"
@@ -24,7 +24,7 @@
 #include "tools/Selector.h"
 
 
-Pen::Pen(App *app): MouseTool(app),
+Pen::Pen(Scene *scene): MouseTool(scene),
     penCursor(QCursor(QPixmap(":assets/cursor/pen.png"), 0, 0)),
     constructingCursor(QCursor(QPixmap(":assets/cursor/pen_constructing.png"), 0, 0)),
     constructingPlusCursor(QCursor(QPixmap(":assets/cursor/pen_constructing_plus.png"), 0, 0))
@@ -33,9 +33,6 @@ Pen::Pen(App *app): MouseTool(app),
     setStrokeColor(QColor(222,222,222));
     setStrokeWidth(2);
     setRadius(10);
-
-    _brush.setStyle(Qt::BrushStyle::SolidPattern);
-    _pen.setStyle(Qt::PenStyle::SolidLine);
 }
 
 QVariant Pen::getAttr(const Attr attr) const {
@@ -62,7 +59,7 @@ void Pen::setAttr(const Attr attr, const QVariant &v) {
 
 void Pen::deepRemoval(const SharedObject &obj) {
     MouseTool::deepRemoval(obj);
-    if(obj && obj->category() == _NODE) {
+    if(obj && obj->category() == ObjectCategory::Node) {
         const auto &alias = static_pointer_cast<Alias>(obj);
         if(alias == previous) end();
     }
@@ -72,7 +69,7 @@ void Pen::deepRemoval(const SharedObject &obj) {
 void Pen::setType(ObjectType type){
     if(type == this->type) return;
     this->type = type;
-    if(type == ALIAS) setState(PEN);
+    if(type == ObjectType::Alias) setState(PEN);
     else if(onControl()){
         _path.clear();
         setState(CONSTRUCTING);
@@ -103,28 +100,28 @@ void Pen::move(){
 }
 
 SharedAlias Pen::MakeAlias(const QPointF &p){
-    const QString address = previous && type == ALIAS && alt() ? previous->address() : app->address();
-    return std::make_shared<Alias>(app->id(), address, p.x(), p.y(), radius(), brush(), showLabel());
+    const QString address = previous && type == ObjectType::Alias && alt() ? previous->address() : scene->address();
+    return std::make_shared<Alias>(scene->id(), address, p.x(), p.y(), radius(), brush(), showLabel());
 }
 SharedDipole Pen::MakeDipole(const SharedAlias &A, const SharedAlias &B, ObjectType type){
     switch(type){
-    case RESISTOR:
-        return std::make_shared<Resistor>(A, B, pen(), showLabel(), DEFAULT_RESISTANCE_VALUE);
+    case ObjectType::Resistor:
+        return std::make_shared<Resistor>(A, B, pen(), showLabel(), defaultResistance());
 
-    case CAPACITOR:
-        return std::make_shared<Capacitor>(A, B, pen(), showLabel(), DEFAULT_CAPACITANCE_VALUE, 0.0);
+    case ObjectType::Capacitor:
+        return std::make_shared<Capacitor>(A, B, pen(), showLabel(), defaultCapacitance(), 0.0);
 
-    case INDUCTOR:
-        return std::make_shared<Inductor>(A, B, pen(), showLabel(), DEFAULT_INDUCTANCE_VALUE, 0.0);
+    case ObjectType::Inductor:
+        return std::make_shared<Inductor>(A, B, pen(), showLabel(), defaultInductance(), 0.0);
 
-    case BATTERY:
-        return std::make_shared<Battery>(A, B, pen(), showLabel(), DEFAULT_BATTERY_VALUE);
+    case ObjectType::Battery:
+        return std::make_shared<Battery>(A, B, pen(), showLabel(), defaultBatteryVoltage());
 
-    case DC_VOLTAGE_GENERATOR:
-        return std::make_shared<DC_VoltageGenerator>(A, B, pen(), showLabel(), DEFAULT_DC_VOLTAGE_GENERATOR_VALUE);
+    case ObjectType::DCV:
+        return std::make_shared<DCV>(A, B, pen(), showLabel(), defaultDCVoltage());
 
-    case DC_CURRENT_GENERATOR:
-        return std::make_shared<DC_CurrentGenerator>(A, B, pen(), showLabel(), DEFAULT_DC_CURRENT_GENERATOR_VALUE);
+    case ObjectType::DCI:
+        return std::make_shared<DCI>(A, B, pen(), showLabel(), defaultIntensity());
 
     default: return nullptr;
     }
@@ -152,43 +149,43 @@ void Pen::analyze(){
     switch(_state){
     case PEN:
         switch(_hoverCategory){
-        case _DIPOLE: mode = ALIAS_SPLIT; return;
-        case _NODE: mode = SWITCH_PREVIOUS; return;
-        case _VOID: mode = ALIAS_ONLY; return;
+        case ObjectCategory::Dipole: mode = allowSplitting()? ALIAS_SPLIT : PROHIBITED; return;
+        case ObjectCategory::Node: mode = SWITCH_PREVIOUS; return;
+        case ObjectCategory::Void: mode = ALIAS_ONLY; return;
         default: mode = PROHIBITED; return;
         }
     case CONSTRUCTING: {
-        if(_hoverCategory == _NODE && previous == hoveredAlias()){
+        if(_hoverCategory == ObjectCategory::Node && previous == hoveredAlias()){
             mode = SWITCH_PREVIOUS;
             return;
         }
-        SharedDipole lappingHoveredDipole;
+        SharedDipole lsceneingHoveredDipole;
         const QLineF constructionLine = QLineF(previous->p(), t());
 
-        if(_hoverCategory == _DIPOLE && hoveredDipole()->connectedTo(previous)){
-            mode = OVER_SPLIT;
+        if(_hoverCategory == ObjectCategory::Dipole && hoveredDipole()->connectedTo(previous)){
+            mode = allowSplitting()? OVER_SPLIT : PROHIBITED;
             return;
         }
 
-        for(const auto &dipole : app->grid.visibleDipoles){
+        for(const auto &dipole : scene->grid.visibleDipoles){
             if(T_LlapL(constructionLine, dipole->line()) != QLineF::UnboundedIntersection) continue;
-            if(_hoverCategory == _DIPOLE && hoveredDipole() == dipole){
-                lappingHoveredDipole = dipole;
+            if(_hoverCategory == ObjectCategory::Dipole && hoveredDipole() == dipole){
+                lsceneingHoveredDipole = dipole;
                 continue;
             }
-            mode = _hoverCategory == _NODE ? SWITCH_PREVIOUS : PROHIBITED;
+            mode = _hoverCategory == ObjectCategory::Node ? SWITCH_PREVIOUS : PROHIBITED;
             return;
         }
 
-        if(lappingHoveredDipole){
-            mode = lappingHoveredDipole->connectedTo(previous) ? OVER_SPLIT : PROHIBITED;
+        if(lsceneingHoveredDipole){
+            mode = allowSplitting() && lsceneingHoveredDipole->connectedTo(previous) ? OVER_SPLIT : PROHIBITED;
             return;
         }
 
         switch(_hoverCategory){
-        case _DIPOLE: mode = NORMAL_SPLIT; return;
-        case _NODE: mode = DIPOLE_ONLY; return;
-        case _VOID: mode = ALIAS_AND_DIPOLE; return;
+        case ObjectCategory::Dipole: mode = allowSplitting()? NORMAL_SPLIT : PROHIBITED; return;
+        case ObjectCategory::Node: mode = DIPOLE_ONLY; return;
+        case ObjectCategory::Void: mode = ALIAS_AND_DIPOLE; return;
         default: mode = PROHIBITED; return;
         }
         break;
@@ -204,19 +201,19 @@ void Pen::construct(){
     case PROHIBITED: return;
     case ALIAS_ONLY:
         previous = MakeAlias(t());
-        app->execute(std::make_unique<InsertObjectsCommand>(app, Selection({previous})));
+        scene->execute(std::make_unique<InsertObjectsCommand>(scene, Selection({previous})));
         break;
     case ALIAS_AND_DIPOLE: {
         const auto &newAlias = MakeAlias(t());
-        app->execute(std::make_unique<InsertObjectsCommand>(app, Selection({newAlias, MakeDipole(previous, newAlias)})));
+        scene->execute(std::make_unique<InsertObjectsCommand>(scene, Selection({newAlias, MakeDipole(previous, newAlias)})));
         previous = newAlias;
         break;
     }
     case DIPOLE_ONLY: {
         const auto &hoveredAlias = static_pointer_cast<Alias>(hoveredObject());
-        app->execute(
+        scene->execute(
             std::make_unique<InsertObjectsCommand>(
-                app, Selection({MakeDipole(previous, hoveredAlias)})
+                scene, Selection({MakeDipole(previous, hoveredAlias)})
             )
         );
         previous = hoveredAlias;
@@ -229,12 +226,12 @@ void Pen::construct(){
 
         auto cmd = std::make_unique<ComboCommand>();
         cmd->addCommand(
-            std::make_unique<InsertObjectsCommand>(app, Selection({splitter, resultant}))
+            std::make_unique<InsertObjectsCommand>(scene, Selection({splitter, resultant}))
         );
         cmd->addCommand(
-            std::make_unique<SplitDipoleCommand>(app, splitted, resultant, splitter)
+            std::make_unique<SplitDipoleCommand>(scene, splitted, resultant, splitter)
         );
-        app->execute(std::move(cmd));
+        scene->execute(std::move(cmd));
         previous = splitter;
         break;
     }
@@ -246,12 +243,12 @@ void Pen::construct(){
 
         auto cmd = std::make_unique<ComboCommand>();
         cmd->addCommand(
-            std::make_unique<InsertObjectsCommand>(app, Selection({splitter, resultant, normal}))
+            std::make_unique<InsertObjectsCommand>(scene, Selection({splitter, resultant, normal}))
         );
         cmd->addCommand(
-            std::make_unique<SplitDipoleCommand>(app, splitted, resultant, splitter)
+            std::make_unique<SplitDipoleCommand>(scene, splitted, resultant, splitter)
         );
-        app->execute(std::move(cmd));
+        scene->execute(std::move(cmd));
         previous = splitter;
         break;
     }
@@ -262,12 +259,12 @@ void Pen::construct(){
 
         auto cmd = std::make_unique<ComboCommand>();
         cmd->addCommand(
-            std::make_unique<InsertObjectsCommand>(app, Selection({splitter, resultant}))
+            std::make_unique<InsertObjectsCommand>(scene, Selection({splitter, resultant}))
         );
         cmd->addCommand(
-            std::make_unique<SplitDipoleCommand>(app, splitted, resultant, splitter)
+            std::make_unique<SplitDipoleCommand>(scene, splitted, resultant, splitter)
         );
-        app->execute(std::move(cmd));
+        scene->execute(std::move(cmd));
         previous = splitter;
         break;
     }
@@ -282,7 +279,7 @@ void Pen::downL(){
     construct();
     switch(_state){
     case PEN:
-        if(type != ALIAS && previous)
+        if(type != ObjectType::Alias && previous)
             setState(CONSTRUCTING);
         break;
     default:
@@ -301,31 +298,31 @@ void Pen::updateHover(){
     const QPointF target = t();
 
     resetHover();
-    for(const auto &alias : app->grid.visibleAliases){
-        if(alias->hover(worldp, app->grid.zoom())){
+    for(const auto &alias : scene->grid.visibleAliases){
+        if(alias->hover(worldp, scene->grid.zoom())){
             _hoveredObject = alias;
-            _hoverCategory = _NODE;
+            _hoverCategory = ObjectCategory::Node;
             setTarget(alias->p());
             return;
         }
     }
-    for(const auto &dipole : app->grid.visibleDipoles){
-        if(dipole->hover(worldp, app->grid.zoom())){
+    for(const auto &dipole : scene->grid.visibleDipoles){
+        if(dipole->hover(worldp, scene->grid.zoom())){
             const QPointF p = pLA(dipole->line(), worldp);
             _hoveredObject = dipole;
-            _hoverCategory = _DIPOLE;
+            _hoverCategory = ObjectCategory::Dipole;
             const auto &A = dipole->A();
-            if(A && A->hover(p, app->grid.zoom())){
+            if(A && A->hover(p, scene->grid.zoom())){
                 setTarget(A->p());
                 _hoveredObject = A;
-                _hoverCategory = _NODE;
+                _hoverCategory = ObjectCategory::Node;
                 return;
             }
             const auto &B = dipole->B();
-            if(B && B->hover(p, app->grid.zoom())){
+            if(B && B->hover(p, scene->grid.zoom())){
                 setTarget(B->p());
                 _hoveredObject = B;
-                _hoverCategory = _NODE;
+                _hoverCategory = ObjectCategory::Node;
                 return;
             }
             setTarget(p);
@@ -333,31 +330,31 @@ void Pen::updateHover(){
         }
     }
     if(t() == worldp) return;
-    for(const auto &alias : app->grid.visibleAliases){
-        if(alias->hover(t(), app->grid.zoom())){
+    for(const auto &alias : scene->grid.visibleAliases){
+        if(alias->hover(t(), scene->grid.zoom())){
             _hoveredObject = alias;
-            _hoverCategory = _NODE;
+            _hoverCategory = ObjectCategory::Node;
             setTarget(alias->p());
             return;
         }
     }
-    for(const auto &dipole : app->grid.visibleDipoles){
-        if(dipole->hover(target, app->grid.zoom())){
+    for(const auto &dipole : scene->grid.visibleDipoles){
+        if(dipole->hover(target, scene->grid.zoom())){
             const QPointF p = pLA(dipole->line(), target);
             _hoveredObject = dipole;
-            _hoverCategory = _DIPOLE;
+            _hoverCategory = ObjectCategory::Dipole;
             const auto &A = dipole->A();
-            if(A && A->hover(p, app->grid.zoom())){
+            if(A && A->hover(p, scene->grid.zoom())){
                 setTarget(A->p());
                 _hoveredObject = A;
-                _hoverCategory = _NODE;
+                _hoverCategory = ObjectCategory::Node;
                 return;
             }
             const auto &B = dipole->B();
-            if(B && B->hover(p, app->grid.zoom())){
+            if(B && B->hover(p, scene->grid.zoom())){
                 setTarget(B->p());
                 _hoveredObject = B;
-                _hoverCategory = _NODE;
+                _hoverCategory = ObjectCategory::Node;
                 return;
             }
             setTarget(p);
@@ -371,43 +368,54 @@ void Pen::updateMovement(){
     _indicators.clear();
     switch(_state){
     case PEN:
-        setTarget(app->grid.snap(worldP()));
+        if(scene->snapPosition())
+            setTarget(scene->grid.snap(worldP()));
+        else
+            setTarget(worldP());
+
         updateHover();
 
-        for(const auto &alias : app->grid.visibleAliases)
+        if(!scene->snapPosition()) break;
+
+        for(const auto &alias : scene->grid.visibleAliases)
             points.append(alias->p());
 
-        setTarget(indicateTarget(app, _indicators, t(), points, app->grid.zoom()));
+        setTarget(indicateTarget(scene, _indicators, t(), points, scene->grid.zoom()));
         break;
 
     case CONSTRUCTING:
-        setTarget(app->grid.snap(worldP()));
-        if(type != WIRE && (_state == CONSTRUCTING || (_state == PEN && shift())))
+        setTarget(worldP());
+        if(scene->snapPosition())
+            setTarget(scene->grid.snap(t()));
+
+        if(type != ObjectType::Wire && (_state == CONSTRUCTING || (_state == PEN && shift())))
             setTarget(pA(t(), previous->p()));
 
         updateHover();
 
-        for(const auto &alias : app->grid.visibleAliases){
+        if(!scene->snapPosition()) break;
+
+        for(const auto &alias : scene->grid.visibleAliases){
             if(alias != previous) points.append(alias->p());
         }
 
-        if(type == WIRE){
+        if(type == ObjectType::Wire){
             auto cur = _path.first();
             while(cur){
                 if(const auto &ctrlAfter = cur->after()){
-                    if(ctrlAfter->visible(app->grid, app->grid.zoom()))
+                    if(ctrlAfter->visible(scene->grid, scene->grid.zoom()))
                         points.append(ctrlAfter->p());
                 }
                 if(const auto &ctrlBefore = cur->before()){
-                    if(ctrlBefore->visible(app->grid, app->grid.zoom()))
+                    if(ctrlBefore->visible(scene->grid, scene->grid.zoom()))
                         points.append(ctrlBefore->p());
                 }
-                if(cur->visible(app->grid, app->grid.zoom()))
+                if(cur->visible(scene->grid, scene->grid.zoom()))
                     points.append(cur->p());
                 cur = cur->next();
             }
         }
-        setTarget(indicateTarget(app, _indicators, t(), points, app->grid.zoom()));
+        setTarget(indicateTarget(scene, _indicators, t(), points, scene->grid.zoom()));
         break;
 
     case INITIAL_CONTROLLING:
@@ -418,28 +426,31 @@ void Pen::updateMovement(){
         if(shift() && last)
             setTarget(pA(t(), last->p()));
 
-        for(const auto &alias : app->grid.visibleAliases)
+
+        if(!scene->snapPosition()) break;
+
+        for(const auto &alias : scene->grid.visibleAliases)
             points.append(alias->p());
 
         auto cur = _path.first();
         while(cur){
             if(cur != last){
                 if(const auto &ctrlAfter = cur->after()){
-                    if(ctrlAfter->visible(app->grid, app->grid.zoom()))
+                    if(ctrlAfter->visible(scene->grid, scene->grid.zoom()))
                         points.append(ctrlAfter->p());
                 }
                 if(const auto &ctrlBefore = cur->before()){
-                    if(ctrlBefore->visible(app->grid, app->grid.zoom()))
+                    if(ctrlBefore->visible(scene->grid, scene->grid.zoom()))
                         points.append(ctrlBefore->p());
                 }
             }
-            if(cur->visible(app->grid, app->grid.zoom()))
+            if(cur->visible(scene->grid, scene->grid.zoom()))
                 points.append(cur->p());
             cur = cur->next();
         }
 
-        setTarget(indicateTarget(app, _indicators, t(), points, app->grid.zoom()));
-        setTarget(2*last->p() - indicateTarget(app, _indicators, 2*last->p() - t(), points, app->grid.zoom()));
+        setTarget(indicateTarget(scene, _indicators, t(), points, scene->grid.zoom()));
+        setTarget(2*last->p() - indicateTarget(scene, _indicators, 2*last->p() - t(), points, scene->grid.zoom()));
 
         break;
     }
@@ -464,14 +475,14 @@ void Pen::setState(const ToolState state){
 void Pen::setCursor(const ToolState state){
     switch(state){
     case PEN:
-        app->setCursor(penCursor);
+        scene->setCursor(penCursor);
         break;
     case CONSTRUCTING:
-        app->setCursor(constructingCursor);
+        scene->setCursor(constructingCursor);
         break;
     case INITIAL_CONTROLLING:
     case CONTROLLING:
-        app->setCursor(constructingPlusCursor);
+        scene->setCursor(constructingPlusCursor);
         break;
     default:
         break;
@@ -482,7 +493,7 @@ void Pen::keyDown([[maybe_unused]] Qt::Key key){
     switch(key){
     case Qt::Key_Space:
         if(_state == PEN || _state == CONSTRUCTING)
-            app->setTempMouse(&app->grabber, Qt::Key_Space);
+            scene->setTempMouse(&scene->grabber, Qt::Key_Space);
         break;
     case Qt::Key_Alt:
     case Qt::Key_AltGr:
@@ -491,28 +502,28 @@ void Pen::keyDown([[maybe_unused]] Qt::Key key){
         init();
         break;
     case Qt::Key_V:
-        app->setMouse(&app->selector);
+        scene->setMouse(&scene->selector);
         break;
     case Qt::Key_P:
-        setType(ALIAS);
+        setType(ObjectType::Alias);
         break;
     case Qt::Key_R:
-        setType(RESISTOR);
+        setType(ObjectType::Resistor);
         break;
     case Qt::Key_C:
-        setType(CAPACITOR);
+        setType(ObjectType::Capacitor);
         break;
     case Qt::Key_L:
-        setType(INDUCTOR);
+        setType(ObjectType::Inductor);
         break;
     case Qt::Key_B:
-        setType(BATTERY);
+        setType(ObjectType::Battery);
         break;
     case Qt::Key_E:
-        setType(DC_VOLTAGE_GENERATOR);
+        setType(ObjectType::DCV);
         break;
     case Qt::Key_I:
-        setType(DC_CURRENT_GENERATOR);
+        setType(ObjectType::DCI);
         break;
     default:
         break;
@@ -526,14 +537,14 @@ void Pen::keyUp([[maybe_unused]] Qt::Key key){}
 void Pen::drawAliasPreview(const QColor &color){
     QBrush b = brush();
     b.setColor(color);
-    app->grid.drawAlias(app->grid.toScreen(t()), b, radius(), "");
+    scene->grid.drawAlias(scene->grid.toScreen(t()), b, radius(), "");
 }
 
 
 void Pen::drawDipolePreview(const QColor &color){
     QPen p = pen();
     p.setColor(color);
-    app->grid.drawDipole(type, app->grid.toScreen(previous->p()), app->grid.toScreen(t()), color);
+    scene->grid.drawDipole(type, scene->grid.toScreen(previous->p()), scene->grid.toScreen(t()), color);
 }
 
 void Pen::drawSplittedPreview(const QColor &color){
@@ -567,7 +578,7 @@ void Pen::drawSplittedPreview(const QColor &color){
 
     QPen p = pen();
     p.setColor(color);
-    app->grid.drawDipole(dipole->type(), app->grid.toScreen(A), app->grid.toScreen(B), p);
+    scene->grid.drawDipole(dipole->type(), scene->grid.toScreen(A), scene->grid.toScreen(B), p);
 }
 
 void Pen::drawResultantPreview(const QColor &color){
@@ -590,18 +601,18 @@ void Pen::drawResultantPreview(const QColor &color){
 
     QPen p = pen();
     p.setColor(color);
-    app->grid.drawDipole(dipole->type(), app->grid.toScreen(A), app->grid.toScreen(B), p);
+    scene->grid.drawDipole(dipole->type(), scene->grid.toScreen(A), scene->grid.toScreen(B), p);
 }
 
 void Pen::drawHoveredAlias(const QColor &color){
     QBrush b = brush();
     b.setColor(color);
-    app->grid.drawObject(hoveredAlias(), Qt::NoPen, b);
+    scene->grid.drawObject(hoveredAlias(), Qt::NoPen, b);
 }
 void Pen::drawHoveredDipole(const QColor &color){
     QPen p = pen();
     p.setColor(color);
-    app->grid.drawObject(hoveredDipole(), p, Qt::NoBrush);
+    scene->grid.drawObject(hoveredDipole(), p, Qt::NoBrush);
 }
 
 void Pen::draw(QPainter *painter){
@@ -645,7 +656,7 @@ void Pen::draw(QPainter *painter){
     case PROHIBITED:
         drawAliasPreview(Palette::CONSTRUCTION_PROHIBITED);
         if(_state == CONSTRUCTING) drawDipolePreview(Palette::CONSTRUCTION_PROHIBITED);
-        if(_hoverCategory == _DIPOLE) drawHoveredDipole(Palette::CONSTRUCTION_PROHIBITED);
+        if(_hoverCategory == ObjectCategory::Dipole) drawHoveredDipole(Palette::CONSTRUCTION_PROHIBITED);
         break;
     }
 }

@@ -1,12 +1,12 @@
 #include "RemoveVariablesCommand.h"
 #include "widgets/tabs/VariablesTab.h"
-#include "App.h"
+#include "Scene.h"
 #include "objects/Alias.h"
 #include "objects/Dipole.h"
 #include "widgets/MainPanel.h"
 
 RemoveVariablesCommand::RemoveVariablesCommand(VariablesTab *variablesTab, const QVector<QString> &names)
-    : Command(variablesTab->mainPanel->app),
+    : Command(variablesTab->mainPanel->scene),
     _variablesTab(variablesTab)
 {
     // Cache backup for each impacted variable.
@@ -18,7 +18,7 @@ RemoveVariablesCommand::RemoveVariablesCommand(VariablesTab *variablesTab, const
 
         QSet<SharedDipole> visited;
         // Scan through each alias and dipole to collect dipoles and their associated params.
-        for (const auto &alias : app->aliases) {
+        for (const auto &alias : scene->aliases) {
             for (const auto &dipole : alias->connections()) {
                 if (visited.contains(dipole)) continue;
                 visited.insert(dipole);

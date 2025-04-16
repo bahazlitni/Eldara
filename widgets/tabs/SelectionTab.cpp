@@ -1,6 +1,6 @@
 #include "SelectionTab.h"
 #include "widgets/MainPanel.h"
-#include "App.h"
+#include "Scene.h"
 
 #include "widgets/groups/ObjectGroup.h"
 #include "widgets/groups/AliasGroup.h"
@@ -32,12 +32,12 @@ SelectionTab::SelectionTab(MainPanel *mainPanel) :
     // Add object groups
     inputGroups.append(new ColorsGroup(mainPanel));
     inputGroups.append(new AliasGroup(mainPanel));
-    inputGroups.append(new DipoleGroup(mainPanel, RESISTOR));
-    inputGroups.append(new DipoleGroup(mainPanel, CAPACITOR));
-    inputGroups.append(new DipoleGroup(mainPanel, INDUCTOR));
-    inputGroups.append(new DipoleGroup(mainPanel, BATTERY));
-    inputGroups.append(new DipoleGroup(mainPanel, DC_CURRENT_GENERATOR));
-    inputGroups.append(new DipoleGroup(mainPanel, DC_VOLTAGE_GENERATOR));
+    inputGroups.append(new DipoleGroup(mainPanel, ObjectType::Resistor));
+    inputGroups.append(new DipoleGroup(mainPanel, ObjectType::Capacitor));
+    inputGroups.append(new DipoleGroup(mainPanel, ObjectType::Inductor));
+    inputGroups.append(new DipoleGroup(mainPanel, ObjectType::Battery));
+    inputGroups.append(new DipoleGroup(mainPanel, ObjectType::DCI));
+    inputGroups.append(new DipoleGroup(mainPanel, ObjectType::DCV));
 
     for(InputGroup *inputGroup : inputGroups)
         contentLayout->addWidget(inputGroup);

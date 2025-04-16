@@ -1,5 +1,5 @@
 #include "QuickSettingsTab.h"
-#include "App.h"
+#include "Scene.h"
 
 #include "widgets/groups/PenGroup.h"
 #include "widgets/MainPanel.h"

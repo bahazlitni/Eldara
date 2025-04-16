@@ -54,10 +54,10 @@ public:
     int halfBoxWidth() const override { return HALF_CAPACITOR_WIDTH; }
     int halfBoxHeight() const override { return HALF_CAPACITOR_HEIGHT; }
 
-    ObjectType type() const override { return CAPACITOR; }
+    ObjectType type() const override { return ObjectType::Capacitor; }
 
-    inline QString label() const override {
-        return _nameC.isEmpty() ? formatDouble(_C, 3, FARAD) : _nameC;
+    inline QString label(const bool raw) const override {
+        return _nameC.isEmpty() ? formatDouble(_C, 3, FARAD, raw) : _nameC;
     }
 
     SharedDipole clone(const SharedAlias &A, const SharedAlias &B) override {

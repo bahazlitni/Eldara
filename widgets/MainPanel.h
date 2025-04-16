@@ -1,7 +1,7 @@
 #pragma once
 #include "utils/Globals.h"
 
-class App;
+class Scene;
 class QuickSettingsTab;
 class SelectionTab;
 class VariablesTab;
@@ -10,8 +10,8 @@ class MainPanel : public QTabWidget {
     Q_OBJECT
 
 public:
-    explicit MainPanel(App *app, QWidget *parent = nullptr);
-    App *app;
+    explicit MainPanel(Scene *scene, QWidget *parent = nullptr);
+    Scene *scene;
     QuickSettingsTab *quickSettingsTab;
     SelectionTab *selectionTab;
     VariablesTab *variablesTab;

@@ -8,8 +8,8 @@ public:
     BCControlPoint(const QPointF &p): WorldPoint(p) {}
     BCControlPoint(const SharedPoint &p): WorldPoint(p) {}
 
-    ObjectCategory category() const override { return _EDIT; }
-    ObjectType type() const override { return BC_CONTROL_POINT; }
+    ObjectCategory category() const override { return ObjectCategory::Edit; }
+    ObjectType type() const override { return ObjectType::BCCP; }
 
     bool hover(const QPointF &p, [[maybe_unused]] const float zoom) override {
         const float D = BC_EDIT_CONTROL_POINT_DIAGONAL_WIDTH/zoom;

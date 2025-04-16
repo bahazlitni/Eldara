@@ -5,7 +5,7 @@
 #include "objects/BCControlPoint.h"
 #include "objects/BCPath.h"
 
-#include "App.h"
+#include "Scene.h"
 #include "Grid.h"
 
 inline void ProcessAlias(
@@ -21,12 +21,12 @@ QSet<SharedPoint> GetWorldPointSelection(const Selection &selection){
     QSet<SharedPoint> set;
     QSet<SharedAlias> processedAliases;
     for (const auto &obj : selection){
-        if (obj->category() == _NODE){
+        if (obj->category() == ObjectCategory::Node){
             SharedAlias alias = std::static_pointer_cast<Alias>(obj);
             if (alias && !processedAliases.contains(alias))
                 ProcessAlias(&set, &processedAliases, alias);
         }
-        else if (obj->category() == _DIPOLE) {
+        else if (obj->category() == ObjectCategory::Dipole) {
             auto dipole = std::static_pointer_cast<Dipole>(obj);
             if (dipole) {
                 auto a = dipole->A();
@@ -36,14 +36,14 @@ QSet<SharedPoint> GetWorldPointSelection(const Selection &selection){
                 if (b && !processedAliases.contains(b))
                     ProcessAlias(&set, &processedAliases, b);
             }
-        } else if(obj->type() == BC_POINT){
+        } else if(obj->type() == ObjectType::BCP){
             auto bcpoint = std::static_pointer_cast<BCPoint>(obj);
             set.insert(bcpoint->share());
             if(const auto &ctrlBefore = bcpoint->before())
                 set.insert(ctrlBefore->share());
             if(const auto &ctrlAfter = bcpoint->after())
                 set.insert(ctrlAfter->share());
-        } else if(obj->type() == BC_CONTROL_POINT){
+        } else if(obj->type() == ObjectType::BCCP){
             auto ctrl = std::static_pointer_cast<BCControlPoint>(obj);
             set.insert(ctrl->share());
         }
@@ -56,7 +56,7 @@ Selection GetDeepSelection(const Selection &selection){
     slc.reserve(selection.size());
     for(const auto &obj : selection){
         switch(obj->category()){
-        case _NODE: {
+        case ObjectCategory::Node: {
             const auto &alias = static_pointer_cast<Alias>(obj);
             for(const auto &dipole : alias->connections()) {
                 if(slc.contains(dipole)) continue;
@@ -66,7 +66,7 @@ Selection GetDeepSelection(const Selection &selection){
             }
             break;
         }
-        case _DIPOLE: {
+        case ObjectCategory::Dipole: {
             const auto &dipole = static_pointer_cast<Dipole>(obj);
             if(slc.contains(dipole)) continue;
             if(const auto &A = dipole->A()) slc.insert(A);
@@ -83,7 +83,7 @@ Selection GetDeepSelection(const Selection &selection){
 
 
 inline SharedAlias getAliasCopy(
-    App *app,
+    Scene *scene,
     Selection &copy,
     QHash<SharedAlias, SharedAlias> &aliasCopyCache,
     const SharedAlias &original,
@@ -91,8 +91,8 @@ inline SharedAlias getAliasCopy(
     const bool generateNewAddresses = true
 ){
     if(aliasCopyCache.contains(original)) return aliasCopyCache.value(original);
-    const auto &copied = original->clone(app->id());
-    if(generateNewAddresses) copied->setAddress(app->address());
+    const auto &copied = original->clone(scene->id());
+    if(generateNewAddresses) copied->setAddress(scene->address());
     copied->translate(dp);
     aliasCopyCache.insert(original, copied);
     copy.insert(copied);
@@ -100,7 +100,7 @@ inline SharedAlias getAliasCopy(
 }
 
 Selection copySelection(
-    App *app,
+    Scene *scene,
     const Selection &selection,
     const QPointF &dp,
     const bool generateNewAddresses
@@ -112,23 +112,23 @@ Selection copySelection(
 
     for(const auto &obj : selection){
         switch(obj->category()){
-        case _NODE: {
+        case ObjectCategory::Node: {
             const auto &alias = static_pointer_cast<Alias>(obj);
-            const auto &copied = getAliasCopy(app, copy, aliasCopyCache, alias, dp, generateNewAddresses);
+            const auto &copied = getAliasCopy(scene, copy, aliasCopyCache, alias, dp, generateNewAddresses);
             for(const auto &dipole : alias->connections()){
                 if(!selection.contains(dipole) || visitedDipoles.contains(dipole)) continue;
-                const auto &otherCopied = getAliasCopy(app, copy, aliasCopyCache, dipole->other(alias), dp, generateNewAddresses);
+                const auto &otherCopied = getAliasCopy(scene, copy, aliasCopyCache, dipole->other(alias), dp, generateNewAddresses);
                 if(alias == dipole->A()) copy.insert(dipole->clone(copied, otherCopied));
                 else copy.insert(dipole->clone(otherCopied, copied));
                 visitedDipoles.insert(dipole);
             }
             break;
         }
-        case _DIPOLE: {
+        case ObjectCategory::Dipole: {
             const auto &dipole = static_pointer_cast<Dipole>(obj);
             if(visitedDipoles.contains(dipole)) continue;
-            const auto &copiedA = getAliasCopy(app, copy, aliasCopyCache, dipole->A(), dp, generateNewAddresses);
-            const auto &copiedB = getAliasCopy(app, copy, aliasCopyCache, dipole->B(), dp, generateNewAddresses);
+            const auto &copiedA = getAliasCopy(scene, copy, aliasCopyCache, dipole->A(), dp, generateNewAddresses);
+            const auto &copiedB = getAliasCopy(scene, copy, aliasCopyCache, dipole->B(), dp, generateNewAddresses);
             copy.insert(dipole->clone(copiedA, copiedB));
             visitedDipoles.insert(dipole);
             break;

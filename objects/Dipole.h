@@ -31,7 +31,7 @@ public:
         setB(B);
     }
 
-    ObjectCategory category() const override { return _DIPOLE; }
+    ObjectCategory category() const override { return ObjectCategory::Dipole; }
 
     inline QPair<int, int> paramMagnitudeRange(const Param param) {
         switch (param) {

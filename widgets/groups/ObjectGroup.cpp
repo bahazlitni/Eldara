@@ -8,11 +8,11 @@
 #include <QStyle>
 
 #include "widgets/MainPanel.h"
-#include "App.h"
+#include "Scene.h"
 
 
 void ObjectGroup::updateData(){
-    updateSelection(mainPanel->app->selector.filter(type()));
+    updateSelection(mainPanel->scene->selector.filter(type()));
 }
 
 QString ObjectGroup::baseTitle() const {

@@ -1,7 +1,7 @@
 #include "Command.h"
 #include "utils/Globals.h"
 
-class App;
+class Scene;
 class SplitDipoleCommand: public Command {
 private:
     SharedDipole splitted;
@@ -14,7 +14,7 @@ private:
 
 public:
     explicit SplitDipoleCommand(
-        App *app,
+        Scene *scene,
         const SharedDipole &splitted,
         const SharedDipole &resultant,
         const SharedAlias &splitter

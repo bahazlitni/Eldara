@@ -1,5 +1,5 @@
 #include "InputGroup.h"
-#include "App.h"
+#include "Scene.h"
 #include "tools/Selector.h"
 #include "widgets/MainPanel.h"
 

@@ -41,7 +41,9 @@ public:
 
     // Getters and Setters
     uint64_t id() const { return _id; }
-    inline QString label() const override { return _address; }
+    inline QString label([[maybe_unused]] const bool raw) const override {
+        return _address;
+    }
 
     int diameter() const { return _radius*2; }
     int radius() const { return _radius; }
@@ -56,8 +58,8 @@ public:
     void setShowLabel(bool b) override { _showLabel = b; }
 
     // Interface Methods (type and category)
-    ObjectType type() const override { return ALIAS; }
-    ObjectCategory category() const override { return _NODE; }
+    ObjectType type() const override { return ObjectType::Alias; }
+    ObjectCategory category() const override { return ObjectCategory::Node; }
 
     // Geometric methods
     bool inside(const QRectF &box, [[maybe_unused]] float zoom) override {

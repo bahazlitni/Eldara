@@ -528,7 +528,7 @@ QPair<QLineF::IntersectionType, QLineF> LlapL(const QLineF &l1, const QLineF &l2
         const qreal tMin = std::min(t3, t4);
         const qreal tMax = std::max(t3, t4);
 
-        // The overlapping portion (if any) within l1's [0,1] parameter range:
+        // The overlsceneing portion (if any) within l1's [0,1] parameter range:
         const qreal tOverlapStart = std::max(0.0, tMin);
         const qreal tOverlapEnd   = std::min(1.0, tMax);
 
@@ -543,7 +543,7 @@ QPair<QLineF::IntersectionType, QLineF> LlapL(const QLineF &l1, const QLineF &l2
             return qMakePair(QLineF::NoIntersection, QLineF());
         }
 
-        // Compute the actual overlapping points.
+        // Compute the actual overlsceneing points.
         const QPointF ip1 = p1 + d1 * tOverlapStart;
         const QPointF ip2 = p1 + d1 * tOverlapEnd;
         QLineF overlap(ip1, ip2);

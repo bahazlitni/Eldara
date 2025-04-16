@@ -4,11 +4,11 @@
 
 #include <QHash>
 
-class App;
+class Scene;
 class InsertObjectsCommand: public Command {
 public:
-    InsertObjectsCommand(App *app, const Selection &selection):
-        Command(app), _selection(selection) {}
+    InsertObjectsCommand(Scene *scene, const Selection &selection):
+        Command(scene), _selection(selection) {}
 
     void execute() override;
     void undo() override;

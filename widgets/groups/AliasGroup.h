@@ -21,8 +21,8 @@ protected:
 public:
     AliasGroup(MainPanel *mainPanel);
 
-    ObjectType type() const override { return ALIAS; }
-    ObjectCategory category() const override { return _NODE; }
+    ObjectType type() const override { return ObjectType::Alias; }
+    ObjectCategory category() const override { return ObjectCategory::Node; }
 
     void updateSelection(const Selection &selection) override;
     void updateCoordinates() override;

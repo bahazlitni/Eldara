@@ -1,9 +1,9 @@
-#include "App.h"
+#include "Scene.h"
 #include "objects/Alias.h"
 #include "objects/Resistor.h"
 #include "widgets/tabs/VariablesTab.h"
 
-App::App(QWidget *parent):
+Scene::Scene(QWidget *parent):
     QWidget(parent),
     grid(Grid(this)),
     pen(Pen(this)),
@@ -17,15 +17,15 @@ App::App(QWidget *parent):
     setMouseTracking(true);
 }
 
-void App::addAlias(const SharedAlias &alias){ aliases.insert(alias->id(), alias); }
-void App::removeAlias(const SharedAlias &alias){ aliases.remove(alias->id()); }
+void Scene::addAlias(const SharedAlias &alias){ aliases.insert(alias->id(), alias); }
+void Scene::removeAlias(const SharedAlias &alias){ aliases.remove(alias->id()); }
 
-void App::resizeEvent(QResizeEvent *event) {
+void Scene::resizeEvent(QResizeEvent *event) {
     QWidget::resizeEvent(event);
     grid.updateSize();
     update();
 }
-void App::mouseMoveEvent(QMouseEvent *event){
+void Scene::mouseMoveEvent(QMouseEvent *event){
     _dp = event->pos() - _p;
     _p = event->pos();
     _worldP = grid.toWorld(_p);
@@ -35,12 +35,12 @@ void App::mouseMoveEvent(QMouseEvent *event){
     mouse->move();
     update();
 }
-void App::wheelEvent(QWheelEvent *event){
+void Scene::wheelEvent(QWheelEvent *event){
     grid.setZoom(event->position(), event->angleDelta().y() / 120);
     mouse->move();
     update();
 }
-void App::mousePressEvent(QMouseEvent *event){
+void Scene::mousePressEvent(QMouseEvent *event){
     const Qt::MouseButton btn = event->button();
     mouse->set_tDown(btn, mouse->t());
     set_pDown(btn, _p);
@@ -52,7 +52,7 @@ void App::mousePressEvent(QMouseEvent *event){
     }
     update();
 }
-void App::mouseReleaseEvent(QMouseEvent *event){
+void Scene::mouseReleaseEvent(QMouseEvent *event){
     const Qt::MouseButton btn = event->button();
     mouse->set_tUp(btn, mouse->t());
     set_pUp(btn, _p);
@@ -65,7 +65,7 @@ void App::mouseReleaseEvent(QMouseEvent *event){
     update();
 }
 
-void App::keyPressEvent(QKeyEvent *event){
+void Scene::keyPressEvent(QKeyEvent *event){
     const Qt::Key key = static_cast<Qt::Key>(event->key());
     keys.insert(key);
 
@@ -83,7 +83,7 @@ void App::keyPressEvent(QKeyEvent *event){
 }
 
 
-void App::keyReleaseEvent(QKeyEvent *event){
+void Scene::keyReleaseEvent(QKeyEvent *event){
     const Qt::Key key = (Qt::Key) event->key();
     keys.remove(key);
 
@@ -97,7 +97,7 @@ void App::keyReleaseEvent(QKeyEvent *event){
     mouse->keyUp(key);
     update();
 }
-void App::mouseDoubleClickEvent(QMouseEvent *event){
+void Scene::mouseDoubleClickEvent(QMouseEvent *event){
     const Qt::MouseButton btn = event->button();
     mouse->set_tUp(btn, mouse->t());
     set_pUp(btn, mouse->p());
@@ -118,34 +118,34 @@ void App::mouseDoubleClickEvent(QMouseEvent *event){
 
 
 // DISPLAY
-void App::paintEvent(QPaintEvent *event){ grid.render(event); }
+void Scene::paintEvent(QPaintEvent *event){ grid.render(event); }
 
-void App::setMouse(MouseTool *m){
+void Scene::setMouse(MouseTool *m){
     if(m == mouse) return;
     mouse->end();
     m->init();
     mouse = m;
 }
-void App::setTempMouse(MouseTool *m, const Qt::Key key){
+void Scene::setTempMouse(MouseTool *m, const Qt::Key key){
     prevMouse = mouse;
     mouse = m;
     mouse->init();
     returningKey = key;
 }
 
-void App::undo(){ timeline.undo(); grid.updateVisibility(); }
-void App::redo(){ timeline.redo(); grid.updateVisibility(); }
-void App::execute(std::unique_ptr<Command> cmd){
+void Scene::undo(){ timeline.undo(); grid.updateVisibility(); }
+void Scene::redo(){ timeline.redo(); grid.updateVisibility(); }
+void Scene::execute(std::unique_ptr<Command> cmd){
     timeline.execute(std::move(cmd));
     grid.updateVisibility();
 }
 
-void App::deepRemoval(const SharedObject &obj){
+void Scene::deepRemoval(const SharedObject &obj){
     selector.deepRemoval(obj);
     pen.deepRemoval(obj);
     grabber.deepRemoval(obj);
     grid.deepRemoval(obj);
-    if(obj->category() == _NODE) {
+    if(obj->category() == ObjectCategory::Node) {
         const auto &alias = std::static_pointer_cast<Alias>(obj);
         removeAlias(alias);
     }

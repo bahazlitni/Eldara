@@ -1,7 +1,7 @@
 #pragma once
 #include <QPushButton>
 #include "widgets/groups/InputGroup.h"
-#include "App.h"
+#include "Scene.h"
 #include "widgets/MainPanel.h"
 
 class BooleanInput : public QPushButton {
@@ -66,7 +66,7 @@ public:
 private slots:
     void onCheckStateChanged(bool checked) {
         group->setAttr(attr, checked);
-        group->mainPanel->app->update();
+        group->mainPanel->scene->update();
         updateIcon();
     }
 };

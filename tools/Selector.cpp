@@ -1,5 +1,5 @@
 #include "Selector.h"
-#include "App.h"
+#include "Scene.h"
 #include <QDebug>
 #include <QPen>
 #include <QCursor>
@@ -14,7 +14,7 @@
 #include "objects/Object.h"
 #include "utils/Selection.h"
 
-Selector::Selector(App *app) : MouseTool(app),
+Selector::Selector(Scene *scene) : MouseTool(scene),
     selectorCursor(QCursor(QPixmap(":assets/cursor/selector.png"), 0, 0)),
     draggingCursor(QCursor(QPixmap(":assets/cursor/cross.png"))),
     plusCursor(QCursor(QPixmap(":assets/cursor/selector_plus.png"), 0, 0)),
@@ -38,7 +38,7 @@ void Selector::end() {
 void Selector::downL(){
     switch(_state){
     case SELECTOR: {
-        if(_hoverCategory == _VOID) {
+        if(_hoverCategory == ObjectCategory::Void) {
             setState(SELECTING);
             draggingObject.reset();
             break;
@@ -53,7 +53,7 @@ void Selector::downL(){
         break;
     }
     case SELECTING_PLUS: {
-        if(_hoverCategory == _VOID) break;
+        if(_hoverCategory == ObjectCategory::Void) break;
         const auto &hovered = hoveredObject();
         if(_selection.contains(hovered))
             _selection.remove(hovered);
@@ -80,51 +80,55 @@ void Selector::upL(){
 }
 
 void Selector::updateMovement(){
-    setTarget(app->grid.snap(worldP()));
+    if(scene->snapPosition())
+        setTarget(scene->grid.snap(worldP()));
+    else
+        setTarget(worldP());
+
     switch(_state){
     case SELECTOR:
     case SELECTING_PLUS:
         resetHover();
-        for(const auto &alias : app->grid.visibleAliases){
-            if(alias->hover(worldP(), app->grid.zoom())){
+        for(const auto &alias : scene->grid.visibleAliases){
+            if(alias->hover(worldP(), scene->grid.zoom())){
                 _hoveredObject = alias;
-                _hoverCategory = _NODE;
+                _hoverCategory = ObjectCategory::Node;
                 setTarget(alias->p());
                 return;
             }
         }
-        for(const auto &dipole : app->grid.visibleDipoles){
-            if(dipole->hover(worldP(), app->grid.zoom())){
+        for(const auto &dipole : scene->grid.visibleDipoles){
+            if(dipole->hover(worldP(), scene->grid.zoom())){
                 _hoveredObject = dipole;
-                _hoverCategory = _DIPOLE;
+                _hoverCategory = ObjectCategory::Dipole;
                 return;
             }
         }
         break;
     case DRAGGING: {
         _indicators.clear();
-        if(ctrl()){
+        if(!scene->snapPosition() || ctrl()){
             setTarget(worldP());
             return;
         }
 
         QVector<QPointF> points;
         switch(draggingObject->category()){
-        case _NODE: {
+        case ObjectCategory::Node: {
             const auto &draggingAlias = std::static_pointer_cast<Alias>(draggingObject);
 
             if(shift()) setTarget(pA(worldP(), movementMap[draggingAlias->share()].first));
 
             const QPointF dp(t() - tDown(Qt::LeftButton));
 
-            for(const auto &alias : app->grid.visibleAliases){
+            for(const auto &alias : scene->grid.visibleAliases){
                 if(!_selection.contains(alias)) points.append(alias->p());
             }
 
-            setTarget(indicateTarget(app, _indicators, movementMap[draggingAlias->share()].first + dp, points, app->grid.zoom()));
+            setTarget(indicateTarget(scene, _indicators, movementMap[draggingAlias->share()].first + dp, points, scene->grid.zoom()));
             break;
         }
-        case _DIPOLE: {
+        case ObjectCategory::Dipole: {
             const auto &draggingDipole = std::static_pointer_cast<Dipole>(draggingObject);
             const auto &A = draggingDipole->A();
             const auto &B = draggingDipole->B();
@@ -135,13 +139,13 @@ void Selector::updateMovement(){
 
             const QPointF dp(t() - tDown(Qt::LeftButton));
 
-            for(const auto &alias : app->grid.visibleAliases){
+            for(const auto &alias : scene->grid.visibleAliases){
                 if(alias != A && alias != B && !_selection.contains(alias)) points.append(alias->p());
             }
 
             setTarget(t() - B0 - dp +
-                indicateTarget(app, _indicators, B0 - A0 +
-                indicateTarget(app, _indicators, A0 + dp, points, app->grid.zoom()), points, app->grid.zoom())
+                indicateTarget(scene, _indicators, B0 - A0 +
+                indicateTarget(scene, _indicators, A0 + dp, points, scene->grid.zoom()), points, scene->grid.zoom())
             );
             break;
         }
@@ -167,16 +171,16 @@ void Selector::move(){
         }
         break;
     case SELECTING_PLUS:
-        if(_hoverCategory == _VOID) app->setCursor(selectorCursor);
+        if(_hoverCategory == ObjectCategory::Void) scene->setCursor(selectorCursor);
         else {
             if(_selection.contains(hoveredObject()))
-                app->setCursor(minusCursor);
+                scene->setCursor(minusCursor);
             else
-                app->setCursor(plusCursor);
+                scene->setCursor(plusCursor);
         }
         break;
     case SELECTING: {
-        const QPointF down = app->grid.toWorld(pDown(Qt::LeftButton));
+        const QPointF down = scene->grid.toWorld(pDown(Qt::LeftButton));
         const QPointF targ = worldP();
         box = QRectF(
             std::min(down.x(), targ.x()),
@@ -206,10 +210,10 @@ void Selector::move(){
 
 QPointF Selector::unitDisplacement(const Qt::Key key){
     switch(key){
-    case Qt::Key_Up: return QPointF(0.0, -app->grid.tileSize());
-    case Qt::Key_Down: return QPointF(0.0, app->grid.tileSize());
-    case Qt::Key_Left: return QPointF(-app->grid.tileSize(), 0.0);
-    case Qt::Key_Right: return QPointF(app->grid.tileSize(), 0.0);
+    case Qt::Key_Up: return QPointF(0.0, -scene->tileSize());
+    case Qt::Key_Down: return QPointF(0.0, scene->tileSize());
+    case Qt::Key_Left: return QPointF(-scene->tileSize(), 0.0);
+    case Qt::Key_Right: return QPointF(scene->tileSize(), 0.0);
     default: return QPointF(0.0, 0.0);
     }
 }
@@ -218,7 +222,7 @@ void Selector::keyDown(Qt::Key key){
     switch(key){
     case Qt::Key_Space:
         if(_state != SELECTING)
-            app->setTempMouse(&app->grabber, Qt::Key_Space);
+            scene->setTempMouse(&scene->grabber, Qt::Key_Space);
         break;
     case Qt::Key_Alt:
     case Qt::Key_AltGr:
@@ -231,7 +235,7 @@ void Selector::keyDown(Qt::Key key){
     case Qt::Key_A:
         if(ctrl()){
             if(shift()){
-                for(const auto &alias : app->aliases){
+                for(const auto &alias : scene->aliases){
                     _selection.insert(alias);
                     for(const auto &dipole : alias->connections())
                         _selection.insert(dipole);
@@ -239,9 +243,9 @@ void Selector::keyDown(Qt::Key key){
             }
             else {
                 _selection.clear();
-                _selection.reserve(app->grid.visibleAliases.size() + app->grid.visibleDipoles.size());
-                for(const auto &alias : app->grid.visibleAliases) _selection.insert(alias);
-                for(const auto &dipole : app->grid.visibleDipoles) _selection.insert(dipole);
+                _selection.reserve(scene->grid.visibleAliases.size() + scene->grid.visibleDipoles.size());
+                for(const auto &alias : scene->grid.visibleAliases) _selection.insert(alias);
+                for(const auto &dipole : scene->grid.visibleDipoles) _selection.insert(dipole);
             }
             emit selectionChanged();
         }
@@ -250,52 +254,52 @@ void Selector::keyDown(Qt::Key key){
         init();
         break;
     case Qt::Key_P:
-        app->setMouse(&app->pen);
-        app->pen.setType(ALIAS);
+        scene->setMouse(&scene->pen);
+        scene->pen.setType(ObjectType::Alias);
         break;
     case Qt::Key_W:
-        app->setMouse(&app->pen);
-        app->pen.setType(WIRE);
+        scene->setMouse(&scene->pen);
+        scene->pen.setType(ObjectType::Wire);
         break;
     case Qt::Key_R:
-        app->setMouse(&app->pen);
-        app->pen.setType(RESISTOR);
+        scene->setMouse(&scene->pen);
+        scene->pen.setType(ObjectType::Resistor);
         break;
     case Qt::Key_C:
         if(ctrl()) toCopySelection = QSet(_selection);
         else {
-            app->setMouse(&app->pen);
-            app->pen.setType(CAPACITOR);
+            scene->setMouse(&scene->pen);
+            scene->pen.setType(ObjectType::Capacitor);
         }
         break;
     case Qt::Key_V:
         if(ctrl() && !toCopySelection.isEmpty()){
             select(
                 copySelection(
-                    app,
+                    scene,
                     toCopySelection,
-                    QPointF(app->grid.tileSize(), app->grid.tileSize())
+                    QPointF(scene->tileSize(), scene->tileSize())
                 )
             );
             toCopySelection = QSet(_selection);
-            app->execute(std::make_unique<InsertObjectsCommand>(app, _selection));
+            scene->execute(std::make_unique<InsertObjectsCommand>(scene, _selection));
         }
         break;
     case Qt::Key_L:
-        app->setMouse(&app->pen);
-        app->pen.setType(INDUCTOR);
+        scene->setMouse(&scene->pen);
+        scene->pen.setType(ObjectType::Inductor);
         break;
     case Qt::Key_B:
-        app->setMouse(&app->pen);
-        app->pen.setType(BATTERY);
+        scene->setMouse(&scene->pen);
+        scene->pen.setType(ObjectType::Battery);
         break;
     case Qt::Key_E:
-        app->setMouse(&app->pen);
-        app->pen.setType(DC_VOLTAGE_GENERATOR);
+        scene->setMouse(&scene->pen);
+        scene->pen.setType(ObjectType::DCV);
         break;
     case Qt::Key_I:
-        app->setMouse(&app->pen);
-        app->pen.setType(DC_CURRENT_GENERATOR);
+        scene->setMouse(&scene->pen);
+        scene->pen.setType(ObjectType::DCI);
         break;
     case Qt::Key_Up:
     case Qt::Key_Down:
@@ -359,48 +363,48 @@ void Selector::drawObject(const SharedObject &obj, const QColor &color){
     QBrush brush(obj->brush());
     brush.setColor(color);
     pen.setColor(color);
-    app->grid.drawObject(obj, pen, brush);
+    scene->grid.drawObject(obj, pen, brush);
 }
 
 void Selector::draw(QPainter *painter){
     if(_state != DRAGGING){
         const auto &hovered = hoveredObject();
         for(const auto &obj : _selection){
-            if(obj->category() == _DIPOLE && hovered != obj)
+            if(obj->category() == ObjectCategory::Dipole && hovered != obj)
                drawObject(obj, Palette::SELECT);
         }
         for(const auto &obj : _selection){
-            if(obj->category() == _NODE && hovered != obj)
+            if(obj->category() == ObjectCategory::Node && hovered != obj)
                 drawObject(obj, Palette::SELECT);
         }
-        if(_hoverCategory != _VOID)
+        if(_hoverCategory != ObjectCategory::Void)
             drawObject(hoveredObject(), Palette::HOVER);
     }
 
     switch(_state){
     case SELECTING: {
-        app->grid.setupPainterMode(SELECTION_BOX);
-        painter->drawRect(app->grid.toScreen(box));
+        scene->grid.setupPainterMode(SELECTION_BOX);
+        painter->drawRect(scene->grid.toScreen(box));
         break;
     }
     case DRAGGING: {
         for(const auto &obj : _selection){
-            if(obj->category() != _DIPOLE || mergeMap.contains(obj)) continue;
+            if(obj->category() != ObjectCategory::Dipole || mergeMap.contains(obj)) continue;
             drawObject(obj, Palette::SELECT);
         }
         for(const auto &obj : _selection){
-            if(obj->category() != _NODE || mergeMap.contains(obj)) continue;
+            if(obj->category() != ObjectCategory::Node || mergeMap.contains(obj)) continue;
             drawObject(obj, Palette::SELECT);
         }
 
         drawIndicators(painter);
         for(const auto &merging : mergeMap.keys()){
-            app->grid.setupPainterMode(MERGE_INDICATOR);
+            scene->grid.setupPainterMode(MERGE_INDICATOR);
             switch(merging->category()){
-            case _NODE: {
+            case ObjectCategory::Node: {
                 const auto &mergingAlias = std::static_pointer_cast<Alias>(merging);
                 const int r = static_cast<int>(mergingAlias->radius());
-                const QRectF rect = PtoR(app->grid.toScreen(mergingAlias->p()), r);
+                const QRectF rect = PtoR(scene->grid.toScreen(mergingAlias->p()), r);
                 painter->drawEllipse(rect);
                 painter->drawLine(rect.topLeft(), rect.bottomRight());
                 painter->drawLine(rect.topRight(), rect.bottomLeft());
@@ -423,10 +427,10 @@ void Selector::setCursor(const ToolState state){
     case SELECTOR:
     case SELECTING:
     case SELECTING_PLUS:
-        app->setCursor(selectorCursor);
+        scene->setCursor(selectorCursor);
         break;
     case DRAGGING:
-        app->setCursor(draggingCursor);
+        scene->setCursor(draggingCursor);
         break;
     default:
         break;
@@ -435,7 +439,7 @@ void Selector::setCursor(const ToolState state){
 
 void Selector::deleteSelection(){
     if(_selection.isEmpty()) return;
-    app->execute(std::make_unique<RemoveObjectsCommand>(app, _selection));
+    scene->execute(std::make_unique<RemoveObjectsCommand>(scene, _selection));
     _selection.clear();
     emit selectionChanged();
 }
@@ -494,11 +498,11 @@ Selection Selector::filter(ObjectCategory cat) const noexcept {
 
 void Selector::selectInsideBox() {
     _selection.clear();
-    for(const auto &alias : app->grid.visibleAliases){
-        if(alias->inside(box, app->grid.zoom())) _selection.insert(alias);
+    for(const auto &alias : scene->grid.visibleAliases){
+        if(alias->inside(box, scene->grid.zoom())) _selection.insert(alias);
     }
-    for(const auto &dipole : app->grid.visibleDipoles){
-        if(dipole->inside(box, app->grid.zoom())) _selection.insert(dipole);
+    for(const auto &dipole : scene->grid.visibleDipoles){
+        if(dipole->inside(box, scene->grid.zoom())) _selection.insert(dipole);
     }
 }
 
@@ -530,7 +534,7 @@ void Selector::setState(const ToolState state){
         box = QRectF();
         break;
     case SELECTING: {
-        const QPointF p = app->grid.toWorld(pDown(Qt::LeftButton));
+        const QPointF p = scene->grid.toWorld(pDown(Qt::LeftButton));
         box = QRectF(p.x(), p.y(), 0.0, 0.0);
         break;
     }
@@ -547,10 +551,13 @@ void Selector::setState(const ToolState state){
 
 void Selector::calcMergeMap(){
     mergeMap.clear();
-    for(const auto &mergerAlias : app->grid.visibleAliases){
+
+    if(!scene->allowMerging()) return;
+
+    for(const auto &mergerAlias : scene->grid.visibleAliases){
         if(deepSelection.contains(mergerAlias)) continue;
         for(const auto &obj : deepSelection){
-            if(obj->category() != _NODE) continue;
+            if(obj->category() != ObjectCategory::Node) continue;
             const auto &alias = std::static_pointer_cast<Alias>(obj);
             const float dx = mergerAlias->x() - alias->x();
             const float dy = mergerAlias->y() - alias->y();
@@ -560,7 +567,7 @@ void Selector::calcMergeMap(){
     }
 
     for(const auto &obj : deepSelection){
-        if(obj->category() != _DIPOLE) continue;
+        if(obj->category() != ObjectCategory::Dipole) continue;
         const auto &mergedDipole = std::static_pointer_cast<Dipole>(obj);
         const auto &mergedA = mergedDipole->A();
         const auto &mergedB = mergedDipole->B();
@@ -569,7 +576,7 @@ void Selector::calcMergeMap(){
 
         if(mergedA == mergingA && mergedB == mergingB) continue;
 
-        for(const auto &mergerDipole : app->grid.visibleDipoles){
+        for(const auto &mergerDipole : scene->grid.visibleDipoles){
             if(deepSelection.contains(mergerDipole)) continue;
             const auto &mergerA = mergerDipole->A();
             const auto &mergerB = mergerDipole->B();
@@ -589,7 +596,7 @@ void Selector::deepRemoval(const SharedObject &obj){
     toCopySelection.remove(obj);
     deepSelection.remove(obj);
 
-    if(obj->category() == _NODE){
+    if(obj->category() == ObjectCategory::Node){
         const auto &alias = std::static_pointer_cast<Alias>(obj);
         const auto &sharedP = alias->share();
         mergeMap.remove(alias);
@@ -604,7 +611,7 @@ void Selector::deepRemoval(const SharedObject &obj){
 void Selector::translate(const QPointF &dp){
     if(dp.isNull()) return;
     for(auto sharedP : movementMap.keys()){
-        const QPointF updatedP = app->grid.snap(*sharedP.get() + dp);
+        const QPointF updatedP = scene->grid.snap(*sharedP.get() + dp);
         sharedP->setX(updatedP.x());
         sharedP->setY(updatedP.y());
     }
@@ -620,13 +627,13 @@ void Selector::executeDrag(){
     const bool Merge = !mergeMap.isEmpty();
 
     if(Move && !Merge)
-        app->execute(std::make_unique<MovePointsCommand>(app, movementMap));
+        scene->execute(std::make_unique<MovePointsCommand>(scene, movementMap));
     else if(Merge && !Move)
-        app->execute(std::make_unique<MergeSelectionCommand>(app, mergeMap));
+        scene->execute(std::make_unique<MergeSelectionCommand>(scene, mergeMap));
     else if(Move && Merge){
         auto cmd = std::make_unique<ComboCommand>();
-        cmd->addCommand(std::make_unique<MovePointsCommand>(app, movementMap));
-        cmd->addCommand(std::make_unique<MergeSelectionCommand>(app, mergeMap));
-        app->execute(std::move(cmd));
+        cmd->addCommand(std::make_unique<MovePointsCommand>(scene, movementMap));
+        cmd->addCommand(std::make_unique<MergeSelectionCommand>(scene, mergeMap));
+        scene->execute(std::move(cmd));
     }
 }

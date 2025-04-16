@@ -1,5 +1,5 @@
 #include "MainPanel.h"
-#include "App.h"
+#include "Scene.h"
 
 #include "widgets/groups/ObjectGroup.h"
 #include "widgets/groups/AliasGroup.h"
@@ -9,9 +9,9 @@
 #include "widgets/tabs/SelectionTab.h"
 #include "widgets/tabs/VariablesTab.h"
 
-MainPanel::MainPanel(App *app, QWidget *parent) :
+MainPanel::MainPanel(Scene *scene, QWidget *parent) :
     QTabWidget(parent),
-    app(app),
+    scene(scene),
     quickSettingsTab(new QuickSettingsTab(this)),
     selectionTab(new SelectionTab(this)),
     variablesTab(new VariablesTab(this))

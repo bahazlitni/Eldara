@@ -3,7 +3,7 @@
 #include "BCControlPoint.h"
 
 
-// Append a new point at the tail (stack push)
+// Sceneend a new point at the tail (stack push)
 void BCPath::stack(const std::shared_ptr<BCPoint>& bcp) {
     if (!bcp) return;
     // For safety, ensure the new node's pointers are cleared.

@@ -4,9 +4,9 @@
 using namespace std;
 
 int main(int argc, char *argv[]) {
-    QApplication app(argc, argv);
+    QApplication scene(argc, argv);
 
     Window window = Window();
     window.show();
-    return app.exec();
+    return scene.exec();
 }

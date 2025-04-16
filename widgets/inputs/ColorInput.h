@@ -9,7 +9,7 @@
 #include <QWheelEvent>
 
 class InputGroup;
-class App;
+class Scene;
 
 class ColorInput : public QWidget {
     Q_OBJECT

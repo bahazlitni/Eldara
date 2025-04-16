@@ -2,7 +2,7 @@
 #include "objects/Object.h"
 #include "objects/Dipole.h"
 #include "objects/Alias.h"
-#include "App.h"
+#include "Scene.h"
 
 #include "widgets/tabs/VariablesTab.h"
 #include "widgets/MainPanel.h"
@@ -14,14 +14,14 @@ EmbedParamCommand::EmbedParamCommand(
     const QString &name,
     const Param param
 ):
-    Command(variablesTab->mainPanel->app),
+    Command(variablesTab->mainPanel->scene),
     _variablesTab(variablesTab),
     _name(name),
     _param(param)
 {
     _cache.reserve(selection.size());
     for(const auto &obj : selection){
-        if(obj->category() != _DIPOLE) continue;
+        if(obj->category() != ObjectCategory::Dipole) continue;
         const auto &dipole = std::static_pointer_cast<Dipole>(obj);
         _cache.append(Cache{
             dipole,

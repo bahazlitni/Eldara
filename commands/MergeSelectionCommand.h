@@ -4,10 +4,10 @@
 
 #include <QHash>
 
-class App;
+class Scene;
 class MergeSelectionCommand: public Command {
 public:
-    MergeSelectionCommand(App *app, const MergeMap &mergeMap);
+    MergeSelectionCommand(Scene *scene, const MergeMap &mergeMap);
 
     void execute() override;
     void undo() override;

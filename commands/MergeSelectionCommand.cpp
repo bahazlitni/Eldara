@@ -1,22 +1,22 @@
 #include "MergeSelectionCommand.h"
 #include "utils/Selection.h"
-#include "App.h"
+#include "Scene.h"
 
 #include "objects/Object.h"
 #include "objects/Alias.h"
 #include "objects/Dipole.h"
 
-MergeSelectionCommand::MergeSelectionCommand(App *app, const MergeMap &mergeMap):
-    Command(app), _mergeMap(mergeMap) {
+MergeSelectionCommand::MergeSelectionCommand(Scene *scene, const MergeMap &mergeMap):
+    Command(scene), _mergeMap(mergeMap) {
     for(const auto &merged : _mergeMap.keys()){
         switch(merged->category()){
-        case _NODE: {
+        case ObjectCategory::Node: {
             const auto &mergedAlias = std::static_pointer_cast<Alias>(merged);
             for(auto dipole : mergedAlias->connections())
                 _dipolesConfig.insert(dipole, qMakePair(dipole->A(), dipole->B()));
             break;
         }
-        case _DIPOLE: {
+        case ObjectCategory::Dipole: {
             const auto &mergedDipole = std::static_pointer_cast<Dipole>(merged);
             _dipolesConfig.insert(mergedDipole, qMakePair(mergedDipole->A(), mergedDipole->B()));
             break;
@@ -33,7 +33,7 @@ void MergeSelectionCommand::execute(){
     for(const auto &merged : _mergeMap.keys()){
         if(!merged) continue;
         switch(merged->category()){
-        case _NODE: {
+        case ObjectCategory::Node: {
             const auto &mergedAlias = std::static_pointer_cast<Alias>(merged);
             const auto &mergerAlias = std::static_pointer_cast<Alias>(_mergeMap[merged]);
             for(auto dipole : mergedAlias->connections()){
@@ -44,7 +44,7 @@ void MergeSelectionCommand::execute(){
             }
             break;
         }
-        case _DIPOLE: {
+        case ObjectCategory::Dipole: {
             const auto &mergedDipole = std::static_pointer_cast<Dipole>(merged);
             if(const auto &A = mergedDipole->A()) A->disconnect(mergedDipole);
             if(const auto &B = mergedDipole->B()) B->disconnect(mergedDipole);
@@ -53,16 +53,16 @@ void MergeSelectionCommand::execute(){
         default:
             break;
         }
-        app->deepRemoval(merged);
+        scene->deepRemoval(merged);
     }
 }
 
 void MergeSelectionCommand::undo(){
     Command::execute();
     for(const auto &merged : _mergeMap.keys()){
-        if(!merged || merged->category() != _NODE) continue;
+        if(!merged || merged->category() != ObjectCategory::Node) continue;
         const auto &mergedAlias = std::static_pointer_cast<Alias>(merged);
-        app->aliases.insert(mergedAlias->id(), mergedAlias);
+        scene->aliases.insert(mergedAlias->id(), mergedAlias);
     }
     for(auto dipole : _dipolesConfig.keys()){
         const auto &dipoleConfig = _dipolesConfig[dipole];
@@ -72,6 +72,6 @@ void MergeSelectionCommand::undo(){
         dipole->setB(dipoleConfig.second);
         if(dipoleConfig.first) dipoleConfig.first->connect(dipole);
         if(dipoleConfig.second) dipoleConfig.second->connect(dipole);
-        dipole->dirtyVisibleCheckFlag = app->grid.getDirtyVisibleCheckFlagInitial();
+        dipole->dirtyVisibleCheckFlag = scene->grid.getDirtyVisibleCheckFlagInitial();
     }
 }

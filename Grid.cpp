@@ -1,42 +1,43 @@
 #include "Grid.h"
-#include "App.h"
+#include "Scene.h"
 #include "objects/Alias.h"
 #include "objects/Resistor.h"
-#include "objects/Capacitor.h"
-#include "objects/Inductor.h"
-#include "objects/Battery.h"
-#include "objects/DC_VoltageGenerator.h"
-#include "objects/DC_CurrentGenerator.h"
 
 #include "tools/MouseTool.h"
 #include "utils/Geometry.h"
 
-#include "objects/BCPath.h"
-#include "objects/BCPoint.h"
-#include "objects/BCControlPoint.h"
 
-
-Grid::Grid(App *app): app(app) {
+Grid::Grid(Scene *scene): scene(scene) {
     setX(0.0f);
     setY(0.0f);
-    setWidth(app->width());
-    setHeight(app->height());
+    setWidth(scene->width());
+    setHeight(scene->height());
     zoomIndex = DEFAULT_ZOOM_INDEX;
+}
+
+float Grid::snap(float x) const {
+    const int TILE_SIZE = scene->tileSize();
+    if(x < 0){
+        const float r = std::fmod(-x, TILE_SIZE);
+        return x + ((2*r > TILE_SIZE ? -TILE_SIZE : 0) + r);
+    }
+    const float r = std::fmod(x, TILE_SIZE);
+    return x + ((2*r > TILE_SIZE ? TILE_SIZE : 0) - r);
 }
 
 void Grid::setZoom(const QPointF &p, const int d){
     const float previousZoom = zoom();
     zoomIndex = std::clamp(zoomIndex + d, 0, MAJ_ZOOM_INDEX);
     setTopLeft(topLeft() + p * (1.0f/previousZoom-1.0f/zoom()));
-    setWidth(app->width()/zoom());
-    setHeight(app->height()/zoom());
+    setWidth(scene->width()/zoom());
+    setHeight(scene->height()/zoom());
     updateGridTile();
     updateVisibility();
 }
 
 void Grid::updateGridTile() {
     // Compute the ideal step in screen pixels.
-    float step = tileSize() * zoom();
+    float step = scene->tileSize() * zoom();
     // Quantize the step size to an integer for the pixmap.
     int stepInt = std::max(1, static_cast<int>(std::ceil(step)));
 
@@ -107,7 +108,7 @@ void Grid::setupPainterMode(PainterMode type, QPainter &painter){
         break;
     case GRID_STROKE:
         painter.setRenderHint(QPainter::Antialiasing, false);
-        pen.setColor(Palette::GRID_STROKE);
+        pen.setColor(scene->gridStrokeColor());
         pen.setWidth(1);
         painter.setPen(pen);
         painter.setBrush(Qt::NoBrush);
@@ -313,8 +314,8 @@ void Grid::drawBattery(const QPointF &A, const QPointF &B, const QPen &pen, cons
     drawLabelText(label, HALF_BATTERY_POSITIVE_HEIGHT);
 }
 
-// DC_VoltageGenerator
-void Grid::drawDC_VoltageGenerator(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+// DCV
+void Grid::drawDCV(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
     painter.setPen(pen);
     painter.setBrush(Qt::NoBrush);
 
@@ -326,8 +327,8 @@ void Grid::drawDC_VoltageGenerator(const QPointF &A, const QPointF &B, const QPe
     const QPointF P0 = midp - DEFAULT_CIRCLE_RADIUS*T;
     const QPointF P1 = midp - 0.6*DEFAULT_CIRCLE_RADIUS*T;
     const QPointF P2 = midp + 0.6*DEFAULT_CIRCLE_RADIUS*T;
-    const QPointF P3 = P2 + DC_VOLTAGE_GENERATOR_ARROW_H*v1;
-    const QPointF P4 = P2 + DC_VOLTAGE_GENERATOR_ARROW_H*v2;
+    const QPointF P3 = P2 + DCV_ARROW_H*v1;
+    const QPointF P4 = P2 + DCV_ARROW_H*v2;
     const QPointF P5 = midp + DEFAULT_CIRCLE_RADIUS*T;
 
     QPainterPath path;
@@ -347,8 +348,8 @@ void Grid::drawDC_VoltageGenerator(const QPointF &A, const QPointF &B, const QPe
     drawLabelText(label, DEFAULT_CIRCLE_RADIUS);
 }
 
-// DC_CurrentGenerator
-void Grid::drawDC_CurrentGenerator(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+// DCI
+void Grid::drawDCI(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
     painter.setPen(pen);
     painter.setBrush(Qt::NoBrush);
 
@@ -374,12 +375,12 @@ void Grid::drawDC_CurrentGenerator(const QPointF &A, const QPointF &B, const QPe
 
 void Grid::drawDipole(const ObjectType type, const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
     switch (type) {
-    case RESISTOR: return drawResistor(A, B, pen, label);
-    case CAPACITOR: return drawCapacitor(A, B, pen, label);
-    case INDUCTOR: return drawInductor(A, B, pen, label);
-    case BATTERY: return drawBattery(A, B, pen, label);
-    case DC_VOLTAGE_GENERATOR: return drawDC_VoltageGenerator(A, B, pen, label);
-    case DC_CURRENT_GENERATOR: return drawDC_CurrentGenerator(A, B, pen, label);
+    case ObjectType::Resistor: return drawResistor(A, B, pen, label);
+    case ObjectType::Capacitor: return drawCapacitor(A, B, pen, label);
+    case ObjectType::Inductor: return drawInductor(A, B, pen, label);
+    case ObjectType::Battery: return drawBattery(A, B, pen, label);
+    case ObjectType::DCV: return drawDCV(A, B, pen, label);
+    case ObjectType::DCI: return drawDCI(A, B, pen, label);
     default: return;
     }
 }
@@ -389,20 +390,20 @@ void Grid::drawObject(const SharedObject &obj, const QPen &pen, const QBrush &br
         drawAlias(
             toScreen(a->p()), brush,
             a->radius(),
-            a->showLabel() ? a->label() : ""
+            a->showLabel() ? a->label(scene->displayRawValues()) : ""
         );
     else if(const auto &d = dynamic_pointer_cast<Dipole>(obj))
         drawDipole(
             d->type(),
             toScreen(d->p1()),
             toScreen(d->p2()),
-            pen, d->showLabel()? d->label() : ""
+            pen, d->showLabel()? d->label(scene->displayRawValues()) : ""
         );
 }
 
 // Update the grid size and then update the grid cache.
 void Grid::updateSize(){
-    setSize(app->size()/zoom());
+    setSize(scene->size()/zoom());
     updateGridTile();
     updateVisibility();
 }
@@ -418,10 +419,10 @@ void Grid::updateVisibility(const SharedDipole &dipole){
 
 void Grid::addVisible(const SharedObject &obj){
     switch(obj->category()){
-    case _NODE:
+    case ObjectCategory::Node:
         addVisible(std::static_pointer_cast<Alias>(obj));
         break;
-    case _DIPOLE:
+    case ObjectCategory::Dipole:
         addVisible(std::static_pointer_cast<Dipole>(obj));
         break;
     default:
@@ -430,10 +431,10 @@ void Grid::addVisible(const SharedObject &obj){
 }
 void Grid::removeVisible(const SharedObject &obj){
     switch(obj->category()){
-    case _NODE:
+    case ObjectCategory::Node:
         removeVisible(std::static_pointer_cast<Alias>(obj));
         break;
-    case _DIPOLE:
+    case ObjectCategory::Dipole:
         removeVisible(std::static_pointer_cast<Dipole>(obj));
         break;
     default:
@@ -442,10 +443,10 @@ void Grid::removeVisible(const SharedObject &obj){
 }
 void Grid::updateVisibility(const SharedObject &obj){
     switch(obj->category()){
-    case _NODE:
+    case ObjectCategory::Node:
         updateVisibility(std::static_pointer_cast<Alias>(obj));
         break;
-    case _DIPOLE:
+    case ObjectCategory::Dipole:
         updateVisibility(std::static_pointer_cast<Dipole>(obj));
         break;
     default:
@@ -462,7 +463,7 @@ void Grid::updateVisibility() {
     const bool NOT_dirtyVisibleCheckFlagInitial = !dirtyVisibleCheckFlagInitial;
 
     // Prepare for parallel processing
-    const QHash<int, SharedAlias>& aliases = app->aliases;
+    const QHash<int, SharedAlias>& aliases = scene->aliases;
     const QList<int> aliasKeys = aliases.keys(); // Get keys for indexing
     const int totalAliases = aliasKeys.size();
 
@@ -536,30 +537,32 @@ void Grid::updateVisibility() {
 
 // Render the grid and the rest of the scene.
 void Grid::render([[maybe_unused]] QPaintEvent *event){
-    painter.begin(app);
-    painter.setClipRect(toScreen(*this));
+    QRectF viewportRect = toScreen(*this);
 
-    if (zoom() > 1.5f && !gridTile.isNull()) {
+    painter.begin(scene);
+    painter.setClipRect(viewportRect);
+    painter.fillRect(viewportRect, scene->backgroundColor());
+
+    if (scene->showGrid() && zoom() > 1.5f && !gridTile.isNull()) {
         setupPainterMode(GRID_STROKE, painter);
-        QRectF viewportRect = toScreen(*this);
         painter.drawTiledPixmap(viewportRect, gridTile, QPointF(x() - snap(x()), y() - snap(y()))*zoom());
     }
 
     // Draw objects.
     for (const auto &dipole : visibleDipoles){
-        if(app->mouse->willDraw(dipole)) continue;
+        if(scene->mouse->willDraw(dipole)) continue;
         drawObject(dipole, dipole->pen(), dipole->brush());
     }
 
     for (const auto &alias : visibleAliases){
-        if (app->mouse->willDraw(alias)) continue;
+        if (scene->mouse->willDraw(alias)) continue;
         drawAlias(
             toScreen(alias->p()), alias->brush(),
             alias->radius(),
-            alias->showLabel() ? alias->label() : ""
+            alias->showLabel() ? alias->label(true) : ""
         );
     }
 
-    app->mouse->draw(&painter);
+    scene->mouse->draw(&painter);
     painter.end();
 }

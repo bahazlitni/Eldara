@@ -3,22 +3,22 @@
 #include "commands/RemoveVariablesCommand.h"
 #include "commands/AddVariablesCommand.h"
 #include "widgets/MainPanel.h"
-#include "App.h"
+#include "Scene.h"
 
 #include "SelectionTab.h"
 
 inline void VariablesTab::exe_changeVariables(
     const QVector<QString> &names, const QVector<QVariant> &newValues
 ){
-    mainPanel->app->execute(std::make_unique<ChangeVariablesCommand>(this, names, newValues));
+    mainPanel->scene->execute(std::make_unique<ChangeVariablesCommand>(this, names, newValues));
 }
 inline void VariablesTab::exe_removeVariables(const QVector<QString> &names){
-    mainPanel->app->execute(std::make_unique<RemoveVariablesCommand>(this, names));
+    mainPanel->scene->execute(std::make_unique<RemoveVariablesCommand>(this, names));
 }
 inline void VariablesTab::exe_addVariables(
     const QVector<QString> &names, const QVector<QVariant> &values, const QVector<VariableType> &types
 ){
-    mainPanel->app->execute(std::make_unique<AddVariablesCommand>(this, names, values, types));
+    mainPanel->scene->execute(std::make_unique<AddVariablesCommand>(this, names, values, types));
 }
 inline void VariablesTab::exe_replaceVariables(
     const QVector<QString> &oldNames,
@@ -29,7 +29,7 @@ inline void VariablesTab::exe_replaceVariables(
     std::unique_ptr<ComboCommand> cmd = std::make_unique<ComboCommand>();
     cmd->addCommand(std::make_unique<RemoveVariablesCommand>(this, oldNames));
     cmd->addCommand(std::make_unique<AddVariablesCommand>(this, newNames, newValues, newTypes));
-    mainPanel->app->execute(std::move(cmd));
+    mainPanel->scene->execute(std::move(cmd));
 }
 
 // Constructor
@@ -158,7 +158,7 @@ void VariablesTab::validateNewData(
             if (ok)
                 *newValue = QVariant(parsedValue == 0? 0 : qBound(range.first, parsedValue, range.second));
             else
-                *newValue = defaultOf(type);
+                *newValue = 0.0;
         }
     }
     else if(type == VAR_INT){
@@ -171,7 +171,7 @@ void VariablesTab::validateNewData(
             if (ok)
                 *newValue = QVariant(parsedValue == 0? 0 : qBound((int) range.first, parsedValue, (int) range.second));
             else
-                *newValue = defaultOf(type);
+                *newValue = 0.0;
         }
     }
     else if(type == VAR_STRING)
@@ -214,7 +214,7 @@ void VariablesTab::onCellDoubleClicked(const int row, const int col) {
 
 void VariablesTab::onAddVariable(){
     QString validatedName = "";
-    QVariant validatedValue = defaultOf(lastEnteredType);
+    QVariant validatedValue = "";
     validateNewData(validatedName, validatedValue, lastEnteredType, &validatedName, &validatedValue);
     exe_addVariables(
         QVector{validatedName},

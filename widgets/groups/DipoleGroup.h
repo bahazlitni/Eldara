@@ -3,7 +3,7 @@
 #include "ObjectGroup.h"
 #include "utils/Globals.h"
 
-class App;
+class Scene;
 class CoordinateInput;
 class IDLabel;
 class AliasGroup;
@@ -22,7 +22,7 @@ protected:
 
 public:
     DipoleGroup(MainPanel *mainPanel, const ObjectType type, QWidget *parent = nullptr);
-    ObjectCategory category() const override { return _DIPOLE; }
+    ObjectCategory category() const override { return ObjectCategory::Dipole; }
     ObjectType type() const override { return _type; }
 
     void updateData() override;

@@ -31,8 +31,8 @@ public:
 
     ~BCPoint() = default;
 
-    ObjectType type() const override { return BC_POINT; }
-    ObjectCategory category() const override { return _EDIT; }
+    ObjectType type() const override { return ObjectType::BCP; }
+    ObjectCategory category() const override { return ObjectCategory::Edit; }
 
     std::shared_ptr<BCControlPoint> before() const { return _before; }
     std::shared_ptr<BCControlPoint> after() const { return _after; }

@@ -1,6 +1,6 @@
 #include "ColorInput.h"
 #include "widgets/groups/InputGroup.h"
-#include "App.h"
+#include "Scene.h"
 #include "widgets/MainPanel.h"
 #include "widgets/groups/InputGroup.h"
 
@@ -53,7 +53,7 @@ void ColorInput::onHexEditingFinished(){
     if(newColor.isValid()){
         setColor(newColor);
         group->setColor(this, newColor);
-        group->mainPanel->app->update();
+        group->mainPanel->scene->update();
     } else {
         hexCodeText->setText(currentColor.name().toUpper());
     }
@@ -73,7 +73,7 @@ void ColorInput::onPreviewClicked(){
     if(color.isValid()){
         setColor(color);
         group->setColor(this, color);
-        group->mainPanel->app->update();
+        group->mainPanel->scene->update();
     }
 }
 

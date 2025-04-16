@@ -3,7 +3,7 @@
 #include "widgets/custom/CustomDoubleSpinBox.h"
 #include <QLineEdit>
 #include "widgets/groups/InputGroup.h"
-#include "App.h"
+#include "Scene.h"
 #include "widgets/MainPanel.h"
 
 class CoordinateInput: public CustomDoubleSpinBox {
@@ -24,7 +24,7 @@ public:
         connect(this, &CustomDoubleSpinBox::editingFinished, [this](){
             this->group->confirmAttr(this->attr, this->value());
             this->updateData();
-            this->group->mainPanel->app->update();
+            this->group->mainPanel->scene->update();
         });
     }
 
@@ -36,15 +36,15 @@ public:
         const double newValue = value();
         this->group->setAttr(this->attr, newValue);
         lastValue = newValue;
-        this->group->mainPanel->app->update();
+        this->group->mainPanel->scene->update();
     }
 
     void increment() override {
-        setValue(group->mainPanel->app->grid.snap(value() + group->mainPanel->app->grid.tileSize()));
+        setValue(group->mainPanel->scene->grid.snap(value() + group->mainPanel->scene->tileSize()));
         updateCrement();
     }
     void decrement() override {
-        setValue(group->mainPanel->app->grid.snap(value() - group->mainPanel->app->grid.tileSize()));
+        setValue(group->mainPanel->scene->grid.snap(value() - group->mainPanel->scene->tileSize()));
         updateCrement();
     }
 

@@ -1,0 +1,477 @@
+/* Window.h */
+#pragma once
+#include "utils/Globals.h"
+
+class Scene;
+class MainPanel;
+
+class Window : public QMainWindow {
+    Q_OBJECT
+
+public:
+    explicit Window();
+
+private:
+    QSplitter *splitter;
+    QMenu *fileMenu;
+    QMenu *editMenu;
+    QAction *openAction;
+    QAction *saveAction;
+    QAction *saveAsAction;
+    QAction *preferencesAction;
+    Scene *scene;
+    MainPanel *mainPanel;
+
+    void setupMenuBar();
+    void setupSplitter();
+    void setupConnections();
+    void applySettings();
+
+private slots:
+    void openFile();
+    void saveFile();
+    void saveFileAs();
+    void openPreferences();
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
+};
+
+
+
+/* Window.cpp */
+#include "Window.h"
+#include "Scene.h"
+#include "widgets/MainPanel.h"
+#include "widgets/tabs/SelectionTab.h"
+#include "widgets/tabs/QuickSettingsTab.h"
+#include "tools/Selector.h"
+#include "tools/Pen.h"
+#include "dialogs/PreferencesDialog.h"
+
+Window::Window()
+    : QMainWindow(),
+    splitter(new QSplitter(Qt::Horizontal, this)),
+    scene(new Scene(splitter)),
+    mainPanel(new MainPanel(scene, splitter))
+{
+    setWindowTitle("Circuits Simulator");
+    setupMenuBar();
+    setupSplitter();
+    setupConnections();
+    applySettings();
+}
+
+void Window::setupMenuBar() {
+    // File menu
+    fileMenu = menuBar()->addMenu(tr("&File"));
+    openAction = new QAction(tr("&Open..."), this);
+    openAction->setShortcut(QKeySequence::Open);
+    fileMenu->addAction(openAction);
+    saveAction = new QAction(tr("&Save"), this);
+    saveAction->setShortcut(QKeySequence::Save);
+    fileMenu->addAction(saveAction);
+    saveAsAction = new QAction(tr("Save &As..."), this);
+    saveAsAction->setShortcut(QKeySequence::SaveAs);
+    fileMenu->addAction(saveAsAction);
+    connect(openAction, &QAction::triggered, this, &Window::openFile);
+    connect(saveAction, &QAction::triggered, this, &Window::saveFile);
+    connect(saveAsAction, &QAction::triggered, this, &Window::saveFileAs);
+
+    // Edit menu
+    editMenu = menuBar()->addMenu(tr("&Edit"));
+    preferencesAction = new QAction(tr("&Preferences..."), this);
+    editMenu->addAction(preferencesAction);
+    connect(preferencesAction, &QAction::triggered, this, &Window::openPreferences);
+}
+
+void Window::setupSplitter() {
+    setCentralWidget(splitter);
+    splitter->setHandleWidth(1);
+    splitter->addWidget(scene);
+    splitter->addWidget(mainPanel);
+    splitter->setStretchFactor(0, 1);
+    splitter->setStretchFactor(1, 0);
+    splitter->setCollapsible(1, false);
+    splitter->setSizes({scene->width(), mainPanel->minimumWidth()});
+    splitter->setStyleSheet(R"(
+        QSplitter::handle {
+            background-color: #333;
+        }
+    )");
+}
+
+void Window::setupConnections() {
+    connect(&scene->selector, &Selector::selectionChanged,
+            mainPanel->selectionTab, &SelectionTab::updateData);
+    connect(&scene->selector, &Selector::selectionDragged,
+            mainPanel->selectionTab, &SelectionTab::updateCoordinates);
+    connect(&scene->pen, &Pen::dataChanged,
+            mainPanel->quickSettingsTab, &QuickSettingsTab::updatePenData);
+}
+
+void Window::applySettings() {
+    QSettings settings;
+
+    qWarning() << "settings applied";
+
+    // Scene settings
+    QColor bg = settings.value("Scene/BackgroundColor", QColor(33, 33, 33)).value<QColor>();
+    QColor gridStroke = settings.value("Scene/GridStrokeColor", QColor(44, 44, 44)).value<QColor>();
+    scene->setBackgroundColor(bg);
+    scene->setGridStrokeColor(gridStroke);
+    scene->setTileSize(settings.value("Scene/TileSize", 50).toInt());
+    scene->setSnapPosition(settings.value("Scene/SnapPosition", true).toBool());
+    scene->setShowGrid(settings.value("Scene/ShowGrid", true).toBool());
+    scene->setDisplayRawValues(settings.value("Scene/DisplayRawValues", false).toBool());
+
+    // Pen tool settings
+    Pen &pen = scene->pen;
+    pen.setStrokeWidth(settings.value("PenTool/StrokeWidth", 1).toInt());
+    pen.setStrokeColor(settings.value("PenTool/StrokeColor", QColor("#CCC")).value<QColor>());
+    pen.setFillColor(settings.value("PenTool/FillColor", QColor("#FFF")).value<QColor>());
+    pen.setAllowSplitting(settings.value("PenTool/AllowSplitting", true).toBool());
+    pen.setAllowMerging(settings.value("PenTool/AllowMerging", true).toBool());
+    pen.setAllowOnClickColoring(settings.value("PenTool/AllowOnClickColoring", true).toBool());
+    pen.setDefaultResistance(settings.value("PenTool/DefaultResistance", 1e3).toDouble());
+    pen.setDefaultCapacitance(settings.value("PenTool/DefaultCapacitance", 1e-8).toDouble());
+    pen.setDefaultInductance(settings.value("PenTool/DefaultInductance", 1e-4).toDouble());
+    pen.setDefaultBatteryVoltage(settings.value("PenTool/DefaultBatteryVoltage", 5.0).toDouble());
+    pen.setDefaultDCVoltage(settings.value("PenTool/DefaultDCVoltage", 15.0).toDouble());
+    pen.setDefaultIntensity(settings.value("PenTool/DefaultIntensity", 1e-3).toDouble());
+    pen.setDefaultQuantity(settings.value("PenTool/DefaultQuantity", 1.0).toDouble());
+}
+
+void Window::openFile() {
+    const QString filename = QFileDialog::getOpenFileName(
+        this,
+        tr("Open File"),
+        QString(),
+        tr("Dara Files (*.dara);;All Files (*)")
+        );
+    if (!filename.isEmpty()) {
+        // TODO: implement loading logic
+    }
+}
+
+void Window::saveFile() {
+    saveFileAs();
+}
+
+void Window::saveFileAs() {
+    const QString filename = QFileDialog::getSaveFileName(
+        this,
+        tr("Save File As"),
+        QString(),
+        tr("Dara Files (*.dara);;All Files (*)")
+        );
+    if (!filename.isEmpty()) {
+        // TODO: implement saving logic
+    }
+}
+
+void Window::openPreferences() {
+    PreferencesDialog dlg(this);
+    if (dlg.exec() == QDialog::Accepted) {
+        applySettings();
+    }
+}
+
+void Window::closeEvent(QCloseEvent *event) {
+    event->accept();
+}
+
+
+
+/* dialogs/PreferencesDialog.h */
+#pragma once
+#include "utils/Globals.h"
+
+class QTabWidget;
+class QSpinBox;
+class QCheckBox;
+class QDoubleSpinBox;
+class QPushButton;
+class QDialogButtonBox;
+
+class PreferencesDialog : public QDialog {
+    Q_OBJECT
+public:
+    explicit PreferencesDialog(QWidget *parent = nullptr);
+
+private slots:
+    void chooseSceneBackground();
+    void chooseSceneGridStroke();
+    void choosePenStrokeColor();
+    void choosePenFillColor();
+
+    void accept() override;
+    void apply();
+    void reject() override;
+
+private:
+    void buildSceneTab();
+    void buildPenToolTab();
+    void loadSettings();
+    void saveSettings();
+    void updateColorButton(QPushButton *btn, const QColor &color);
+    void backupCurrentSettings();
+    void restoreBackupSettings();
+
+    QTabWidget *tabWidget;
+    QDialogButtonBox *buttonBox;
+    QVariantMap backup;
+
+    // Scene widgets
+    QPushButton *bgColorBtn;
+    QPushButton *gridStrokeBtn;
+    QSpinBox *tileSizeSpin;
+    QCheckBox *snapPosCheck;
+    QCheckBox *showGridCheck;
+    QCheckBox *displayRawCheck;
+
+    // Pen tool widgets
+    QSpinBox *strokeWidthSpin;
+    QPushButton *strokeColorBtn;
+    QPushButton *fillColorBtn;
+    QCheckBox *allowSplitCheck;
+    QCheckBox *allowMergeCheck;
+    QCheckBox *allowOnClickCheck;
+    QDoubleSpinBox *defaultResSpin;
+    QDoubleSpinBox *defaultCapSpin;
+    QDoubleSpinBox *defaultIndSpin;
+    QDoubleSpinBox *defaultBattSpin;
+    QDoubleSpinBox *defaultDCVSpin;
+    QDoubleSpinBox *defaultIntSpin;
+    QDoubleSpinBox *defaultQtySpin;
+};
+
+
+
+/* dialogs/PreferencesDialog.cpp */
+#include "dialogs/PreferencesDialog.h"
+
+PreferencesDialog::PreferencesDialog(QWidget *parent) : QDialog(parent) {
+    setWindowTitle(tr("Preferences"));
+    resize(500, 400);
+
+    tabWidget = new QTabWidget(this);
+    buildSceneTab();
+    buildPenToolTab();
+    tabWidget->addTab(new QWidget(), tr("Hot Keys")); // Placeholder
+
+    QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    mainLayout->addWidget(tabWidget);
+
+    buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Apply);
+    connect(buttonBox->button(QDialogButtonBox::Ok), &QPushButton::clicked, this, &PreferencesDialog::accept);
+    connect(buttonBox->button(QDialogButtonBox::Apply), &QPushButton::clicked, this, &PreferencesDialog::apply);
+    connect(buttonBox->button(QDialogButtonBox::Cancel), &QPushButton::clicked, this, &PreferencesDialog::reject);
+    mainLayout->addWidget(buttonBox);
+
+    loadSettings();
+    backupCurrentSettings();
+}
+
+void PreferencesDialog::buildSceneTab() {
+    QWidget *tab = new QWidget;
+    QFormLayout *layout = new QFormLayout(tab);
+
+    bgColorBtn = new QPushButton;
+    gridStrokeBtn = new QPushButton;
+    tileSizeSpin = new QSpinBox;
+    tileSizeSpin->setRange(10, 500);
+    snapPosCheck = new QCheckBox;
+    showGridCheck = new QCheckBox;
+    displayRawCheck = new QCheckBox;
+
+    layout->addRow(tr("Background Color:"), bgColorBtn);
+    layout->addRow(tr("Grid Stroke Color:"), gridStrokeBtn);
+    layout->addRow(tr("Tile Size:"), tileSizeSpin);
+    layout->addRow(tr("Snap Position:"), snapPosCheck);
+    layout->addRow(tr("Show Grid:"), showGridCheck);
+    layout->addRow(tr("Display Raw Values:"), displayRawCheck);
+
+    tabWidget->addTab(tab, tr("Scene"));
+
+    connect(bgColorBtn, &QPushButton::clicked, this, &PreferencesDialog::chooseSceneBackground);
+    connect(gridStrokeBtn, &QPushButton::clicked, this, &PreferencesDialog::chooseSceneGridStroke);
+}
+
+void PreferencesDialog::buildPenToolTab() {
+    QWidget *tab = new QWidget;
+    QFormLayout *layout = new QFormLayout(tab);
+
+    strokeWidthSpin = new QSpinBox;
+    strokeWidthSpin->setRange(1, 5);
+
+    strokeColorBtn = new QPushButton;
+    fillColorBtn = new QPushButton;
+    allowSplitCheck = new QCheckBox;
+    allowMergeCheck = new QCheckBox;
+    allowOnClickCheck = new QCheckBox;
+
+    defaultResSpin = new QDoubleSpinBox;
+    defaultResSpin->setDecimals(6);
+    defaultResSpin->setRange(0, 1e9);
+    defaultResSpin->setSuffix(" Ω");
+
+    defaultCapSpin = new QDoubleSpinBox;
+    defaultCapSpin->setDecimals(12);
+    defaultCapSpin->setRange(0, 1e-2);
+    defaultCapSpin->setSuffix(" F");
+
+    defaultIndSpin = new QDoubleSpinBox;
+    defaultIndSpin->setDecimals(12);
+    defaultIndSpin->setRange(0, 1e-1);
+    defaultIndSpin->setSuffix(" H");
+
+    defaultBattSpin = new QDoubleSpinBox;
+    defaultBattSpin->setDecimals(3);
+    defaultBattSpin->setRange(0, 1e3);
+    defaultBattSpin->setSuffix(" V");
+
+    defaultDCVSpin = new QDoubleSpinBox;
+    defaultDCVSpin->setDecimals(3);
+    defaultDCVSpin->setRange(0, 1e3);
+    defaultDCVSpin->setSuffix(" V");
+
+    defaultIntSpin = new QDoubleSpinBox;
+    defaultIntSpin->setDecimals(9);
+    defaultIntSpin->setRange(0, 1e2);
+    defaultIntSpin->setSuffix(" A");
+
+    defaultQtySpin = new QDoubleSpinBox;
+    defaultQtySpin->setDecimals(6);
+    defaultQtySpin->setRange(0, 1e5);
+    defaultQtySpin->setSuffix(" C");
+
+    layout->addRow(tr("Stroke Width:"), strokeWidthSpin);
+    layout->addRow(tr("Stroke Color:"), strokeColorBtn);
+    layout->addRow(tr("Fill Color:"), fillColorBtn);
+    layout->addRow(tr("Allow Splitting:"), allowSplitCheck);
+    layout->addRow(tr("Allow Merging:"), allowMergeCheck);
+    layout->addRow(tr("Allow On-Click Coloring:"), allowOnClickCheck);
+    layout->addRow(tr("Default Resistance:"), defaultResSpin);
+    layout->addRow(tr("Default Capacitance:"), defaultCapSpin);
+    layout->addRow(tr("Default Inductance:"), defaultIndSpin);
+    layout->addRow(tr("Default Battery Voltage:"), defaultBattSpin);
+    layout->addRow(tr("Default DCV Voltage:"), defaultDCVSpin);
+    layout->addRow(tr("Default Intensity:"), defaultIntSpin);
+    layout->addRow(tr("Default Quantity:"), defaultQtySpin);
+
+    tabWidget->addTab(tab, tr("Pen Tool"));
+
+    connect(strokeColorBtn, &QPushButton::clicked, this, &PreferencesDialog::choosePenStrokeColor);
+    connect(fillColorBtn, &QPushButton::clicked, this, &PreferencesDialog::choosePenFillColor);
+}
+
+void PreferencesDialog::apply() {
+    saveSettings();
+    // The main window applies settings when this is closed with accept()
+}
+
+void PreferencesDialog::accept() {
+    apply();
+    QDialog::accept();
+}
+
+void PreferencesDialog::reject() {
+    restoreBackupSettings();
+    QDialog::reject();
+}
+
+void PreferencesDialog::loadSettings() {
+    QSettings s;
+
+    // Scene
+    updateColorButton(bgColorBtn, s.value("scene/background", QColor(33, 33, 33)).value<QColor>());
+    updateColorButton(gridStrokeBtn, s.value("scene/gridStroke", QColor(44, 44, 44)).value<QColor>());
+    tileSizeSpin->setValue(s.value("scene/tileSize", 50).toInt());
+    snapPosCheck->setChecked(s.value("scene/snapPosition", true).toBool());
+    showGridCheck->setChecked(s.value("scene/showGrid", true).toBool());
+    displayRawCheck->setChecked(s.value("scene/displayRaw", false).toBool());
+
+    // Pen
+    strokeWidthSpin->setValue(s.value("pen/strokeWidth", 1).toInt());
+    updateColorButton(strokeColorBtn, s.value("pen/strokeColor", QColor("#CCC")).value<QColor>());
+    updateColorButton(fillColorBtn, s.value("pen/fillColor", QColor("#FFF")).value<QColor>());
+    allowSplitCheck->setChecked(s.value("pen/allowSplit", true).toBool());
+    allowMergeCheck->setChecked(s.value("pen/allowMerge", true).toBool());
+    allowOnClickCheck->setChecked(s.value("pen/allowOnClickColor", true).toBool());
+    defaultResSpin->setValue(s.value("pen/defaultResistance", 1e3).toDouble());
+    defaultCapSpin->setValue(s.value("pen/defaultCapacitance", 1e-8).toDouble());
+    defaultIndSpin->setValue(s.value("pen/defaultInductance", 1e-4).toDouble());
+    defaultBattSpin->setValue(s.value("pen/defaultBatteryVoltage", 5.0).toDouble());
+    defaultDCVSpin->setValue(s.value("pen/defaultDCVVoltage", 15.0).toDouble());
+    defaultIntSpin->setValue(s.value("pen/defaultIntensity", 1e-3).toDouble());
+    defaultQtySpin->setValue(s.value("pen/defaultQuantity", 1.0).toDouble());
+}
+
+void PreferencesDialog::saveSettings() {
+    QSettings s;
+
+    s.setValue("scene/background", bgColorBtn->palette().button().color());
+    s.setValue("scene/gridStroke", gridStrokeBtn->palette().button().color());
+    s.setValue("scene/tileSize", tileSizeSpin->value());
+    s.setValue("scene/snapPosition", snapPosCheck->isChecked());
+    s.setValue("scene/showGrid", showGridCheck->isChecked());
+    s.setValue("scene/displayRaw", displayRawCheck->isChecked());
+
+    s.setValue("pen/strokeWidth", strokeWidthSpin->value());
+    s.setValue("pen/strokeColor", strokeColorBtn->palette().button().color());
+    s.setValue("pen/fillColor", fillColorBtn->palette().button().color());
+    s.setValue("pen/allowSplit", allowSplitCheck->isChecked());
+    s.setValue("pen/allowMerge", allowMergeCheck->isChecked());
+    s.setValue("pen/allowOnClickColor", allowOnClickCheck->isChecked());
+    s.setValue("pen/defaultResistance", defaultResSpin->value());
+    s.setValue("pen/defaultCapacitance", defaultCapSpin->value());
+    s.setValue("pen/defaultInductance", defaultIndSpin->value());
+    s.setValue("pen/defaultBatteryVoltage", defaultBattSpin->value());
+    s.setValue("pen/defaultDCVVoltage", defaultDCVSpin->value());
+    s.setValue("pen/defaultIntensity", defaultIntSpin->value());
+    s.setValue("pen/defaultQuantity", defaultQtySpin->value());
+}
+
+void PreferencesDialog::backupCurrentSettings() {
+    QSettings s;
+    for (const QString &key : s.allKeys()) {
+        backup[key] = s.value(key);
+    }
+}
+
+void PreferencesDialog::restoreBackupSettings() {
+    QSettings s;
+    s.clear();
+    for (auto it = backup.begin(); it != backup.end(); ++it) {
+        s.setValue(it.key(), it.value());
+    }
+}
+
+void PreferencesDialog::updateColorButton(QPushButton *btn, const QColor &color) {
+    QPalette pal = btn->palette();
+    pal.setColor(QPalette::Button, color);
+    btn->setAutoFillBackground(true);
+    btn->setPalette(pal);
+    btn->update();
+}
+
+void PreferencesDialog::chooseSceneBackground() {
+    QColor color = QColorDialog::getColor(bgColorBtn->palette().button().color(), this, "Choose Background Color");
+    if (color.isValid()) updateColorButton(bgColorBtn, color);
+}
+
+void PreferencesDialog::chooseSceneGridStroke() {
+    QColor color = QColorDialog::getColor(gridStrokeBtn->palette().button().color(), this, "Choose Grid Stroke Color");
+    if (color.isValid()) updateColorButton(gridStrokeBtn, color);
+}
+
+void PreferencesDialog::choosePenStrokeColor() {
+    QColor color = QColorDialog::getColor(strokeColorBtn->palette().button().color(), this, "Choose Stroke Color");
+    if (color.isValid()) updateColorButton(strokeColorBtn, color);
+}
+
+void PreferencesDialog::choosePenFillColor() {
+    QColor color = QColorDialog::getColor(fillColorBtn->palette().button().color(), this, "Choose Fill Color");
+    if (color.isValid()) updateColorButton(fillColorBtn, color);
+}

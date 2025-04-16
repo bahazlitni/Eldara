@@ -5,12 +5,12 @@
 #include <QSet>
 #include "utils/Globals.h"
 
-class App;
+class Scene;
 class Selector: public MouseTool {
     Q_OBJECT
 
 public:
-    Selector(App *app);
+    Selector(Scene *scene);
 
     ToolState initState() const override { return SELECTOR; }
     void end() override;

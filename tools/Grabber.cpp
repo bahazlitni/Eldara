@@ -1,15 +1,15 @@
 #include "Grabber.h"
-#include "App.h"
+#include "Scene.h"
 #include "Grid.h"
 
 
 void Grabber::move(){
     if(state() != GRABBING) return;
-    app->grid.moveTo(origin + (pDown(Qt::LeftButton) - p())/app->grid.zoom());
+    scene->grid.moveTo(origin + (pDown(Qt::LeftButton) - p())/scene->grid.zoom());
 
 }
 void Grabber::downL(){
-    origin = app->grid.topLeft();
+    origin = scene->grid.topLeft();
     setState(GRABBING);
 }
 void Grabber::upL(){ setState(GRABBER); }
@@ -18,10 +18,10 @@ void Grabber::setState(const ToolState state){
     _state = state;
     switch(state){
     case GRABBER:
-        app->setCursor(grabberCursor);
+        scene->setCursor(grabberCursor);
         break;
     case GRABBING:
-        app->setCursor(grabbingCursor);
+        scene->setCursor(grabbingCursor);
         break;
     default:
         break;
