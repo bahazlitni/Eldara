@@ -100,28 +100,28 @@ void Pen::move(){
 }
 
 SharedAlias Pen::MakeAlias(const QPointF &p){
-    const QString address = previous && type == ObjectType::Alias && alt() ? previous->address() : scene->address();
+    const uint64_t address = previous && type == ObjectType::Alias && alt() ? previous->address() : scene->address();
     return std::make_shared<Alias>(scene->id(), address, p.x(), p.y(), radius(), brush(), showLabel());
 }
 SharedDipole Pen::MakeDipole(const SharedAlias &A, const SharedAlias &B, ObjectType type){
     switch(type){
     case ObjectType::Resistor:
-        return std::make_shared<Resistor>(A, B, pen(), showLabel(), defaultResistance());
+        return std::make_shared<Resistor>(scene->id(), A, B, pen(), showLabel(), defaultResistance());
 
     case ObjectType::Capacitor:
-        return std::make_shared<Capacitor>(A, B, pen(), showLabel(), defaultCapacitance(), 0.0);
+        return std::make_shared<Capacitor>(scene->id(), A, B, pen(), showLabel(), defaultCapacitance(), 0.0);
 
     case ObjectType::Inductor:
-        return std::make_shared<Inductor>(A, B, pen(), showLabel(), defaultInductance(), 0.0);
+        return std::make_shared<Inductor>(scene->id(), A, B, pen(), showLabel(), defaultInductance(), 0.0);
 
     case ObjectType::Battery:
-        return std::make_shared<Battery>(A, B, pen(), showLabel(), defaultBatteryVoltage());
+        return std::make_shared<Battery>(scene->id(), A, B, pen(), showLabel(), defaultBatteryVoltage());
 
     case ObjectType::DCV:
-        return std::make_shared<DCV>(A, B, pen(), showLabel(), defaultDCVoltage());
+        return std::make_shared<DCV>(scene->id(), A, B, pen(), showLabel(), defaultDCVoltage());
 
     case ObjectType::DCI:
-        return std::make_shared<DCI>(A, B, pen(), showLabel(), defaultIntensity());
+        return std::make_shared<DCI>(scene->id(), A, B, pen(), showLabel(), defaultIntensity());
 
     default: return nullptr;
     }
@@ -270,6 +270,7 @@ void Pen::construct(){
     }
     case SWITCH_PREVIOUS:
         previous = static_pointer_cast<Alias>(hoveredObject());
+        if(allowOnClickColoring()) previous->setBrush(brush());
         break;
     }
 }
@@ -606,8 +607,16 @@ void Pen::drawResultantPreview(const QColor &color){
 
 void Pen::drawHoveredAlias(const QColor &color){
     QBrush b = brush();
-    b.setColor(color);
-    scene->grid.drawObject(hoveredAlias(), Qt::NoPen, b);
+    if(allowOnClickColoring())
+        b.setColor(fillColor());
+    else
+        b.setColor(color);
+
+    QPen pen;
+    pen.setStyle(Qt::PenStyle::DashLine);
+    pen.setColor(Palette::HOVER);
+    pen.setWidth(2);
+    scene->grid.drawObject(hoveredAlias(), pen, b);
 }
 void Pen::drawHoveredDipole(const QColor &color){
     QPen p = pen();
@@ -623,7 +632,7 @@ void Pen::draw(QPainter *painter){
         break;
     case DIPOLE_ONLY:
         drawDipolePreview(strokeColor());
-        drawHoveredAlias();
+        drawHoveredAlias(Palette::HOVER);
         break;
     case ALIAS_AND_DIPOLE:
         drawDipolePreview(strokeColor());
@@ -650,7 +659,7 @@ void Pen::draw(QPainter *painter){
         drawIndicators(painter);
         break;
     case SWITCH_PREVIOUS: {
-        drawHoveredAlias();
+        drawHoveredAlias(Palette::HOVER);
         break;
     }
     case PROHIBITED:

@@ -118,8 +118,10 @@ Selection copySelection(
             for(const auto &dipole : alias->connections()){
                 if(!selection.contains(dipole) || visitedDipoles.contains(dipole)) continue;
                 const auto &otherCopied = getAliasCopy(scene, copy, aliasCopyCache, dipole->other(alias), dp, generateNewAddresses);
-                if(alias == dipole->A()) copy.insert(dipole->clone(copied, otherCopied));
-                else copy.insert(dipole->clone(otherCopied, copied));
+                if(alias == dipole->A())
+                    copy.insert(dipole->clone(scene->id(), copied, otherCopied));
+                else
+                    copy.insert(dipole->clone(scene->id(), otherCopied, copied));
                 visitedDipoles.insert(dipole);
             }
             break;
@@ -129,7 +131,7 @@ Selection copySelection(
             if(visitedDipoles.contains(dipole)) continue;
             const auto &copiedA = getAliasCopy(scene, copy, aliasCopyCache, dipole->A(), dp, generateNewAddresses);
             const auto &copiedB = getAliasCopy(scene, copy, aliasCopyCache, dipole->B(), dp, generateNewAddresses);
-            copy.insert(dipole->clone(copiedA, copiedB));
+            copy.insert(dipole->clone(scene->id(), copiedA, copiedB));
             visitedDipoles.insert(dipole);
             break;
         }

@@ -18,7 +18,7 @@ protected:
     IDLabel *ID;
     QVector<DoubleParameterInput*> DoubleInputs;
 
-    void addParameter(const Param param, const QString &label);
+    void addParameter(const Param param, const QString &label, const bool hasShowLabel);
 
 public:
     DipoleGroup(MainPanel *mainPanel, const ObjectType type, QWidget *parent = nullptr);

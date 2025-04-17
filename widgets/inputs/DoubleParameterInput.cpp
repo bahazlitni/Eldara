@@ -12,7 +12,13 @@ inline int magnitudeToIndex(const QPair<int,int> &range, int order){
     return std::max((range.second - order)/3, 0);
 }
 
-DoubleParameterInput::DoubleParameterInput(ObjectGroup* group, Param param, const QString label, QWidget* parent):
+DoubleParameterInput::DoubleParameterInput(
+    ObjectGroup* group,
+    Param param,
+    const QString &label,
+    const bool hasShowLabel,
+    QWidget* parent
+):
     QWidget(parent),
     group(group),
     label(label),
@@ -27,15 +33,7 @@ DoubleParameterInput::DoubleParameterInput(ObjectGroup* group, Param param, cons
     headerWidget(new QWidget(this)),
     constantButton(new QPushButton("Constant", headerWidget)),
     variableButton(new QPushButton("Variable", headerWidget)),
-    ShowLabel(
-        new BooleanInput(
-            group, Attr::ShowLabel,
-            QIcon(":/assets/icons/eye_opened.png"),
-            QIcon(":/assets/icons/eye_shut.png"),
-            QSize(16,16),
-            parent
-            )
-        ),
+    hasShowLabel(hasShowLabel),
     constantWidget(new QWidget(this)),
     valueSpin(new CustomDoubleSpinBox(constantWidget)),
     magnitudeCombo(new QComboBox(constantWidget)),
@@ -44,6 +42,15 @@ DoubleParameterInput::DoubleParameterInput(ObjectGroup* group, Param param, cons
     varnameLineEdit(new QLineEdit(variableWidget)),
     variableCompleter(new QCompleter(this))
 {
+    if(hasShowLabel)
+        ShowLabel = new BooleanInput(
+            group, Attr::ShowLabel,
+            QIcon(":/assets/icons/eye_opened.png"),
+            QIcon(":/assets/icons/eye_shut.png"),
+            QSize(16,16),
+            parent
+        );
+
     setupHeaderUi();
     setupConstantUi();
     setupVariableUi();
@@ -56,7 +63,10 @@ void DoubleParameterInput::setupHeaderUi(){
     QButtonGroup *modeGroup = new QButtonGroup(headerWidget);
     QHBoxLayout *modeLayout = new QHBoxLayout();
 
-    layout->addWidget(ShowLabel);
+    if(hasShowLabel)
+        layout->addWidget(ShowLabel);
+
+
     layout->addWidget(new QLabel(label));
 
     layout->addLayout(modeLayout);
@@ -272,7 +282,7 @@ void DoubleParameterInput::updateCompleterModel(){
 }
 
 void DoubleParameterInput::updateData(){
-    ShowLabel->updateData();
+    if(hasShowLabel) ShowLabel->updateData();
 
     variables = group->mainPanel->variablesTab->names(vartype);
 

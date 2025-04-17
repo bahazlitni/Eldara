@@ -39,8 +39,7 @@ QPointF Dipole::p1() const { return _A.expired() ? QPointF() : *A(); }
 
 QVariant Dipole::getAttr(const Attr attr) const {
     switch (attr) {
-    case Attr::ID: return (_A.expired()? "?" : QString::number(_A.lock()->id())) +
-            ":" + (_B.expired()? "?" : QString::number(_B.lock()->id()));
+    case Attr::ID: return id();
     case Attr::X1: return x1();
     case Attr::X2: return x2();
     case Attr::Y1: return y1();

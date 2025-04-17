@@ -8,14 +8,14 @@ protected:
     QString _nameC, _nameQ0;
 
 public:
-    Capacitor(
+    Capacitor(const uint64_t id,
         const SharedAlias &A,
         const SharedAlias &B,
         const QPen &pen,
         const bool showLabel,
         const double C,
         const double Q0 = 0.0
-    ): Dipole(A, B, pen, showLabel), _C(C), _Q0(Q0) {}
+    ): Dipole(id, A, B, pen, showLabel), _C(C), _Q0(Q0) {}
 
     inline double paramValue(const Param param) const override {
         return param == Param::C ? _C : param == Param::Q0 ? _Q0 : 0.0;
@@ -60,7 +60,7 @@ public:
         return _nameC.isEmpty() ? formatDouble(_C, 3, FARAD, raw) : _nameC;
     }
 
-    SharedDipole clone(const SharedAlias &A, const SharedAlias &B) override {
-        return std::make_shared<Capacitor>(A, B, _pen, _showLabel, _C, _Q0);
+    SharedDipole clone(const uint64_t id, const SharedAlias &A, const SharedAlias &B) override {
+        return std::make_shared<Capacitor>(id, A, B, _pen, _showLabel, _C, _Q0);
     }
 };

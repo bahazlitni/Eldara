@@ -20,31 +20,31 @@ DipoleGroup::DipoleGroup(MainPanel *mainPanel, ObjectType type, QWidget *parent)
 
     switch(type){
     case ObjectType::Resistor:
-        addParameter(Param::R, "Resistance");
+        addParameter(Param::R, "Resistance", true);
         break;
     case ObjectType::Capacitor:
-        addParameter(Param::C, "Capacitance");
-        addParameter(Param::Q0, "Initial Quantity");
+        addParameter(Param::C, "Capacitance", true);
+        addParameter(Param::Q0, "Initial Quantity", false);
         break;
     case ObjectType::Inductor:
-        addParameter(Param::L, "Inductance");
-        addParameter(Param::I0, "Initial Current");
+        addParameter(Param::L, "Inductance", true);
+        addParameter(Param::I0, "Initial Current", false);
         break;
     case ObjectType::Battery:
     case ObjectType::DCV:
-        addParameter(Param::V, "Voltage");
+        addParameter(Param::V, "Voltage", true);
         break;
     case ObjectType::DCI:
-        addParameter(Param::I, "Current");
+        addParameter(Param::I, "Current", true);
         break;
     default:
         break;
     }
 }
 
-void DipoleGroup::addParameter(const Param param, const QString &label){
+void DipoleGroup::addParameter(const Param param, const QString &label, const bool hasShowLabel){
     static int i = 1;
-    const auto &DoubleInput = new DoubleParameterInput(this, param, label, this);
+    const auto &DoubleInput = new DoubleParameterInput(this, param, label, hasShowLabel, this);
     DoubleInputs.append(DoubleInput);
     contentLayout->addWidget(DoubleInput, i, 0, 1, 2);
     i++;

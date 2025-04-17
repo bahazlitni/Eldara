@@ -141,7 +141,7 @@ void VariablesTab::validateNewData(
     if (newName->isEmpty() || (*newName != originalName && containsName(*newName))){
         if (originalName.isEmpty() || containsName(originalName)){
             const QString key = getVariableKey(lastEnteredType).toUpper();
-            *newName = key + QString::number(suffix(key));
+            *newName = (key + QString::number(suffix(key))).left(VARNAME_MAX_LENGTH);
         }
         else
             *newName = originalName;
@@ -175,7 +175,7 @@ void VariablesTab::validateNewData(
         }
     }
     else if(type == VAR_STRING)
-        *newValue = newValue->toString().trimmed().left(range.second);
+        *newValue = newValue->toString().trimmed().left(VARVALUE_STRING_MAX_LENGTH);
     else
         *newValue = "";
 }
@@ -390,6 +390,18 @@ QVector<QVariant> VariablesTab::values(const VariableType type) const {
                 continue;
             if (auto valueItem = table->item(row, 1))
                 result.append(valueItem->data(Qt::UserRole));
+        }
+    }
+    return result;
+}
+
+QVector<VariableType> VariablesTab::types() const {
+    const int rows = table->rowCount();
+    QVector<VariableType> result;
+    result.reserve(rows);
+    for (int row = 0; row < rows; ++row) {
+        if (auto combo = qobject_cast<QComboBox*>(table->cellWidget(row, 2))) {
+            result.append(static_cast<VariableType>(combo->currentData().toInt()));
         }
     }
     return result;

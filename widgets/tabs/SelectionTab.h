@@ -13,6 +13,8 @@ public:
     explicit SelectionTab(MainPanel *mainPanel);
     MainPanel *mainPanel;
 
+    void reset(){}
+
 public slots:
     void updateData();
     void updateCoordinates();

@@ -77,19 +77,12 @@ public:
         return _record[1][i];
     }
 
-    uint64_t id(){ return trackid++; }
-    QString address(){
-        trackAddress++;
-        QString s;
-        uint64_t n = trackAddress;
-        while(n > 0) {
-            uint64_t remainder = (n - 1) % 26;
-            s = static_cast<char>('A' + remainder) + s;
-            n = (n - 1) / 26;
-        }
-        return s;
-    }
+    inline uint64_t id(){ return trackid++; }
+    inline uint64_t address(){ return trackAddress++; }
 
+    inline bool hasChanged() const { return !timeline.isEmpty(); }
+
+    void reset();
 
 private:
     struct Settings {

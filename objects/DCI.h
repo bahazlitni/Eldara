@@ -9,21 +9,13 @@ protected:
     QString _nameI;
 
 public:
-    DCI(
-        const SharedAlias &A,
-        const SharedAlias &B,
-        const QColor &color,
-        const bool showLabel,
-        const double I
-    ): Dipole(A, B, QPen(color), showLabel), _I(I) {}
-
-    DCI(
+    DCI(const uint64_t id,
         const SharedAlias &A,
         const SharedAlias &B,
         const QPen &pen,
         const bool showLabel,
         const double I
-    ): Dipole(A, B, pen, showLabel), _I(I) {}
+    ): Dipole(id, A, B, pen, showLabel), _I(I) {}
 
     inline double paramValue(const Param param) const override {
         return param == Param::I ? _I : 0.0;
@@ -65,7 +57,7 @@ public:
         );
     }
 
-    SharedDipole clone(const SharedAlias &A, const SharedAlias &B) override {
-        return std::make_shared<DCI>(A, B, _pen, _showLabel, _I);
+    SharedDipole clone(const uint64_t id, const SharedAlias &A, const SharedAlias &B) override {
+        return std::make_shared<DCI>(id, A, B, _pen, _showLabel, _I);
     }
 };

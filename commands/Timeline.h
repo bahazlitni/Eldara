@@ -5,14 +5,16 @@
 
 class Timeline {
 public:
-    explicit Timeline(std::size_t capacity = 500): _capacity(capacity){};
+    explicit Timeline(std::size_t capacity = 500): _capacity(capacity) {}
 
     void execute(std::unique_ptr<Command> cmd);
     void push(std::unique_ptr<Command> cmd);
     void undo();
     void redo();
     void clear();
-    std::size_t capacity() const { return _capacity; };
+
+    inline std::size_t capacity() const { return _capacity; }
+    inline bool isEmpty() const { return undoDeque.empty(); }
 
 private:
     std::deque<std::unique_ptr<Command>> undoDeque;

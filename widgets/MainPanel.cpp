@@ -39,3 +39,10 @@ void MainPanel::loadStyleSheet() {
         file.close();
     }
 }
+
+
+void MainPanel::reset(){
+    quickSettingsTab->reset();
+    selectionTab->reset();
+    variablesTab->reset();
+}

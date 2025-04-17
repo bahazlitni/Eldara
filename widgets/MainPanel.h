@@ -16,6 +16,9 @@ public:
     SelectionTab *selectionTab;
     VariablesTab *variablesTab;
 
+
+    void reset();
+
 private:
     const QString qssPath = ":widgets/styles/MainPanel.qss";
     void loadStyleSheet();

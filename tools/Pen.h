@@ -5,16 +5,7 @@
 #include "MouseTool.h"
 #include "objects/BCPath.h"
 
-enum ConstructionMode {
-    PROHIBITED = -1,
-    ALIAS_AND_DIPOLE = 0,
-    ALIAS_ONLY = 1,
-    DIPOLE_ONLY = 2,
-    ALIAS_SPLIT = 3,
-    NORMAL_SPLIT = 4,
-    OVER_SPLIT = 5,
-    SWITCH_PREVIOUS = 6
-};
+
 
 class ComboCommand;
 class Command;
@@ -26,6 +17,18 @@ class WorldPoint;
 
 class Pen: public MouseTool {
     Q_OBJECT
+
+protected:
+    enum Mode {
+       PROHIBITED,
+       ALIAS_AND_DIPOLE,
+       ALIAS_ONLY,
+       DIPOLE_ONLY,
+       ALIAS_SPLIT,
+       NORMAL_SPLIT,
+       OVER_SPLIT,
+       SWITCH_PREVIOUS
+    };
 
 public:
     Pen(Scene *scene);
@@ -140,7 +143,7 @@ protected:
     SharedDipole hoveredDipole();
     SharedAlias hoveredAlias();
 
-    ConstructionMode mode;
+    Mode mode;
     BCPath _path;
 
     const QCursor penCursor, constructingCursor, constructingPlusCursor;

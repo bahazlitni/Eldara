@@ -9,13 +9,13 @@ protected:
     QString _nameR;
 
 public:
-    Resistor(
+    Resistor(const uint64_t id,
         const SharedAlias &A,
         const SharedAlias &B,
         const QPen &pen,
         const bool showLabel,
         const double R
-    ): Dipole(A, B, pen, showLabel), _R(R) {}
+    ): Dipole(id, A, B, pen, showLabel), _R(R) {}
 
     inline double paramValue(const Param param) const override {
         return param == Param::R ? _R : 0.0;
@@ -50,8 +50,8 @@ public:
         return _nameR.isEmpty() ? formatDouble(_R, 2, OHM, raw) : _nameR;
     }
 
-    SharedDipole clone(const SharedAlias &A, const SharedAlias &B) override {
-        return std::make_shared<Resistor>(A, B, _pen, _showLabel, _R);
+    SharedDipole clone(const uint64_t id, const SharedAlias &A, const SharedAlias &B) override {
+        return std::make_shared<Resistor>(id, A, B, _pen, _showLabel, _R);
     }
 };
 

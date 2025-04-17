@@ -5,28 +5,31 @@
 #include "utils/Geometry.h"
 
 class Dipole: public Object {
+private:
+    const uint64_t _id;
+
 protected:
     WeakAlias _A, _B;
     bool _showLabel;
 
 public:
-    Dipole(const SharedAlias &A, const SharedAlias &B, const QBrush &brush, const QPen &pen, const bool showLabel):
-        Object(brush, pen), _showLabel(showLabel) {
+    Dipole(const uint64_t id, const SharedAlias &A, const SharedAlias &B, const QBrush &brush, const QPen &pen, const bool showLabel):
+        Object(brush, pen), _id(id), _showLabel(showLabel) {
         setA(A);
         setB(B);
     }
-    Dipole(const SharedAlias &A, const SharedAlias &B, const QBrush &brush, const bool showLabel):
-        Object(brush), _showLabel(showLabel) {
+    Dipole(const uint64_t id, const SharedAlias &A, const SharedAlias &B, const QBrush &brush, const bool showLabel):
+        Object(brush), _id(id), _showLabel(showLabel) {
         setA(A);
         setB(B);
     }
-    Dipole(const SharedAlias &A, const SharedAlias &B, const QPen &pen, const bool showLabel):
-        Object(pen), _showLabel(showLabel) {
+    Dipole(const uint64_t id, const SharedAlias &A, const SharedAlias &B, const QPen &pen, const bool showLabel):
+        Object(pen), _id(id), _showLabel(showLabel) {
         setA(A);
         setB(B);
     }
-    Dipole(const SharedAlias &A, const SharedAlias &B, const bool showLabel):
-        Object(), _showLabel(showLabel) {
+    Dipole(const uint64_t id, const SharedAlias &A, const SharedAlias &B, const bool showLabel):
+        Object(), _id(id), _showLabel(showLabel) {
         setA(A);
         setB(B);
     }
@@ -77,6 +80,7 @@ public:
     QVariant getAttr(const Attr attr) const override;
     void setAttr(const Attr attr, const QVariant &v) override;
 
+    inline uint64_t id() const { return _id; }
 
     // Geometry
     virtual int halfBoxWidth() const { return HALF_DIPOLE_BOX_WIDTH; }
@@ -131,6 +135,6 @@ public:
 
     bool dirtyVisibleCheckFlag = false;
 
-    virtual SharedDipole clone(const SharedAlias &A, const SharedAlias &B) = 0;
+    virtual SharedDipole clone(const uint64_t id, const SharedAlias &A, const SharedAlias &B) = 0;
 
 };

@@ -8,14 +8,14 @@ protected:
     QString _nameL, _nameI0;
 
 public:
-    Inductor(
+    Inductor(const uint64_t id,
         const SharedAlias &A,
         const SharedAlias &B,
         const QPen &pen,
         const bool showLabel,
         const double L,
         const double I0 = 0.0
-    ): Dipole(A, B, pen, showLabel), _L(L), _I0(I0) {}
+    ): Dipole(id, A, B, pen, showLabel), _L(L), _I0(I0) {}
 
     inline double paramValue(const Param param) const override {
         return param == Param::L ? _L : param == Param::I0 ? _I0 : 0.0;
@@ -61,7 +61,7 @@ public:
         return _nameL.isEmpty() ? formatDouble(_L, 2, HENRY, raw) : _nameL;
     }
 
-    SharedDipole clone(const SharedAlias &A, const SharedAlias &B) override {
-        return std::make_shared<Inductor>(A, B, _pen, _showLabel, _L, _I0);
+    SharedDipole clone(const uint64_t id, const SharedAlias &A, const SharedAlias &B) override {
+        return std::make_shared<Inductor>(id, A, B, _pen, _showLabel, _L, _I0);
     }
 };

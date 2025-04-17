@@ -150,3 +150,19 @@ void Scene::deepRemoval(const SharedObject &obj){
         removeAlias(alias);
     }
 }
+
+void Scene::reset() {
+    QList<SharedAlias> aliasesList = aliases.values();
+    DipolesSet visitedDipoles;
+    for(const auto &alias : aliasesList){
+        deepRemoval(alias);
+        for(const auto &dipole : alias->connections()){
+            if(visitedDipoles.contains(dipole)) continue;
+            visitedDipoles.insert(dipole);
+            deepRemoval(dipole);
+        }
+    }
+    aliases.clear();
+
+    grid.reset();
+}

@@ -22,9 +22,12 @@ public:
     void updateData();
 
     QVector<QString> names() const;
-    QVector<QString> names(const VariableType type) const;
     QVector<QVariant> values() const;
+    QVector<VariableType> types() const;
+
+    QVector<QString> names(const VariableType type) const;
     QVector<QVariant> values(const VariableType type) const;
+
     QVector<QPair<QString, QVariant>> filter(const VariableType type) const;
 
     QVariant value(const QString &name) const { return value(rowOfName(name)); }
@@ -59,6 +62,8 @@ public:
         const QVector<QString> &names,
         const QVector<QVariant> &newValues
     );
+
+    void reset() { removeVariables(names()); }
 
 private slots:
     void onCellChanged(const int row, int col);

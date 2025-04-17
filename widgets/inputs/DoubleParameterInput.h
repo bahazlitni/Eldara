@@ -15,7 +15,13 @@ class DoubleParameterInput : public QWidget {
     Q_OBJECT
 
 public:
-    DoubleParameterInput(ObjectGroup* group, Param param, const QString label, QWidget* parent = nullptr);
+    DoubleParameterInput(
+        ObjectGroup* group,
+        Param param,
+        const QString &label,
+        const bool hasShowLabel,
+        QWidget* parent = nullptr
+        );
     void updateData();
 
     // State
@@ -27,11 +33,11 @@ public:
         const QVector<QString> &names,
         const QVector<QVariant> &values,
         const QVector<VariableType> &types
-    );
+        );
     void onChangeVariables(
         const QVector<QString> &names,
         const QVector<QVariant> &newValues
-    );
+        );
     void onRemoveVariables(const QVector<QString> &names);
 
 private:
@@ -59,6 +65,7 @@ private:
     QPushButton *constantButton;
     QPushButton *variableButton;
     BooleanInput *ShowLabel;
+    const bool hasShowLabel;
 
     // Constant Widget
     QWidget *constantWidget;

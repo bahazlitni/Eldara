@@ -75,6 +75,8 @@ public:
     void updateSize();
     void updateGridTile();
 
+    void reset();
+
     inline void deepRemoval(const SharedObject &obj) { removeVisible(obj); }
 
     inline float zoom() const { return ZOOM_STATES[zoomIndex]; };
@@ -112,8 +114,8 @@ public:
     inline void setupPainterMode(PainterMode type){ setupPainterMode(type, painter); };
 
     // Drawing functions
-    void drawAlias(const QPointF &center, const QBrush &bursh, const int radius, const QString &label = "");
-    void drawGround(const QPointF &center, const QBrush &bursh, const int radius, const QString &label = "");
+    void drawAlias(const QPointF &center, const QBrush &bursh, const int radius, const QString &label = "", const QPen &pen = Qt::NoPen);
+    void drawGround(const QPointF &center, const QBrush &bursh, const int radius, const QString &label = "", const QPen &pen = Qt::NoPen);
     void drawResistor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label = "");
     void drawCapacitor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label = "");
     void drawInductor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label = "");

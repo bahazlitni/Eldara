@@ -8,11 +8,7 @@
 
 
 Grid::Grid(Scene *scene): scene(scene) {
-    setX(0.0f);
-    setY(0.0f);
-    setWidth(scene->width());
-    setHeight(scene->height());
-    zoomIndex = DEFAULT_ZOOM_INDEX;
+    reset();
 }
 
 float Grid::snap(float x) const {
@@ -33,6 +29,12 @@ void Grid::setZoom(const QPointF &p, const int d){
     setHeight(scene->height()/zoom());
     updateGridTile();
     updateVisibility();
+}
+
+void Grid::reset(){
+    zoomIndex = DEFAULT_ZOOM_INDEX;
+    setZoom(QPointF(0.0f,0.0f),0);
+    moveTo(QPointF(0.0f, 0.0f));
 }
 
 void Grid::updateGridTile() {
@@ -127,9 +129,15 @@ void Grid::setupPainterMode(PainterMode type, QPainter &painter){
 
 
 // NODE
-void Grid::drawAlias(const QPointF &center, const QBrush &brush, const int radius, const QString &label) {
+void Grid::drawAlias(
+    const QPointF &center,
+    const QBrush &brush,
+    const int radius,
+    const QString &label,
+    const QPen &pen
+) {
     painter.setBrush(brush);
-    painter.setPen(Qt::NoPen);
+    painter.setPen(pen);
     painter.drawEllipse(center.x()-radius, center.y()-radius, radius*2, radius*2);
     if (label.isEmpty()) return;
     QFontMetrics fm(painter.font());
@@ -146,12 +154,23 @@ void Grid::drawAlias(const QPointF &center, const QBrush &brush, const int radiu
 
 
 // GND
-void Grid::drawGround(const QPointF &center, const QBrush &brush, const int radius, const QString &label) {
+void Grid::drawGround(
+    const QPointF &center,
+    const QBrush &brush,
+    const int radius,
+    const QString &label,
+    const QPen &pen
+) {
     drawAlias(center, brush, radius, label);
-    QPen pen(brush.color());
-    pen.setWidth(1);
 
-    painter.setPen(pen);
+    if(pen.style() == Qt::NoPen){
+        QPen p(brush.color());
+        p.setWidth(1);
+        painter.setPen(p);
+    }
+    else
+        painter.setPen(pen);
+
     painter.setBrush(Qt::NoBrush);
 
     int y = center.y() + (int) radius;
@@ -390,7 +409,8 @@ void Grid::drawObject(const SharedObject &obj, const QPen &pen, const QBrush &br
         drawAlias(
             toScreen(a->p()), brush,
             a->radius(),
-            a->showLabel() ? a->label(scene->displayRawValues()) : ""
+            a->showLabel() ? a->label(scene->displayRawValues()) : "",
+            pen
         );
     else if(const auto &d = dynamic_pointer_cast<Dipole>(obj))
         drawDipole(

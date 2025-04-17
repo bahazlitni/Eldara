@@ -17,6 +17,8 @@ public:
     explicit QuickSettingsTab(MainPanel *mainPanel);
     MainPanel *mainPanel;
 
+    void reset(){}
+
 public slots:
     void updateGridData();
     void updatePenData();

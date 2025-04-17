@@ -1,477 +1,852 @@
-/* Window.h */
+/* Pen.h */
 #pragma once
 #include "utils/Globals.h"
 
-class Scene;
-class MainPanel;
+#include "Grid.h"
+#include "MouseTool.h"
+#include "objects/BCPath.h"
 
-class Window : public QMainWindow {
+enum ConstructionMode {
+    PROHIBITED = -1,
+    ALIAS_AND_DIPOLE = 0,
+    ALIAS_ONLY = 1,
+    DIPOLE_ONLY = 2,
+    ALIAS_SPLIT = 3,
+    NORMAL_SPLIT = 4,
+    OVER_SPLIT = 5,
+    SWITCH_PREVIOUS = 6
+};
+
+class ComboCommand;
+class Command;
+class Node;
+class Dipole;
+class EventsManager;
+class Alias;
+class WorldPoint;
+
+class Pen: public MouseTool {
     Q_OBJECT
 
 public:
-    explicit Window();
+    Pen(Scene *scene);
 
-private:
-    QSplitter *splitter;
-    QMenu *fileMenu;
-    QMenu *editMenu;
-    QAction *openAction;
-    QAction *saveAction;
-    QAction *saveAsAction;
-    QAction *preferencesAction;
-    Scene *scene;
-    MainPanel *mainPanel;
+    SharedAlias previous = nullptr;
 
-    void setupMenuBar();
-    void setupSplitter();
-    void setupConnections();
-    void applySettings();
+    ToolState initState() const override { return PEN; }
+    void end() override;
+    void move() override;
+    void downL() override;
+    void downR() override;
+    void upL() override;
+    void upR() override;
+    void updateMovement() override;
+    void keyDown([[maybe_unused]] Qt::Key key) override;
+    void keyPress([[maybe_unused]] Qt::Key key) override;
+    void keyUp([[maybe_unused]] Qt::Key key) override;
+    void draw(QPainter *painter) override;
+    void setCursor(const ToolState state) override;
 
-private slots:
-    void openFile();
-    void saveFile();
-    void saveFileAs();
-    void openPreferences();
+    QVariant getAttr(const Attr attr) const override;
+    void setAttr(const Attr attr, const QVariant &v) override;
+
+    bool onControl() const { return _state == INITIAL_CONTROLLING || _state == CONTROLLING; };
+
+    void setType(ObjectType type);
+
+    bool willDraw(const SharedObject &obj) const override { return isHovered(obj); }
+
+    void deepRemoval(const SharedObject &obj) override;
+
+    inline BCPath path() const { return _path; }
+
+    inline QBrush brush() const {
+        QBrush b;
+        b.setStyle(Qt::BrushStyle::SolidPattern);
+        b.setColor(fillColor());
+        return b;
+    }
+
+    inline QPen pen() const {
+        QPen p;
+        p.setStyle(Qt::PenStyle::SolidLine);
+        p.setWidth(strokeWidth());
+        p.setColor(strokeColor());
+        return p;
+    }
+
+
+// Settings
+protected:
+    struct Settings {
+        bool   showLabel                ;
+        bool   allowSplitting           ;
+        bool   allowOnClickColoring     ;
+        double defaultResistance        ;
+        double defaultCapacitance       ;
+        double defaultInductance        ;
+        double defaultBatteryVoltage    ;
+        double defaultDCVoltage         ;
+        double defaultIntensity         ;
+        double defaultQuantity          ;
+        int    radius                   ;
+        int    strokeWidth              ;
+        QColor strokeColor              ;
+        QColor fillColor                ;
+    };
+
+    Settings settings;
+
+public:
+    inline void setShowLabel             ( const bool   v ){ settings.showLabel = v; }
+    inline void setAllowSplitting        ( const bool   v ){ settings.allowSplitting = v; }
+    inline void setAllowOnClickColoring  ( const bool   v ){ settings.allowOnClickColoring = v; }
+    inline void setDefaultResistance     ( const double v ){ settings.defaultResistance = v; }
+    inline void setDefaultCapacitance    ( const double v ){ settings.defaultCapacitance = v; }
+    inline void setDefaultInductance     ( const double v ){ settings.defaultInductance = v; }
+    inline void setDefaultBatteryVoltage ( const double v ){ settings.defaultBatteryVoltage = v; }
+    inline void setDefaultDCVoltage      ( const double v ){ settings.defaultDCVoltage = v; }
+    inline void setDefaultIntensity      ( const double v ){ settings.defaultIntensity = v; }
+    inline void setDefaultQuantity       ( const double v ){ settings.defaultQuantity = v; }
+    inline void setRadius                ( const int    v ){ settings.radius = v; }
+    inline void setStrokeWidth           ( const int    v ){ settings.strokeWidth = v; }
+    inline void setStrokeColor           ( const QColor &v){ settings.strokeColor = v; }
+    inline void setFillColor             ( const QColor &v){ settings.fillColor = v; }
+
+    inline bool showLabel               () const { return settings.showLabel; }
+    inline bool allowSplitting          () const { return settings.allowSplitting; }
+    inline bool allowOnClickColoring    () const { return settings.allowOnClickColoring; }
+    inline double defaultResistance     () const { return settings.defaultResistance; }
+    inline double defaultCapacitance    () const { return settings.defaultCapacitance; }
+    inline double defaultInductance     () const { return settings.defaultInductance; }
+    inline double defaultBatteryVoltage () const { return settings.defaultBatteryVoltage; }
+    inline double defaultDCVoltage      () const { return settings.defaultDCVoltage; }
+    inline double defaultIntensity      () const { return settings.defaultIntensity; }
+    inline double defaultQuantity       () const { return settings.defaultQuantity; }
+    inline int radius                   () const { return settings.radius; }
+    inline int strokeWidth              () const { return settings.strokeWidth; }
+    inline QColor strokeColor           () const { return settings.strokeColor; }
+    inline QColor fillColor             () const { return settings.fillColor; }
+
+signals:
+    void dataChanged();
 
 protected:
-    void closeEvent(QCloseEvent *event) override;
+    void setState(const ToolState state) override;
+
+    void updateHover();
+    void analyze();
+    void construct();
+
+    SharedDipole hoveredDipole();
+    SharedAlias hoveredAlias();
+
+    ConstructionMode mode;
+    BCPath _path;
+
+    const QCursor penCursor, constructingCursor, constructingPlusCursor;
+
+    SharedAlias MakeAlias(const QPointF &p);
+    SharedDipole MakeDipole(const SharedAlias &A, const SharedAlias &B){ return MakeDipole(A, B, type); }
+    SharedDipole MakeDipole(const SharedAlias &A, const SharedAlias &B, ObjectType type);
+
+    SharedWorldPoint MakeBCPoint(const QPointF &p);
+    SharedWorldPoint MakeBCControlPoint(const QPointF &p);
+
+    void stackBCPoint(const QPointF &p);
+    void stackBCPoint(const SharedPoint &p);
+
+    ObjectType type;
+
+    void drawDipole(
+        const ObjectType type,
+        const QPointF &A,
+        const QPointF &B,
+        const QPen &pen,
+        const QString &label = ""
+    );
+
+    void drawAliasPreview(const QColor &color);
+    void drawDipolePreview(const QColor &color);
+    void drawSplittedPreview(const QColor &color);
+    void drawResultantPreview(const QColor &color);
+    void drawHoveredAlias(){ drawHoveredAlias(Palette::HOVER); }
+    void drawHoveredDipole(){ drawHoveredDipole(Palette::HOVER); }
+    void drawHoveredAlias(const QColor &color);
+    void drawHoveredDipole(const QColor &color);
 };
 
 
 
-/* Window.cpp */
-#include "Window.h"
+/* Pen.cpp */
+#include "Pen.h"
 #include "Scene.h"
-#include "widgets/MainPanel.h"
-#include "widgets/tabs/SelectionTab.h"
-#include "widgets/tabs/QuickSettingsTab.h"
+#include "objects/Object.h"
+#include "objects/Alias.h"
+#include "objects/BCControlPoint.h"
+#include "objects/BCPath.h"
+#include "objects/BCPoint.h"
+#include "objects/Battery.h"
+#include "objects/Capacitor.h"
+#include "objects/DCI.h"
+#include "objects/DCV.h"
+#include "objects/Inductor.h"
+#include "objects/Resistor.h"
+#include "objects/WorldPoint.h"
+
+#include "utils/Geometry.h"
+
+#include "commands/Command.h"
+#include "commands/SplitDipoleCommand.h"
+#include "commands/InsertObjectsCommand.h"
+#include "commands/Timeline.h"
+#include "Grid.h"
+#include "tools/Grabber.h"
 #include "tools/Selector.h"
-#include "tools/Pen.h"
-#include "dialogs/PreferencesDialog.h"
 
-Window::Window()
-    : QMainWindow(),
-    splitter(new QSplitter(Qt::Horizontal, this)),
-    scene(new Scene(splitter)),
-    mainPanel(new MainPanel(scene, splitter))
+
+Pen::Pen(Scene *scene): MouseTool(scene),
+    penCursor(QCursor(QPixmap(":assets/cursor/pen.png"), 0, 0)),
+    constructingCursor(QCursor(QPixmap(":assets/cursor/pen_constructing.png"), 0, 0)),
+    constructingPlusCursor(QCursor(QPixmap(":assets/cursor/pen_constructing_plus.png"), 0, 0))
 {
-    setWindowTitle("Circuits Simulator");
-    setupMenuBar();
-    setupSplitter();
-    setupConnections();
-    applySettings();
+    setFillColor(QColor(255,255,255));
+    setStrokeColor(QColor(222,222,222));
+    setStrokeWidth(2);
+    setRadius(10);
 }
 
-void Window::setupMenuBar() {
-    // File menu
-    fileMenu = menuBar()->addMenu(tr("&File"));
-    openAction = new QAction(tr("&Open..."), this);
-    openAction->setShortcut(QKeySequence::Open);
-    fileMenu->addAction(openAction);
-    saveAction = new QAction(tr("&Save"), this);
-    saveAction->setShortcut(QKeySequence::Save);
-    fileMenu->addAction(saveAction);
-    saveAsAction = new QAction(tr("Save &As..."), this);
-    saveAsAction->setShortcut(QKeySequence::SaveAs);
-    fileMenu->addAction(saveAsAction);
-    connect(openAction, &QAction::triggered, this, &Window::openFile);
-    connect(saveAction, &QAction::triggered, this, &Window::saveFile);
-    connect(saveAsAction, &QAction::triggered, this, &Window::saveFileAs);
-
-    // Edit menu
-    editMenu = menuBar()->addMenu(tr("&Edit"));
-    preferencesAction = new QAction(tr("&Preferences..."), this);
-    editMenu->addAction(preferencesAction);
-    connect(preferencesAction, &QAction::triggered, this, &Window::openPreferences);
+QVariant Pen::getAttr(const Attr attr) const {
+    switch(attr){
+    case Attr::Radius : return radius();
+    case Attr::FillColor : return fillColor();
+    case Attr::StrokeColor : return strokeColor();
+    case Attr::StrokeWidth : return strokeWidth();
+    case Attr::ShowLabel : return showLabel();
+    default: return MouseTool::getAttr(attr);
+    }
+}
+void Pen::setAttr(const Attr attr, const QVariant &v) {
+    switch(attr){
+    case Attr::Radius : setRadius(v.toUInt()); return;
+    case Attr::FillColor : setFillColor(v.toString()); return;
+    case Attr::StrokeColor : setStrokeColor(v.toString()); return;
+    case Attr::StrokeWidth : setStrokeWidth(v.toUInt()); return;
+    case Attr::ShowLabel : setShowLabel(v.toBool()); return;
+    default: MouseTool::setAttr(attr, v); return;
+    }
 }
 
-void Window::setupSplitter() {
-    setCentralWidget(splitter);
-    splitter->setHandleWidth(1);
-    splitter->addWidget(scene);
-    splitter->addWidget(mainPanel);
-    splitter->setStretchFactor(0, 1);
-    splitter->setStretchFactor(1, 0);
-    splitter->setCollapsible(1, false);
-    splitter->setSizes({scene->width(), mainPanel->minimumWidth()});
-    splitter->setStyleSheet(R"(
-        QSplitter::handle {
-            background-color: #333;
+
+void Pen::deepRemoval(const SharedObject &obj) {
+    MouseTool::deepRemoval(obj);
+    if(obj && obj->category() == ObjectCategory::Node) {
+        const auto &alias = static_pointer_cast<Alias>(obj);
+        if(alias == previous) end();
+    }
+}
+
+
+void Pen::setType(ObjectType type){
+    if(type == this->type) return;
+    this->type = type;
+    if(type == ObjectType::Alias) setState(PEN);
+    else if(onControl()){
+        _path.clear();
+        setState(CONSTRUCTING);
+    }
+}
+
+void Pen::end(){
+    setState(PEN);
+}
+
+void Pen::move(){
+    switch(_state){
+    case PEN:
+    case CONSTRUCTING:
+        break;
+    case CONTROLLING:
+    case INITIAL_CONTROLLING: {
+        if(_path.isEmpty()) break;
+        _path.last()->after()->setX(tx());
+        _path.last()->after()->setY(ty());
+        _path.last()->before()->setX(2*_path.last()->x() - tx());
+        _path.last()->before()->setY(2*_path.last()->y() - ty());
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+SharedAlias Pen::MakeAlias(const QPointF &p){
+    const uint64_t address = previous && type == ObjectType::Alias && alt() ? previous->address() : scene->address();
+    return std::make_shared<Alias>(scene->id(), address, p.x(), p.y(), radius(), brush(), showLabel());
+}
+SharedDipole Pen::MakeDipole(const SharedAlias &A, const SharedAlias &B, ObjectType type){
+    switch(type){
+    case ObjectType::Resistor:
+        return std::make_shared<Resistor>(scene->id(), A, B, pen(), showLabel(), defaultResistance());
+
+    case ObjectType::Capacitor:
+        return std::make_shared<Capacitor>(scene->id(), A, B, pen(), showLabel(), defaultCapacitance(), 0.0);
+
+    case ObjectType::Inductor:
+        return std::make_shared<Inductor>(scene->id(), A, B, pen(), showLabel(), defaultInductance(), 0.0);
+
+    case ObjectType::Battery:
+        return std::make_shared<Battery>(scene->id(), A, B, pen(), showLabel(), defaultBatteryVoltage());
+
+    case ObjectType::DCV:
+        return std::make_shared<DCV>(scene->id(), A, B, pen(), showLabel(), defaultDCVoltage());
+
+    case ObjectType::DCI:
+        return std::make_shared<DCI>(scene->id(), A, B, pen(), showLabel(), defaultIntensity());
+
+    default: return nullptr;
+    }
+}
+
+
+void Pen::stackBCPoint(const QPointF &p){
+    auto before = std::make_shared<BCControlPoint>(p);
+    auto after = std::make_shared<BCControlPoint>(p);
+    auto bcpoint = std::make_shared<BCPoint>(p, before, after);
+    _path.stack(bcpoint);
+}
+void Pen::stackBCPoint(const SharedPoint &p){
+    auto before = std::make_shared<BCControlPoint>(*p);
+    auto after = std::make_shared<BCControlPoint>(*p);
+    auto bcpoint = std::make_shared<BCPoint>(p, before, after);
+    _path.stack(bcpoint);
+}
+
+
+SharedDipole Pen::hoveredDipole() { return static_pointer_cast<Dipole>(hoveredObject()); }
+SharedAlias Pen::hoveredAlias() { return static_pointer_cast<Alias>(hoveredObject()); }
+
+void Pen::analyze(){
+    switch(_state){
+    case PEN:
+        switch(_hoverCategory){
+        case ObjectCategory::Dipole: mode = allowSplitting()? ALIAS_SPLIT : PROHIBITED; return;
+        case ObjectCategory::Node: mode = SWITCH_PREVIOUS; return;
+        case ObjectCategory::Void: mode = ALIAS_ONLY; return;
+        default: mode = PROHIBITED; return;
         }
-    )");
+    case CONSTRUCTING: {
+        if(_hoverCategory == ObjectCategory::Node && previous == hoveredAlias()){
+            mode = SWITCH_PREVIOUS;
+            return;
+        }
+        SharedDipole lsceneingHoveredDipole;
+        const QLineF constructionLine = QLineF(previous->p(), t());
+
+        if(_hoverCategory == ObjectCategory::Dipole && hoveredDipole()->connectedTo(previous)){
+            mode = allowSplitting()? OVER_SPLIT : PROHIBITED;
+            return;
+        }
+
+        for(const auto &dipole : scene->grid.visibleDipoles){
+            if(T_LlapL(constructionLine, dipole->line()) != QLineF::UnboundedIntersection) continue;
+            if(_hoverCategory == ObjectCategory::Dipole && hoveredDipole() == dipole){
+                lsceneingHoveredDipole = dipole;
+                continue;
+            }
+            mode = _hoverCategory == ObjectCategory::Node ? SWITCH_PREVIOUS : PROHIBITED;
+            return;
+        }
+
+        if(lsceneingHoveredDipole){
+            mode = allowSplitting() && lsceneingHoveredDipole->connectedTo(previous) ? OVER_SPLIT : PROHIBITED;
+            return;
+        }
+
+        switch(_hoverCategory){
+        case ObjectCategory::Dipole: mode = allowSplitting()? NORMAL_SPLIT : PROHIBITED; return;
+        case ObjectCategory::Node: mode = DIPOLE_ONLY; return;
+        case ObjectCategory::Void: mode = ALIAS_AND_DIPOLE; return;
+        default: mode = PROHIBITED; return;
+        }
+        break;
+    }
+    default:
+        mode = PROHIBITED;
+        break;
+    }
 }
 
-void Window::setupConnections() {
-    connect(&scene->selector, &Selector::selectionChanged,
-            mainPanel->selectionTab, &SelectionTab::updateData);
-    connect(&scene->selector, &Selector::selectionDragged,
-            mainPanel->selectionTab, &SelectionTab::updateCoordinates);
-    connect(&scene->pen, &Pen::dataChanged,
-            mainPanel->quickSettingsTab, &QuickSettingsTab::updatePenData);
-}
-
-void Window::applySettings() {
-    QSettings settings;
-
-    qWarning() << "settings applied";
-
-    // Scene settings
-    QColor bg = settings.value("Scene/BackgroundColor", QColor(33, 33, 33)).value<QColor>();
-    QColor gridStroke = settings.value("Scene/GridStrokeColor", QColor(44, 44, 44)).value<QColor>();
-    scene->setBackgroundColor(bg);
-    scene->setGridStrokeColor(gridStroke);
-    scene->setTileSize(settings.value("Scene/TileSize", 50).toInt());
-    scene->setSnapPosition(settings.value("Scene/SnapPosition", true).toBool());
-    scene->setShowGrid(settings.value("Scene/ShowGrid", true).toBool());
-    scene->setDisplayRawValues(settings.value("Scene/DisplayRawValues", false).toBool());
-
-    // Pen tool settings
-    Pen &pen = scene->pen;
-    pen.setStrokeWidth(settings.value("PenTool/StrokeWidth", 1).toInt());
-    pen.setStrokeColor(settings.value("PenTool/StrokeColor", QColor("#CCC")).value<QColor>());
-    pen.setFillColor(settings.value("PenTool/FillColor", QColor("#FFF")).value<QColor>());
-    pen.setAllowSplitting(settings.value("PenTool/AllowSplitting", true).toBool());
-    pen.setAllowMerging(settings.value("PenTool/AllowMerging", true).toBool());
-    pen.setAllowOnClickColoring(settings.value("PenTool/AllowOnClickColoring", true).toBool());
-    pen.setDefaultResistance(settings.value("PenTool/DefaultResistance", 1e3).toDouble());
-    pen.setDefaultCapacitance(settings.value("PenTool/DefaultCapacitance", 1e-8).toDouble());
-    pen.setDefaultInductance(settings.value("PenTool/DefaultInductance", 1e-4).toDouble());
-    pen.setDefaultBatteryVoltage(settings.value("PenTool/DefaultBatteryVoltage", 5.0).toDouble());
-    pen.setDefaultDCVoltage(settings.value("PenTool/DefaultDCVoltage", 15.0).toDouble());
-    pen.setDefaultIntensity(settings.value("PenTool/DefaultIntensity", 1e-3).toDouble());
-    pen.setDefaultQuantity(settings.value("PenTool/DefaultQuantity", 1.0).toDouble());
-}
-
-void Window::openFile() {
-    const QString filename = QFileDialog::getOpenFileName(
-        this,
-        tr("Open File"),
-        QString(),
-        tr("Dara Files (*.dara);;All Files (*)")
+void Pen::construct(){
+    switch (mode) {
+    case PROHIBITED: return;
+    case ALIAS_ONLY:
+        previous = MakeAlias(t());
+        scene->execute(std::make_unique<InsertObjectsCommand>(scene, Selection({previous})));
+        break;
+    case ALIAS_AND_DIPOLE: {
+        const auto &newAlias = MakeAlias(t());
+        scene->execute(std::make_unique<InsertObjectsCommand>(scene, Selection({newAlias, MakeDipole(previous, newAlias)})));
+        previous = newAlias;
+        break;
+    }
+    case DIPOLE_ONLY: {
+        const auto &hoveredAlias = static_pointer_cast<Alias>(hoveredObject());
+        scene->execute(
+            std::make_unique<InsertObjectsCommand>(
+                scene, Selection({MakeDipole(previous, hoveredAlias)})
+            )
         );
-    if (!filename.isEmpty()) {
-        // TODO: implement loading logic
+        previous = hoveredAlias;
+        break;
     }
-}
+    case ALIAS_SPLIT: {
+        const auto &splitter = MakeAlias(t());
+        const auto &splitted = hoveredDipole();
+        const auto &resultant = MakeDipole(splitter, splitted->B(), splitted->type());
 
-void Window::saveFile() {
-    saveFileAs();
-}
-
-void Window::saveFileAs() {
-    const QString filename = QFileDialog::getSaveFileName(
-        this,
-        tr("Save File As"),
-        QString(),
-        tr("Dara Files (*.dara);;All Files (*)")
+        auto cmd = std::make_unique<ComboCommand>();
+        cmd->addCommand(
+            std::make_unique<InsertObjectsCommand>(scene, Selection({splitter, resultant}))
         );
-    if (!filename.isEmpty()) {
-        // TODO: implement saving logic
+        cmd->addCommand(
+            std::make_unique<SplitDipoleCommand>(scene, splitted, resultant, splitter)
+        );
+        scene->execute(std::move(cmd));
+        previous = splitter;
+        break;
+    }
+    case NORMAL_SPLIT: {
+        const auto &splitter = MakeAlias(t());
+        const auto &splitted = hoveredDipole();
+        const auto &resultant = MakeDipole(splitter, splitted->B(), splitted->type());
+        const auto &normal = MakeDipole(previous, splitter);
+
+        auto cmd = std::make_unique<ComboCommand>();
+        cmd->addCommand(
+            std::make_unique<InsertObjectsCommand>(scene, Selection({splitter, resultant, normal}))
+        );
+        cmd->addCommand(
+            std::make_unique<SplitDipoleCommand>(scene, splitted, resultant, splitter)
+        );
+        scene->execute(std::move(cmd));
+        previous = splitter;
+        break;
+    }
+    case OVER_SPLIT: {
+        const auto &splitter = MakeAlias(t());
+        const auto &splitted = hoveredDipole();
+        const auto &resultant = MakeDipole(previous, splitter);
+
+        auto cmd = std::make_unique<ComboCommand>();
+        cmd->addCommand(
+            std::make_unique<InsertObjectsCommand>(scene, Selection({splitter, resultant}))
+        );
+        cmd->addCommand(
+            std::make_unique<SplitDipoleCommand>(scene, splitted, resultant, splitter)
+        );
+        scene->execute(std::move(cmd));
+        previous = splitter;
+        break;
+    }
+    case SWITCH_PREVIOUS:
+        previous = static_pointer_cast<Alias>(hoveredObject());
+        if(allowOnClickColoring()) previous->setBrush(brush());
+        break;
     }
 }
 
-void Window::openPreferences() {
-    PreferencesDialog dlg(this);
-    if (dlg.exec() == QDialog::Accepted) {
-        applySettings();
+void Pen::downL(){
+    analyze();
+    construct();
+    switch(_state){
+    case PEN:
+        if(type != ObjectType::Alias && previous)
+            setState(CONSTRUCTING);
+        break;
+    default:
+        break;
     }
 }
 
-void Window::closeEvent(QCloseEvent *event) {
-    event->accept();
-}
-
-
-
-/* dialogs/PreferencesDialog.h */
-#pragma once
-#include "utils/Globals.h"
+void Pen::downR(){}
 
-class QTabWidget;
-class QSpinBox;
-class QCheckBox;
-class QDoubleSpinBox;
-class QPushButton;
-class QDialogButtonBox;
+void Pen::upL(){}
 
-class PreferencesDialog : public QDialog {
-    Q_OBJECT
-public:
-    explicit PreferencesDialog(QWidget *parent = nullptr);
+void Pen::upR(){}
 
-private slots:
-    void chooseSceneBackground();
-    void chooseSceneGridStroke();
-    void choosePenStrokeColor();
-    void choosePenFillColor();
+void Pen::updateHover(){
+    const QPointF worldp = worldP();
+    const QPointF target = t();
 
-    void accept() override;
-    void apply();
-    void reject() override;
-
-private:
-    void buildSceneTab();
-    void buildPenToolTab();
-    void loadSettings();
-    void saveSettings();
-    void updateColorButton(QPushButton *btn, const QColor &color);
-    void backupCurrentSettings();
-    void restoreBackupSettings();
-
-    QTabWidget *tabWidget;
-    QDialogButtonBox *buttonBox;
-    QVariantMap backup;
-
-    // Scene widgets
-    QPushButton *bgColorBtn;
-    QPushButton *gridStrokeBtn;
-    QSpinBox *tileSizeSpin;
-    QCheckBox *snapPosCheck;
-    QCheckBox *showGridCheck;
-    QCheckBox *displayRawCheck;
-
-    // Pen tool widgets
-    QSpinBox *strokeWidthSpin;
-    QPushButton *strokeColorBtn;
-    QPushButton *fillColorBtn;
-    QCheckBox *allowSplitCheck;
-    QCheckBox *allowMergeCheck;
-    QCheckBox *allowOnClickCheck;
-    QDoubleSpinBox *defaultResSpin;
-    QDoubleSpinBox *defaultCapSpin;
-    QDoubleSpinBox *defaultIndSpin;
-    QDoubleSpinBox *defaultBattSpin;
-    QDoubleSpinBox *defaultDCVSpin;
-    QDoubleSpinBox *defaultIntSpin;
-    QDoubleSpinBox *defaultQtySpin;
-};
-
-
-
-/* dialogs/PreferencesDialog.cpp */
-#include "dialogs/PreferencesDialog.h"
-
-PreferencesDialog::PreferencesDialog(QWidget *parent) : QDialog(parent) {
-    setWindowTitle(tr("Preferences"));
-    resize(500, 400);
-
-    tabWidget = new QTabWidget(this);
-    buildSceneTab();
-    buildPenToolTab();
-    tabWidget->addTab(new QWidget(), tr("Hot Keys")); // Placeholder
-
-    QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->addWidget(tabWidget);
-
-    buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Apply);
-    connect(buttonBox->button(QDialogButtonBox::Ok), &QPushButton::clicked, this, &PreferencesDialog::accept);
-    connect(buttonBox->button(QDialogButtonBox::Apply), &QPushButton::clicked, this, &PreferencesDialog::apply);
-    connect(buttonBox->button(QDialogButtonBox::Cancel), &QPushButton::clicked, this, &PreferencesDialog::reject);
-    mainLayout->addWidget(buttonBox);
-
-    loadSettings();
-    backupCurrentSettings();
-}
-
-void PreferencesDialog::buildSceneTab() {
-    QWidget *tab = new QWidget;
-    QFormLayout *layout = new QFormLayout(tab);
-
-    bgColorBtn = new QPushButton;
-    gridStrokeBtn = new QPushButton;
-    tileSizeSpin = new QSpinBox;
-    tileSizeSpin->setRange(10, 500);
-    snapPosCheck = new QCheckBox;
-    showGridCheck = new QCheckBox;
-    displayRawCheck = new QCheckBox;
-
-    layout->addRow(tr("Background Color:"), bgColorBtn);
-    layout->addRow(tr("Grid Stroke Color:"), gridStrokeBtn);
-    layout->addRow(tr("Tile Size:"), tileSizeSpin);
-    layout->addRow(tr("Snap Position:"), snapPosCheck);
-    layout->addRow(tr("Show Grid:"), showGridCheck);
-    layout->addRow(tr("Display Raw Values:"), displayRawCheck);
-
-    tabWidget->addTab(tab, tr("Scene"));
-
-    connect(bgColorBtn, &QPushButton::clicked, this, &PreferencesDialog::chooseSceneBackground);
-    connect(gridStrokeBtn, &QPushButton::clicked, this, &PreferencesDialog::chooseSceneGridStroke);
-}
-
-void PreferencesDialog::buildPenToolTab() {
-    QWidget *tab = new QWidget;
-    QFormLayout *layout = new QFormLayout(tab);
-
-    strokeWidthSpin = new QSpinBox;
-    strokeWidthSpin->setRange(1, 5);
-
-    strokeColorBtn = new QPushButton;
-    fillColorBtn = new QPushButton;
-    allowSplitCheck = new QCheckBox;
-    allowMergeCheck = new QCheckBox;
-    allowOnClickCheck = new QCheckBox;
-
-    defaultResSpin = new QDoubleSpinBox;
-    defaultResSpin->setDecimals(6);
-    defaultResSpin->setRange(0, 1e9);
-    defaultResSpin->setSuffix(" Ω");
-
-    defaultCapSpin = new QDoubleSpinBox;
-    defaultCapSpin->setDecimals(12);
-    defaultCapSpin->setRange(0, 1e-2);
-    defaultCapSpin->setSuffix(" F");
-
-    defaultIndSpin = new QDoubleSpinBox;
-    defaultIndSpin->setDecimals(12);
-    defaultIndSpin->setRange(0, 1e-1);
-    defaultIndSpin->setSuffix(" H");
-
-    defaultBattSpin = new QDoubleSpinBox;
-    defaultBattSpin->setDecimals(3);
-    defaultBattSpin->setRange(0, 1e3);
-    defaultBattSpin->setSuffix(" V");
-
-    defaultDCVSpin = new QDoubleSpinBox;
-    defaultDCVSpin->setDecimals(3);
-    defaultDCVSpin->setRange(0, 1e3);
-    defaultDCVSpin->setSuffix(" V");
-
-    defaultIntSpin = new QDoubleSpinBox;
-    defaultIntSpin->setDecimals(9);
-    defaultIntSpin->setRange(0, 1e2);
-    defaultIntSpin->setSuffix(" A");
-
-    defaultQtySpin = new QDoubleSpinBox;
-    defaultQtySpin->setDecimals(6);
-    defaultQtySpin->setRange(0, 1e5);
-    defaultQtySpin->setSuffix(" C");
-
-    layout->addRow(tr("Stroke Width:"), strokeWidthSpin);
-    layout->addRow(tr("Stroke Color:"), strokeColorBtn);
-    layout->addRow(tr("Fill Color:"), fillColorBtn);
-    layout->addRow(tr("Allow Splitting:"), allowSplitCheck);
-    layout->addRow(tr("Allow Merging:"), allowMergeCheck);
-    layout->addRow(tr("Allow On-Click Coloring:"), allowOnClickCheck);
-    layout->addRow(tr("Default Resistance:"), defaultResSpin);
-    layout->addRow(tr("Default Capacitance:"), defaultCapSpin);
-    layout->addRow(tr("Default Inductance:"), defaultIndSpin);
-    layout->addRow(tr("Default Battery Voltage:"), defaultBattSpin);
-    layout->addRow(tr("Default DCV Voltage:"), defaultDCVSpin);
-    layout->addRow(tr("Default Intensity:"), defaultIntSpin);
-    layout->addRow(tr("Default Quantity:"), defaultQtySpin);
-
-    tabWidget->addTab(tab, tr("Pen Tool"));
-
-    connect(strokeColorBtn, &QPushButton::clicked, this, &PreferencesDialog::choosePenStrokeColor);
-    connect(fillColorBtn, &QPushButton::clicked, this, &PreferencesDialog::choosePenFillColor);
-}
-
-void PreferencesDialog::apply() {
-    saveSettings();
-    // The main window applies settings when this is closed with accept()
-}
-
-void PreferencesDialog::accept() {
-    apply();
-    QDialog::accept();
-}
-
-void PreferencesDialog::reject() {
-    restoreBackupSettings();
-    QDialog::reject();
-}
-
-void PreferencesDialog::loadSettings() {
-    QSettings s;
-
-    // Scene
-    updateColorButton(bgColorBtn, s.value("scene/background", QColor(33, 33, 33)).value<QColor>());
-    updateColorButton(gridStrokeBtn, s.value("scene/gridStroke", QColor(44, 44, 44)).value<QColor>());
-    tileSizeSpin->setValue(s.value("scene/tileSize", 50).toInt());
-    snapPosCheck->setChecked(s.value("scene/snapPosition", true).toBool());
-    showGridCheck->setChecked(s.value("scene/showGrid", true).toBool());
-    displayRawCheck->setChecked(s.value("scene/displayRaw", false).toBool());
-
-    // Pen
-    strokeWidthSpin->setValue(s.value("pen/strokeWidth", 1).toInt());
-    updateColorButton(strokeColorBtn, s.value("pen/strokeColor", QColor("#CCC")).value<QColor>());
-    updateColorButton(fillColorBtn, s.value("pen/fillColor", QColor("#FFF")).value<QColor>());
-    allowSplitCheck->setChecked(s.value("pen/allowSplit", true).toBool());
-    allowMergeCheck->setChecked(s.value("pen/allowMerge", true).toBool());
-    allowOnClickCheck->setChecked(s.value("pen/allowOnClickColor", true).toBool());
-    defaultResSpin->setValue(s.value("pen/defaultResistance", 1e3).toDouble());
-    defaultCapSpin->setValue(s.value("pen/defaultCapacitance", 1e-8).toDouble());
-    defaultIndSpin->setValue(s.value("pen/defaultInductance", 1e-4).toDouble());
-    defaultBattSpin->setValue(s.value("pen/defaultBatteryVoltage", 5.0).toDouble());
-    defaultDCVSpin->setValue(s.value("pen/defaultDCVVoltage", 15.0).toDouble());
-    defaultIntSpin->setValue(s.value("pen/defaultIntensity", 1e-3).toDouble());
-    defaultQtySpin->setValue(s.value("pen/defaultQuantity", 1.0).toDouble());
-}
-
-void PreferencesDialog::saveSettings() {
-    QSettings s;
-
-    s.setValue("scene/background", bgColorBtn->palette().button().color());
-    s.setValue("scene/gridStroke", gridStrokeBtn->palette().button().color());
-    s.setValue("scene/tileSize", tileSizeSpin->value());
-    s.setValue("scene/snapPosition", snapPosCheck->isChecked());
-    s.setValue("scene/showGrid", showGridCheck->isChecked());
-    s.setValue("scene/displayRaw", displayRawCheck->isChecked());
-
-    s.setValue("pen/strokeWidth", strokeWidthSpin->value());
-    s.setValue("pen/strokeColor", strokeColorBtn->palette().button().color());
-    s.setValue("pen/fillColor", fillColorBtn->palette().button().color());
-    s.setValue("pen/allowSplit", allowSplitCheck->isChecked());
-    s.setValue("pen/allowMerge", allowMergeCheck->isChecked());
-    s.setValue("pen/allowOnClickColor", allowOnClickCheck->isChecked());
-    s.setValue("pen/defaultResistance", defaultResSpin->value());
-    s.setValue("pen/defaultCapacitance", defaultCapSpin->value());
-    s.setValue("pen/defaultInductance", defaultIndSpin->value());
-    s.setValue("pen/defaultBatteryVoltage", defaultBattSpin->value());
-    s.setValue("pen/defaultDCVVoltage", defaultDCVSpin->value());
-    s.setValue("pen/defaultIntensity", defaultIntSpin->value());
-    s.setValue("pen/defaultQuantity", defaultQtySpin->value());
-}
-
-void PreferencesDialog::backupCurrentSettings() {
-    QSettings s;
-    for (const QString &key : s.allKeys()) {
-        backup[key] = s.value(key);
+    resetHover();
+    for(const auto &alias : scene->grid.visibleAliases){
+        if(alias->hover(worldp, scene->grid.zoom())){
+            _hoveredObject = alias;
+            _hoverCategory = ObjectCategory::Node;
+            setTarget(alias->p());
+            return;
+        }
+    }
+    for(const auto &dipole : scene->grid.visibleDipoles){
+        if(dipole->hover(worldp, scene->grid.zoom())){
+            const QPointF p = pLA(dipole->line(), worldp);
+            _hoveredObject = dipole;
+            _hoverCategory = ObjectCategory::Dipole;
+            const auto &A = dipole->A();
+            if(A && A->hover(p, scene->grid.zoom())){
+                setTarget(A->p());
+                _hoveredObject = A;
+                _hoverCategory = ObjectCategory::Node;
+                return;
+            }
+            const auto &B = dipole->B();
+            if(B && B->hover(p, scene->grid.zoom())){
+                setTarget(B->p());
+                _hoveredObject = B;
+                _hoverCategory = ObjectCategory::Node;
+                return;
+            }
+            setTarget(p);
+            return;
+        }
+    }
+    if(t() == worldp) return;
+    for(const auto &alias : scene->grid.visibleAliases){
+        if(alias->hover(t(), scene->grid.zoom())){
+            _hoveredObject = alias;
+            _hoverCategory = ObjectCategory::Node;
+            setTarget(alias->p());
+            return;
+        }
+    }
+    for(const auto &dipole : scene->grid.visibleDipoles){
+        if(dipole->hover(target, scene->grid.zoom())){
+            const QPointF p = pLA(dipole->line(), target);
+            _hoveredObject = dipole;
+            _hoverCategory = ObjectCategory::Dipole;
+            const auto &A = dipole->A();
+            if(A && A->hover(p, scene->grid.zoom())){
+                setTarget(A->p());
+                _hoveredObject = A;
+                _hoverCategory = ObjectCategory::Node;
+                return;
+            }
+            const auto &B = dipole->B();
+            if(B && B->hover(p, scene->grid.zoom())){
+                setTarget(B->p());
+                _hoveredObject = B;
+                _hoverCategory = ObjectCategory::Node;
+                return;
+            }
+            setTarget(p);
+            return;
+        }
     }
 }
 
-void PreferencesDialog::restoreBackupSettings() {
-    QSettings s;
-    s.clear();
-    for (auto it = backup.begin(); it != backup.end(); ++it) {
-        s.setValue(it.key(), it.value());
+void Pen::updateMovement(){
+    QVector<QPointF> points;
+    _indicators.clear();
+    switch(_state){
+    case PEN:
+        if(scene->snapPosition())
+            setTarget(scene->grid.snap(worldP()));
+        else
+            setTarget(worldP());
+
+        updateHover();
+
+        if(!scene->snapPosition()) break;
+
+        for(const auto &alias : scene->grid.visibleAliases)
+            points.append(alias->p());
+
+        setTarget(indicateTarget(scene, _indicators, t(), points, scene->grid.zoom()));
+        break;
+
+    case CONSTRUCTING:
+        setTarget(worldP());
+        if(scene->snapPosition())
+            setTarget(scene->grid.snap(t()));
+
+        if(type != ObjectType::Wire && (_state == CONSTRUCTING || (_state == PEN && shift())))
+            setTarget(pA(t(), previous->p()));
+
+        updateHover();
+
+        if(!scene->snapPosition()) break;
+
+        for(const auto &alias : scene->grid.visibleAliases){
+            if(alias != previous) points.append(alias->p());
+        }
+
+        if(type == ObjectType::Wire){
+            auto cur = _path.first();
+            while(cur){
+                if(const auto &ctrlAfter = cur->after()){
+                    if(ctrlAfter->visible(scene->grid, scene->grid.zoom()))
+                        points.append(ctrlAfter->p());
+                }
+                if(const auto &ctrlBefore = cur->before()){
+                    if(ctrlBefore->visible(scene->grid, scene->grid.zoom()))
+                        points.append(ctrlBefore->p());
+                }
+                if(cur->visible(scene->grid, scene->grid.zoom()))
+                    points.append(cur->p());
+                cur = cur->next();
+            }
+        }
+        setTarget(indicateTarget(scene, _indicators, t(), points, scene->grid.zoom()));
+        break;
+
+    case INITIAL_CONTROLLING:
+    case CONTROLLING: {
+        setTarget(worldP());
+        const auto &last = _path.last();
+
+        if(shift() && last)
+            setTarget(pA(t(), last->p()));
+
+
+        if(!scene->snapPosition()) break;
+
+        for(const auto &alias : scene->grid.visibleAliases)
+            points.append(alias->p());
+
+        auto cur = _path.first();
+        while(cur){
+            if(cur != last){
+                if(const auto &ctrlAfter = cur->after()){
+                    if(ctrlAfter->visible(scene->grid, scene->grid.zoom()))
+                        points.append(ctrlAfter->p());
+                }
+                if(const auto &ctrlBefore = cur->before()){
+                    if(ctrlBefore->visible(scene->grid, scene->grid.zoom()))
+                        points.append(ctrlBefore->p());
+                }
+            }
+            if(cur->visible(scene->grid, scene->grid.zoom()))
+                points.append(cur->p());
+            cur = cur->next();
+        }
+
+        setTarget(indicateTarget(scene, _indicators, t(), points, scene->grid.zoom()));
+        setTarget(2*last->p() - indicateTarget(scene, _indicators, 2*last->p() - t(), points, scene->grid.zoom()));
+
+        break;
+    }
+    default:
+        break;
+    }
+
+    analyze();
+}
+
+void Pen::setState(const ToolState state){
+    if(state == PEN){
+        _path.clear();
+        previous.reset();
+    }
+    else if(state == CONSTRUCTING && !previous) return;
+    _state = state;
+    updateMovement();
+    MouseTool::setCursor();
+}
+
+void Pen::setCursor(const ToolState state){
+    switch(state){
+    case PEN:
+        scene->setCursor(penCursor);
+        break;
+    case CONSTRUCTING:
+        scene->setCursor(constructingCursor);
+        break;
+    case INITIAL_CONTROLLING:
+    case CONTROLLING:
+        scene->setCursor(constructingPlusCursor);
+        break;
+    default:
+        break;
     }
 }
 
-void PreferencesDialog::updateColorButton(QPushButton *btn, const QColor &color) {
-    QPalette pal = btn->palette();
-    pal.setColor(QPalette::Button, color);
-    btn->setAutoFillBackground(true);
-    btn->setPalette(pal);
-    btn->update();
+void Pen::keyDown([[maybe_unused]] Qt::Key key){
+    switch(key){
+    case Qt::Key_Space:
+        if(_state == PEN || _state == CONSTRUCTING)
+            scene->setTempMouse(&scene->grabber, Qt::Key_Space);
+        break;
+    case Qt::Key_Alt:
+    case Qt::Key_AltGr:
+        break;
+    case Qt::Key_Escape:
+        init();
+        break;
+    case Qt::Key_V:
+        scene->setMouse(&scene->selector);
+        break;
+    case Qt::Key_P:
+        setType(ObjectType::Alias);
+        break;
+    case Qt::Key_R:
+        setType(ObjectType::Resistor);
+        break;
+    case Qt::Key_C:
+        setType(ObjectType::Capacitor);
+        break;
+    case Qt::Key_L:
+        setType(ObjectType::Inductor);
+        break;
+    case Qt::Key_B:
+        setType(ObjectType::Battery);
+        break;
+    case Qt::Key_E:
+        setType(ObjectType::DCV);
+        break;
+    case Qt::Key_I:
+        setType(ObjectType::DCI);
+        break;
+    default:
+        break;
+    }
 }
 
-void PreferencesDialog::chooseSceneBackground() {
-    QColor color = QColorDialog::getColor(bgColorBtn->palette().button().color(), this, "Choose Background Color");
-    if (color.isValid()) updateColorButton(bgColorBtn, color);
+void Pen::keyPress([[maybe_unused]] Qt::Key key){}
+
+void Pen::keyUp([[maybe_unused]] Qt::Key key){}
+
+void Pen::drawAliasPreview(const QColor &color){
+    QBrush b = brush();
+    b.setColor(color);
+    scene->grid.drawAlias(scene->grid.toScreen(t()), b, radius(), "");
 }
 
-void PreferencesDialog::chooseSceneGridStroke() {
-    QColor color = QColorDialog::getColor(gridStrokeBtn->palette().button().color(), this, "Choose Grid Stroke Color");
-    if (color.isValid()) updateColorButton(gridStrokeBtn, color);
+
+void Pen::drawDipolePreview(const QColor &color){
+    QPen p = pen();
+    p.setColor(color);
+    scene->grid.drawDipole(type, scene->grid.toScreen(previous->p()), scene->grid.toScreen(t()), color);
 }
 
-void PreferencesDialog::choosePenStrokeColor() {
-    QColor color = QColorDialog::getColor(strokeColorBtn->palette().button().color(), this, "Choose Stroke Color");
-    if (color.isValid()) updateColorButton(strokeColorBtn, color);
+void Pen::drawSplittedPreview(const QColor &color){
+    const auto &dipole = static_pointer_cast<Dipole>(hoveredObject());
+    QPointF A, B;
+
+    switch(mode){
+    case NORMAL_SPLIT:
+    case ALIAS_SPLIT:
+        A = dipole->p1();
+        B = t();
+        break;
+    case OVER_SPLIT: {
+        QPointF resultantB_p = t();
+        QPointF splittedA_p = dipole->p1();
+        QPointF splittedB_p = dipole->p2();
+
+        if(previous == dipole->A()){
+            A = resultantB_p;
+            B = splittedB_p;
+        }
+        else {
+            A = splittedA_p;
+            B = resultantB_p;
+        }
+        break;
+    }
+    default:
+        return;
+    }
+
+    QPen p = pen();
+    p.setColor(color);
+    scene->grid.drawDipole(dipole->type(), scene->grid.toScreen(A), scene->grid.toScreen(B), p);
 }
 
-void PreferencesDialog::choosePenFillColor() {
-    QColor color = QColorDialog::getColor(fillColorBtn->palette().button().color(), this, "Choose Fill Color");
-    if (color.isValid()) updateColorButton(fillColorBtn, color);
+void Pen::drawResultantPreview(const QColor &color){
+    const auto &dipole = static_pointer_cast<Dipole>(hoveredObject());
+    QPointF A, B;
+
+    switch(mode){
+    case NORMAL_SPLIT:
+    case ALIAS_SPLIT:
+        A = t();
+        B = dipole->p2();
+        break;
+    case OVER_SPLIT:
+        A = previous->p();
+        B = t();
+        break;
+    default:
+        return;
+    }
+
+    QPen p = pen();
+    p.setColor(color);
+    scene->grid.drawDipole(dipole->type(), scene->grid.toScreen(A), scene->grid.toScreen(B), p);
+}
+
+void Pen::drawHoveredAlias(const QColor &color){
+    QBrush b = brush();
+    if(allowOnClickColoring())
+        b.setColor(fillColor());
+    else
+        b.setColor(color);
+
+    QPen pen;
+    pen.setStyle(Qt::PenStyle::DashLine);
+    pen.setColor(Palette::HOVER);
+    pen.setWidth(2);
+    scene->grid.drawObject(hoveredAlias(), pen, b);
+}
+void Pen::drawHoveredDipole(const QColor &color){
+    QPen p = pen();
+    p.setColor(color);
+    scene->grid.drawObject(hoveredDipole(), p, Qt::NoBrush);
+}
+
+void Pen::draw(QPainter *painter){
+    switch(mode){
+    case ALIAS_ONLY:
+        drawAliasPreview(fillColor());
+        drawIndicators(painter);
+        break;
+    case DIPOLE_ONLY:
+        drawDipolePreview(strokeColor());
+        drawHoveredAlias(Palette::HOVER);
+        break;
+    case ALIAS_AND_DIPOLE:
+        drawDipolePreview(strokeColor());
+        drawAliasPreview(fillColor());
+        drawIndicators(painter);
+        break;
+    case ALIAS_SPLIT:
+        drawSplittedPreview(Palette::HOVER);
+        drawResultantPreview(Palette::HOVER);
+        drawAliasPreview(fillColor());
+        drawIndicators(painter);
+        break;
+    case NORMAL_SPLIT:
+        drawSplittedPreview(Palette::HOVER);
+        drawResultantPreview(Palette::HOVER);
+        drawDipolePreview(strokeColor());
+        drawAliasPreview(fillColor());
+        drawIndicators(painter);
+        break;
+    case OVER_SPLIT:
+        drawSplittedPreview(Palette::HOVER);
+        drawDipolePreview(strokeColor());
+        drawAliasPreview(fillColor());
+        drawIndicators(painter);
+        break;
+    case SWITCH_PREVIOUS: {
+        drawHoveredAlias(Palette::HOVER);
+        break;
+    }
+    case PROHIBITED:
+        drawAliasPreview(Palette::CONSTRUCTION_PROHIBITED);
+        if(_state == CONSTRUCTING) drawDipolePreview(Palette::CONSTRUCTION_PROHIBITED);
+        if(_hoverCategory == ObjectCategory::Dipole) drawHoveredDipole(Palette::CONSTRUCTION_PROHIBITED);
+        break;
+    }
 }

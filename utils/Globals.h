@@ -141,6 +141,9 @@ using Selection  = QSet<shared_ptr<Object>>;
 // =============================================
 // Enumerations
 // =============================================
+constexpr int VARNAME_MAX_LENGTH = 32;
+constexpr int VARVALUE_STRING_MAX_LENGTH = 64;
+
 enum class ObjectCategory { Void = -1, Node, Dipole, Edit };
 
 enum class ObjectType {
@@ -172,6 +175,10 @@ enum class Attr {
     X, Y, X1, X2, Y1, Y2, P, P1, P2,
     Width, Height, Size, Radius, Diameter, Rect,
     Length, Angle
+};
+
+enum class ToolType {
+    Selector, Pen, Grabber
 };
 
 // =============================================
@@ -481,6 +488,33 @@ QPointF indicateTarget(
     const QVector<QPointF> &points,
     const float zoom
 );
+
+inline QString numToAlpha(uint64_t number) {
+    QString result;
+    number++;  // Shift to 1-based to match A=0 properly
+
+    while (number > 0) {
+        number--;  // Decrement to make it 0-based before taking modulo
+        int remainder = number % 26;
+        result.prepend(QChar('A' + remainder));
+        number /= 26;
+    }
+
+    return result;
+}
+
+inline uint64_t alphaToNum(const QString &str) {
+    uint64_t result = 0;
+    for (int i = 0; i < str.length(); ++i) {
+        QChar ch = str[i].toUpper();
+        if (ch < 'A' || ch > 'Z') {
+            throw std::invalid_argument("Invalid character in base-26 string");
+        }
+        result = result * 26 + (ch.unicode() - 'A' + 1);
+    }
+    return result - 1;
+}
+
 
 // =============================================
 // Colors
