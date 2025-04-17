@@ -1,16 +1,15 @@
 #pragma once
-#include "Command.h"
 #include "utils/Globals.h"
 
 class Scene;
-class RemoveObjectsCommand: public Command {
+class RemoveObjectsCommand: public QUndoCommand {
 public:
-    RemoveObjectsCommand(Scene *scene, const Selection &selection):
-        Command(scene), _selection(selection) {}
+    RemoveObjectsCommand(Scene *scene, const Selection &selection, QUndoCommand *parent = nullptr);
 
-    void execute() override;
+    void redo() override;
     void undo() override;
 
 private:
+    Scene *scene;
     Selection _selection;
 };

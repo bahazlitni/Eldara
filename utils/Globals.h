@@ -12,24 +12,26 @@
 // =============================================
 // Qt Core
 // =============================================
+#include <QObject>
 #include <QtMath>
 #include <QVariant>
-#include <QPointF>
-#include <QLineF>
-#include <QHash>
-#include <QMap>
-#include <QSet>
 #include <QString>
 #include <QStringList>
 #include <QStringListModel>
+#include <QHash>
+#include <QMap>
+#include <QSet>
+#include <QPointF>
+#include <QLineF>
 #include <QRegularExpression>
 #include <QRegularExpressionValidator>
+#include <QMutex>
+#include <QFuture>
+#include <QtConcurrent/QtConcurrent>
 #include <QSettings>
 #include <QTimer>
 #include <QElapsedTimer>
-#include <QFuture>
-#include <QMutex>
-#include <QtConcurrent/QtConcurrent>
+#include <QFile>
 
 // =============================================
 // Qt GUI
@@ -37,15 +39,14 @@
 #include <QColor>
 #include <QCursor>
 #include <QImage>
+#include <QTransform>
 #include <QPainter>
 #include <QPainterPath>
-#include <QTransform>
-#include <QGraphicsColorizeEffect>
-#include <QSvgRenderer>
-#include <QGuiApplication>
-#include <QGraphicsPixmapItem>
 #include <QKeyEvent>
 #include <QWheelEvent>
+#include <QSvgRenderer>
+#include <QGraphicsColorizeEffect>
+#include <QGuiApplication>
 
 // =============================================
 // Qt Widgets
@@ -86,12 +87,11 @@
 #include <QMouseEvent>
 #include <QColorDialog>
 #include <QHeaderView>
-
-// =============================================
-// File Handling
-// =============================================
-#include <QFile>
-
+#include <QUndoCommand>
+#include <QUndoStack>
+#include <QKeySequence>
+#include <QUndoView>
+#include <QDockWidget>
 
 // Using standard namespace
 using namespace std;

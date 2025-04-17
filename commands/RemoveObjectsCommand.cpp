@@ -4,8 +4,22 @@
 #include "Grid.h"
 #include "Scene.h"
 
-void RemoveObjectsCommand::execute(){
-    Command::execute();
+RemoveObjectsCommand::RemoveObjectsCommand(
+    Scene *scene,
+    const Selection &selection,
+    QUndoCommand *parent
+):
+    QUndoCommand(parent),
+    scene(scene),
+    _selection(selection)
+{
+    if(selection.size() == 1)
+        setText(QObject::tr("Remove '%1'").arg((*selection.constBegin())->name()));
+    else
+        setText(QObject::tr("Remove %n Objects", "", selection.size()));
+}
+
+void RemoveObjectsCommand::redo(){
     QSet<SharedDipole> visitedDipoles;
     for(const auto &obj : _selection){
         scene->deepRemoval(obj);
@@ -31,8 +45,8 @@ void RemoveObjectsCommand::execute(){
     if(scene->mouse->state() == scene->selector.state())
         scene->selector.unselect(_selection);
 }
+
 void RemoveObjectsCommand::undo(){
-    Command::undo();
     QSet<SharedDipole> visitedDipoles;
     for(const auto &obj : _selection){
         if(obj->category() == ObjectCategory::Node){
@@ -55,6 +69,7 @@ void RemoveObjectsCommand::undo(){
             dipole->dirtyVisibleCheckFlag = scene->grid.getDirtyVisibleCheckFlagInitial();
         }
     }
+
 
     if(scene->mouse->state() == scene->selector.state())
         scene->selector.select(_selection);

@@ -8,8 +8,7 @@ Scene::Scene(QWidget *parent):
     grid(Grid(this)),
     pen(Pen(this)),
     selector(Selector(this)),
-    grabber(Grabber(this)),
-    timeline(Timeline())
+    grabber(Grabber(this))
 {
     mouse = &selector;
     mouse->init();
@@ -133,11 +132,10 @@ void Scene::setTempMouse(MouseTool *m, const Qt::Key key){
     returningKey = key;
 }
 
-void Scene::undo(){ timeline.undo(); grid.updateVisibility(); }
-void Scene::redo(){ timeline.redo(); grid.updateVisibility(); }
-void Scene::execute(std::unique_ptr<Command> cmd){
-    timeline.execute(std::move(cmd));
-    grid.updateVisibility();
+void Scene::undo(){ undoStack.undo(); grid.updateVisibility(); }
+void Scene::redo(){ undoStack.redo(); grid.updateVisibility(); }
+void Scene::execute(QUndoCommand *cmd){
+    undoStack.push(cmd); grid.updateVisibility();
 }
 
 void Scene::deepRemoval(const SharedObject &obj){

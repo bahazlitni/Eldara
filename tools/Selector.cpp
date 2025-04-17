@@ -282,7 +282,7 @@ void Selector::keyDown(Qt::Key key){
                 )
             );
             toCopySelection = QSet(_selection);
-            scene->execute(std::make_unique<InsertObjectsCommand>(scene, _selection));
+            scene->execute(new InsertObjectsCommand(scene, _selection));
         }
         break;
     case Qt::Key_L:
@@ -439,7 +439,7 @@ void Selector::setCursor(const ToolState state){
 
 void Selector::deleteSelection(){
     if(_selection.isEmpty()) return;
-    scene->execute(std::make_unique<RemoveObjectsCommand>(scene, _selection));
+    scene->execute(new RemoveObjectsCommand(scene, _selection));
     _selection.clear();
     emit selectionChanged();
 }
@@ -627,13 +627,13 @@ void Selector::executeDrag(){
     const bool Merge = !mergeMap.isEmpty();
 
     if(Move && !Merge)
-        scene->execute(std::make_unique<MovePointsCommand>(scene, movementMap));
+        scene->execute(new MovePointsCommand(scene, movementMap));
     else if(Merge && !Move)
-        scene->execute(std::make_unique<MergeSelectionCommand>(scene, mergeMap));
+        scene->execute(new MergeSelectionCommand(scene, mergeMap));
     else if(Move && Merge){
-        auto cmd = std::make_unique<ComboCommand>();
-        cmd->addCommand(std::make_unique<MovePointsCommand>(scene, movementMap));
-        cmd->addCommand(std::make_unique<MergeSelectionCommand>(scene, mergeMap));
-        scene->execute(std::move(cmd));
+        auto *macro = new QUndoCommand(tr("Move & Merge"));
+        new MovePointsCommand(scene, movementMap, macro);
+        new MergeSelectionCommand(scene, mergeMap, macro);
+        scene->execute(macro);
     }
 }

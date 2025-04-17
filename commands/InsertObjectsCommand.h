@@ -1,18 +1,19 @@
 #pragma once
-#include "Command.h"
 #include "utils/Globals.h"
 
-#include <QHash>
-
 class Scene;
-class InsertObjectsCommand: public Command {
+class InsertObjectsCommand: public QUndoCommand {
 public:
-    InsertObjectsCommand(Scene *scene, const Selection &selection):
-        Command(scene), _selection(selection) {}
+    InsertObjectsCommand(
+        Scene *scene,
+        const Selection &selection,
+        QUndoCommand *parent = nullptr
+    );
 
-    void execute() override;
+    void redo() override;
     void undo() override;
 
 private:
+    Scene *scene;
     Selection _selection;
 };

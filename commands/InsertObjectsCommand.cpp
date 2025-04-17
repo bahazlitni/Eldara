@@ -6,8 +6,20 @@
 #include "objects/Alias.h"
 #include "objects/Dipole.h"
 
-void InsertObjectsCommand::execute(){
-    Command::execute();
+InsertObjectsCommand::InsertObjectsCommand(
+    Scene *scene,
+    const Selection &selection,
+    QUndoCommand *parent
+):
+    QUndoCommand(parent), scene(scene), _selection(selection)
+{
+    if(selection.size() == 1)
+        setText(QObject::tr("Insert '%1'").arg((*selection.constBegin())->name()));
+    else
+        setText(QObject::tr("Insert %n Objects", "", selection.size()));
+}
+
+void InsertObjectsCommand::redo(){
     for(const auto &obj : _selection){
         switch(obj->category()){
         case ObjectCategory::Node: {
@@ -32,7 +44,6 @@ void InsertObjectsCommand::execute(){
 }
 
 void InsertObjectsCommand::undo(){
-    Command::undo();
     for(const auto &obj : _selection){
         if(obj->category() == ObjectCategory::Dipole){
             const SharedDipole dipole = static_pointer_cast<Dipole>(obj);

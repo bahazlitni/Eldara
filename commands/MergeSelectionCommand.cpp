@@ -6,8 +6,13 @@
 #include "objects/Alias.h"
 #include "objects/Dipole.h"
 
-MergeSelectionCommand::MergeSelectionCommand(Scene *scene, const MergeMap &mergeMap):
-    Command(scene), _mergeMap(mergeMap) {
+MergeSelectionCommand::MergeSelectionCommand(
+    Scene *scene, const MergeMap &mergeMap, QUndoCommand *parent
+):
+    QUndoCommand(parent), scene(scene), _mergeMap(mergeMap)
+{
+    setText(QObject::tr("Merge Objects"));
+
     for(const auto &merged : _mergeMap.keys()){
         switch(merged->category()){
         case ObjectCategory::Node: {
@@ -28,8 +33,7 @@ MergeSelectionCommand::MergeSelectionCommand(Scene *scene, const MergeMap &merge
 }
 
 
-void MergeSelectionCommand::execute(){
-    Command::execute();
+void MergeSelectionCommand::redo(){
     for(const auto &merged : _mergeMap.keys()){
         if(!merged) continue;
         switch(merged->category()){
@@ -58,7 +62,6 @@ void MergeSelectionCommand::execute(){
 }
 
 void MergeSelectionCommand::undo(){
-    Command::execute();
     for(const auto &merged : _mergeMap.keys()){
         if(!merged || merged->category() != ObjectCategory::Node) continue;
         const auto &mergedAlias = std::static_pointer_cast<Alias>(merged);

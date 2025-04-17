@@ -1,9 +1,11 @@
-#include "Command.h"
+#pragma once
 #include "utils/Globals.h"
 
 class Scene;
-class SplitDipoleCommand: public Command {
+class SplitDipoleCommand: public QUndoCommand {
 private:
+    Scene *scene;
+
     SharedDipole splitted;
     SharedDipole resultant;
     SharedAlias splitter;
@@ -17,11 +19,10 @@ public:
         Scene *scene,
         const SharedDipole &splitted,
         const SharedDipole &resultant,
-        const SharedAlias &splitter
+        const SharedAlias &splitter,
+        QUndoCommand *parent = nullptr
     );
 
-    ~SplitDipoleCommand() override;
-
-    void execute() override;
+    void redo() override;
     void undo() override;
 };

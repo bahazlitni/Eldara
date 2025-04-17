@@ -1,23 +1,24 @@
 #pragma once
-#include "Command.h"
 #include "utils/Globals.h"
 
 class VariablesTab;
-class AddVariablesCommand: public Command {
+
+class AddVariablesCommand : public QUndoCommand {
 public:
     AddVariablesCommand(
         VariablesTab *variablesTab,
         const QVector<QString> &names,
-        const QVector<QVariant> values,
-        const QVector<VariableType> &types
+        const QVector<QVariant> &values,
+        const QVector<VariableType> &types,
+        QUndoCommand *parent = nullptr
     );
 
-    void execute() override;
+    void redo() override;
     void undo() override;
 
 private:
-    VariablesTab *_variablesTab;
-    const QVector<QString> _names;
-    const QVector<QVariant> _values;
-    const QVector<VariableType> _types;
+    VariablesTab         *m_variablesTab;
+    QVector<QString>      m_names;
+    QVector<QVariant>     m_values;
+    QVector<VariableType> m_types;
 };

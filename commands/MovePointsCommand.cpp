@@ -1,16 +1,23 @@
 #include "MovePointsCommand.h"
-#include "utils/Selection.h"
 #include "Scene.h"
 
-
 MovePointsCommand::MovePointsCommand(
-    Scene *scene, const MovementMap &movementMap
+    Scene *scene, const MovementMap &movementMap, QUndoCommand *parent
 ):
-    Command(scene), movementMap(movementMap)
-{}
+    QUndoCommand(parent), scene(scene), movementMap(movementMap)
+{
+    if(movementMap.size() == 1){
+        const auto &points = *movementMap.constBegin();
+        setText(QObject::tr("Move Position to (%1,%2)").arg(
+            QString::number(points.second.x()),
+            QString::number(points.second.y())
+        ));
+    }
+    else
+        setText(QObject::tr("Move %n Positions", "", movementMap.size()));
+}
 
-void MovePointsCommand::execute(){
-    Command::execute();
+void MovePointsCommand::redo(){
     for(auto sharedP : movementMap.keys()){
         const QPointF updatedP = movementMap[sharedP].second;
         sharedP->setX(updatedP.x());
@@ -19,7 +26,6 @@ void MovePointsCommand::execute(){
 }
 
 void MovePointsCommand::undo(){
-    Command::undo();
     for(auto sharedP : movementMap.keys()){
         const QPointF initialP = movementMap[sharedP].first;
         sharedP->setX(initialP.x());

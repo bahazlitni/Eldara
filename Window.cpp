@@ -1,4 +1,3 @@
-/* Window.cpp */
 #include "Window.h"
 #include "Scene.h"
 #include "widgets/MainPanel.h"
@@ -8,7 +7,6 @@
 #include "tools/Pen.h"
 #include "dialogs/PreferencesDialog.h"
 
-#include "objects/Object.h"
 #include "objects/Alias.h"
 #include "objects/Resistor.h"
 #include "objects/Capacitor.h"
@@ -25,32 +23,53 @@ Window::Window()
     scene(new Scene(splitter)),
     mainPanel(new MainPanel(scene, splitter))
 {
-    setWindowTitle("Circuits Simulator");
+    setWindowTitle("Eldara");
     setupMenuBar();
     setupSplitter();
+    setupHistoryDock();
     setupConnections();
     applySettings();
 }
 
 void Window::setupMenuBar() {
     fileMenu = menuBar()->addMenu(tr("&File"));
-    openAction = new QAction(tr("&Open..."), this);
-    openAction->setShortcut(QKeySequence::Open);
-    fileMenu->addAction(openAction);
-    saveAction = new QAction(tr("&Save"), this);
-    saveAction->setShortcut(QKeySequence::Save);
-    fileMenu->addAction(saveAction);
-    saveAsAction = new QAction(tr("Save &As..."), this);
-    saveAsAction->setShortcut(QKeySequence::SaveAs);
-    fileMenu->addAction(saveAsAction);
-    connect(openAction, &QAction::triggered, this, &Window::openFile);
-    connect(saveAction, &QAction::triggered, this, &Window::saveFile);
-    connect(saveAsAction, &QAction::triggered, this, &Window::saveFileAs);
+    openAction = fileMenu->addAction(
+        tr("&Open..."),
+        QKeySequence::Open,
+        this,
+        &Window::openFile
+    );
 
+    saveAction = fileMenu->addAction(
+        tr("&Save"),
+        QKeySequence::Save,
+        this,
+        &Window::saveFile
+    );
+
+    saveAsAction = fileMenu->addAction(
+        tr("Save &As..."),
+        QKeySequence::SaveAs,
+        this,
+        &Window::saveFileAs
+    );
+
+    // Edit menu
     editMenu = menuBar()->addMenu(tr("&Edit"));
-    preferencesAction = new QAction(tr("&Preferences..."), this);
-    editMenu->addAction(preferencesAction);
-    connect(preferencesAction, &QAction::triggered, this, &Window::openPreferences);
+
+    // Undo/Redo from QUndoStack
+    undoAction = scene->undoStack.createUndoAction(this, tr("&Undo"));
+    undoAction->setShortcuts(QKeySequence::Undo);
+    editMenu->addAction(undoAction);
+
+    redoAction = scene->undoStack.createRedoAction(this, tr("&Redo"));
+    redoAction->setShortcuts(QKeySequence::Redo);
+    editMenu->addAction(redoAction);
+
+    editMenu->addSeparator();
+
+    // Preferences
+    preferencesAction = editMenu->addAction(tr("&Preferences..."), this, &Window::openPreferences);
 }
 
 void Window::setupSplitter() {
@@ -67,6 +86,18 @@ void Window::setupSplitter() {
             background-color: #333;
         }
     )");
+}
+
+void Window::setupHistoryDock() {
+    undoView = new QUndoView(&scene->undoStack, this);
+    undoView->setWindowTitle(tr("Undo History"));
+
+    historyDock = new QDockWidget(tr("History"), this);
+    historyDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    historyDock->setWidget(undoView);
+    addDockWidget(Qt::RightDockWidgetArea, historyDock);
+    historyDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
+
 }
 
 void Window::setupConnections() {
@@ -158,7 +189,6 @@ void Window::openFile() {
     scene->reset();
     mainPanel->reset();
 
-    QHash<uint64_t, SharedAlias> aliasMap;
 
     auto readBlock = [&](auto &vec) {
         quint32 count;
@@ -180,9 +210,7 @@ void Window::openFile() {
 
         auto alias = std::make_shared<Alias>(
             d.id, d.address, d.x, d.y, d.radius, brush, pen, d.showLabel
-            );
-        scene->aliases.insert(d.id, alias);
-        aliasMap.insert(d.id, alias);
+        );
         scene->addAlias(alias);
     }
 
@@ -215,8 +243,8 @@ void Window::openFile() {
     // --- Generic loader for all two‐terminal elements ---
     auto forEachDipoleBlock = [&](auto &vec, auto ctor){
         for (auto &d : vec) {
-            auto A = aliasMap.value(d.idA);
-            auto B = aliasMap.value(d.idB);
+            auto A = scene->aliases[d.idA];
+            auto B = scene->aliases[d.idB];
             dipolesMap.insert(d.id, ctor(d, A, B, makePen(d)));
         }
     };

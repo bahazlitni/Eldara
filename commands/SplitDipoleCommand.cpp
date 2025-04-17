@@ -8,22 +8,24 @@ SplitDipoleCommand::SplitDipoleCommand(
     Scene *scene,
     const SharedDipole &splitted,
     const SharedDipole &resultant,
-    const SharedAlias &splitter
+    const SharedAlias &splitter,
+    QUndoCommand *parent
 ):
-    Command(scene), splitted(splitted), resultant(resultant), splitter(splitter) {
-    resultantA = resultant->A();
-    resultantB = resultant->B();
-    splittedA = splitted->A();
-    splittedB = splitted->B();
+    QUndoCommand(parent),
+    scene(scene),
+    splitted(splitted),
+    resultant(resultant),
+    splitter(splitter),
+    resultantA(resultant->A()),
+    resultantB(resultant->B()),
+    splittedA(splitted->A()),
+    splittedB(splitted->B())
+{
+    setText(QObject::tr("Split Dipole {%1}").arg(splitted->id()));
 }
 
-SplitDipoleCommand::~SplitDipoleCommand(){
-    scene->deepRemoval(resultant);
-}
 
-
-void SplitDipoleCommand::execute(){
-    Command::execute();
+void SplitDipoleCommand::redo(){
     splitter->connect(splitted);
     resultantA->connect(resultant);
     resultantB->connect(resultant);
@@ -53,7 +55,6 @@ void SplitDipoleCommand::execute(){
 }
 
 void SplitDipoleCommand::undo(){
-    Command::undo();
     splitter->disconnect(splitted);
     resultantA->disconnect(resultant);
     resultantB->disconnect(resultant);

@@ -10,15 +10,15 @@
 inline void VariablesTab::exe_changeVariables(
     const QVector<QString> &names, const QVector<QVariant> &newValues
 ){
-    mainPanel->scene->execute(std::make_unique<ChangeVariablesCommand>(this, names, newValues));
+    mainPanel->scene->execute(new ChangeVariablesCommand(this, names, newValues));
 }
 inline void VariablesTab::exe_removeVariables(const QVector<QString> &names){
-    mainPanel->scene->execute(std::make_unique<RemoveVariablesCommand>(this, names));
+    mainPanel->scene->execute(new RemoveVariablesCommand(this, names));
 }
 inline void VariablesTab::exe_addVariables(
     const QVector<QString> &names, const QVector<QVariant> &values, const QVector<VariableType> &types
 ){
-    mainPanel->scene->execute(std::make_unique<AddVariablesCommand>(this, names, values, types));
+    mainPanel->scene->execute(new AddVariablesCommand(this, names, values, types));
 }
 inline void VariablesTab::exe_replaceVariables(
     const QVector<QString> &oldNames,
@@ -26,10 +26,10 @@ inline void VariablesTab::exe_replaceVariables(
     const QVector<QVariant> &newValues,
     const QVector<VariableType> &newTypes
 ){
-    std::unique_ptr<ComboCommand> cmd = std::make_unique<ComboCommand>();
-    cmd->addCommand(std::make_unique<RemoveVariablesCommand>(this, oldNames));
-    cmd->addCommand(std::make_unique<AddVariablesCommand>(this, newNames, newValues, newTypes));
-    mainPanel->scene->execute(std::move(cmd));
+    auto macro = new QUndoCommand(tr("Replace Variables"));
+    new RemoveVariablesCommand(this, oldNames, macro);
+    new AddVariablesCommand(this, newNames, newValues, newTypes, macro);
+    mainPanel->scene->execute(macro);
 }
 
 // Constructor

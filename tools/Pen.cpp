@@ -15,10 +15,8 @@
 
 #include "utils/Geometry.h"
 
-#include "commands/Command.h"
 #include "commands/SplitDipoleCommand.h"
 #include "commands/InsertObjectsCommand.h"
-#include "commands/Timeline.h"
 #include "Grid.h"
 #include "tools/Grabber.h"
 #include "tools/Selector.h"
@@ -149,21 +147,21 @@ void Pen::analyze(){
     switch(_state){
     case PEN:
         switch(_hoverCategory){
-        case ObjectCategory::Dipole: mode = allowSplitting()? ALIAS_SPLIT : PROHIBITED; return;
-        case ObjectCategory::Node: mode = SWITCH_PREVIOUS; return;
-        case ObjectCategory::Void: mode = ALIAS_ONLY; return;
-        default: mode = PROHIBITED; return;
+        case ObjectCategory::Dipole: mode = allowSplitting()? Mode::AliasSplit : Mode::Prohibited; return;
+        case ObjectCategory::Node: mode = Mode::SwitchPrevious; return;
+        case ObjectCategory::Void: mode = Mode::AliasOnly; return;
+        default: mode = Mode::Prohibited; return;
         }
     case CONSTRUCTING: {
         if(_hoverCategory == ObjectCategory::Node && previous == hoveredAlias()){
-            mode = SWITCH_PREVIOUS;
+            mode = Mode::SwitchPrevious;
             return;
         }
         SharedDipole lsceneingHoveredDipole;
         const QLineF constructionLine = QLineF(previous->p(), t());
 
         if(_hoverCategory == ObjectCategory::Dipole && hoveredDipole()->connectedTo(previous)){
-            mode = allowSplitting()? OVER_SPLIT : PROHIBITED;
+            mode = allowSplitting()? Mode::OverSplit : Mode::Prohibited;
             return;
         }
 
@@ -173,107 +171,132 @@ void Pen::analyze(){
                 lsceneingHoveredDipole = dipole;
                 continue;
             }
-            mode = _hoverCategory == ObjectCategory::Node ? SWITCH_PREVIOUS : PROHIBITED;
+            mode = _hoverCategory == ObjectCategory::Node ? Mode::SwitchPrevious : Mode::Prohibited;
             return;
         }
 
         if(lsceneingHoveredDipole){
-            mode = allowSplitting() && lsceneingHoveredDipole->connectedTo(previous) ? OVER_SPLIT : PROHIBITED;
+            mode = allowSplitting() && lsceneingHoveredDipole->connectedTo(previous) ? Mode::OverSplit : Mode::Prohibited;
             return;
         }
 
         switch(_hoverCategory){
-        case ObjectCategory::Dipole: mode = allowSplitting()? NORMAL_SPLIT : PROHIBITED; return;
-        case ObjectCategory::Node: mode = DIPOLE_ONLY; return;
-        case ObjectCategory::Void: mode = ALIAS_AND_DIPOLE; return;
-        default: mode = PROHIBITED; return;
+        case ObjectCategory::Dipole: mode = allowSplitting()? Mode::NormalSplit : Mode::Prohibited; return;
+        case ObjectCategory::Node: mode = Mode::DipoleOnly; return;
+        case ObjectCategory::Void: mode = Mode::AliasAndDipole; return;
+        default: mode = Mode::Prohibited; return;
         }
         break;
     }
     default:
-        mode = PROHIBITED;
+        mode = Mode::Prohibited;
         break;
     }
 }
 
-void Pen::construct(){
+void Pen::construct() {
     switch (mode) {
-    case PROHIBITED: return;
-    case ALIAS_ONLY:
-        previous = MakeAlias(t());
-        scene->execute(std::make_unique<InsertObjectsCommand>(scene, Selection({previous})));
-        break;
-    case ALIAS_AND_DIPOLE: {
-        const auto &newAlias = MakeAlias(t());
-        scene->execute(std::make_unique<InsertObjectsCommand>(scene, Selection({newAlias, MakeDipole(previous, newAlias)})));
-        previous = newAlias;
-        break;
-    }
-    case DIPOLE_ONLY: {
-        const auto &hoveredAlias = static_pointer_cast<Alias>(hoveredObject());
+    case Mode::Prohibited:
+        return;
+
+    case Mode::AliasOnly: {
+        auto a = MakeAlias(t());
+        previous = a;
+
         scene->execute(
-            std::make_unique<InsertObjectsCommand>(
-                scene, Selection({MakeDipole(previous, hoveredAlias)})
-            )
+            new InsertObjectsCommand(scene, Selection{a})
         );
-        previous = hoveredAlias;
         break;
     }
-    case ALIAS_SPLIT: {
-        const auto &splitter = MakeAlias(t());
-        const auto &splitted = hoveredDipole();
-        const auto &resultant = MakeDipole(splitter, splitted->B(), splitted->type());
 
-        auto cmd = std::make_unique<ComboCommand>();
-        cmd->addCommand(
-            std::make_unique<InsertObjectsCommand>(scene, Selection({splitter, resultant}))
-        );
-        cmd->addCommand(
-            std::make_unique<SplitDipoleCommand>(scene, splitted, resultant, splitter)
-        );
-        scene->execute(std::move(cmd));
-        previous = splitter;
-        break;
-    }
-    case NORMAL_SPLIT: {
-        const auto &splitter = MakeAlias(t());
-        const auto &splitted = hoveredDipole();
-        const auto &resultant = MakeDipole(splitter, splitted->B(), splitted->type());
-        const auto &normal = MakeDipole(previous, splitter);
+    case Mode::AliasAndDipole: {
+        auto a = MakeAlias(t());
+        auto d = MakeDipole(previous, a);
+        previous = a;
 
-        auto cmd = std::make_unique<ComboCommand>();
-        cmd->addCommand(
-            std::make_unique<InsertObjectsCommand>(scene, Selection({splitter, resultant, normal}))
+        scene->execute(
+            new InsertObjectsCommand(scene, Selection{a, d})
         );
-        cmd->addCommand(
-            std::make_unique<SplitDipoleCommand>(scene, splitted, resultant, splitter)
-        );
-        scene->execute(std::move(cmd));
-        previous = splitter;
         break;
     }
-    case OVER_SPLIT: {
-        const auto &splitter = MakeAlias(t());
-        const auto &splitted = hoveredDipole();
-        const auto &resultant = MakeDipole(previous, splitter);
 
-        auto cmd = std::make_unique<ComboCommand>();
-        cmd->addCommand(
-            std::make_unique<InsertObjectsCommand>(scene, Selection({splitter, resultant}))
+    case Mode::DipoleOnly: {
+        auto targetAlias = std::static_pointer_cast<Alias>(hoveredObject());
+        auto d = MakeDipole(previous, targetAlias);
+        previous = targetAlias;
+
+        scene->execute(
+            new InsertObjectsCommand(scene, Selection{d})
         );
-        cmd->addCommand(
-            std::make_unique<SplitDipoleCommand>(scene, splitted, resultant, splitter)
-        );
-        scene->execute(std::move(cmd));
-        previous = splitter;
         break;
     }
-    case SWITCH_PREVIOUS:
-        previous = static_pointer_cast<Alias>(hoveredObject());
-        if(allowOnClickColoring()) previous->setBrush(brush());
+
+    case Mode::AliasSplit: {
+        auto splitter  = MakeAlias(t());
+        auto splitted  = hoveredDipole();
+        auto resultant = MakeDipole(splitter, splitted->B(), splitted->type());
+        previous = splitter;
+
+        auto *macro = new QUndoCommand(tr("Alias Split"));
+
+        new InsertObjectsCommand(
+            scene, Selection{splitter, resultant}, macro
+        );
+        new SplitDipoleCommand(
+            scene, splitted, resultant, splitter, macro
+        );
+
+        scene->execute(macro);
+        break;
+    }
+
+    case Mode::NormalSplit: {
+        auto splitter  = MakeAlias(t());
+        auto splitted  = hoveredDipole();
+        auto resultant = MakeDipole(splitter, splitted->B(), splitted->type());
+        auto normal    = MakeDipole(previous, splitter);
+        previous = splitter;
+
+        auto *macro = new QUndoCommand(tr("Normal Split"));
+
+        new InsertObjectsCommand(
+            scene, Selection{splitter, resultant, normal}, macro
+        );
+        new SplitDipoleCommand(
+            scene, splitted, resultant, splitter, macro
+        );
+
+        scene->execute(macro);
+        break;
+    }
+
+    case Mode::OverSplit: {
+        auto splitter  = MakeAlias(t());
+        auto splitted  = hoveredDipole();
+        auto resultant = MakeDipole(previous, splitter);
+        previous = splitter;
+
+        auto *macro = new QUndoCommand(tr("Over Split"));
+
+        new InsertObjectsCommand(
+            scene, Selection{splitter, resultant}, macro
+        );
+        new SplitDipoleCommand(
+            scene, splitted, resultant, splitter, macro
+        );
+
+        scene->execute(macro);
+        break;
+    }
+
+    case Mode::SwitchPrevious:
+        previous = std::static_pointer_cast<Alias>(hoveredObject());
+        if (allowOnClickColoring())
+            previous->setBrush(brush());
         break;
     }
 }
+
 
 void Pen::downL(){
     analyze();
@@ -553,12 +576,12 @@ void Pen::drawSplittedPreview(const QColor &color){
     QPointF A, B;
 
     switch(mode){
-    case NORMAL_SPLIT:
-    case ALIAS_SPLIT:
+    case Mode::NormalSplit:
+    case Mode::AliasSplit:
         A = dipole->p1();
         B = t();
         break;
-    case OVER_SPLIT: {
+    case Mode::OverSplit: {
         QPointF resultantB_p = t();
         QPointF splittedA_p = dipole->p1();
         QPointF splittedB_p = dipole->p2();
@@ -587,12 +610,12 @@ void Pen::drawResultantPreview(const QColor &color){
     QPointF A, B;
 
     switch(mode){
-    case NORMAL_SPLIT:
-    case ALIAS_SPLIT:
+    case Mode::NormalSplit:
+    case Mode::AliasSplit:
         A = t();
         B = dipole->p2();
         break;
-    case OVER_SPLIT:
+    case Mode::OverSplit:
         A = previous->p();
         B = t();
         break;
@@ -626,46 +649,48 @@ void Pen::drawHoveredDipole(const QColor &color){
 
 void Pen::draw(QPainter *painter){
     switch(mode){
-    case ALIAS_ONLY:
+    case Mode::AliasOnly:
         drawAliasPreview(fillColor());
         drawIndicators(painter);
         break;
-    case DIPOLE_ONLY:
+    case Mode::DipoleOnly:
         drawDipolePreview(strokeColor());
         drawHoveredAlias(Palette::HOVER);
         break;
-    case ALIAS_AND_DIPOLE:
+    case Mode::AliasAndDipole:
         drawDipolePreview(strokeColor());
         drawAliasPreview(fillColor());
         drawIndicators(painter);
         break;
-    case ALIAS_SPLIT:
+    case Mode::AliasSplit:
         drawSplittedPreview(Palette::HOVER);
         drawResultantPreview(Palette::HOVER);
         drawAliasPreview(fillColor());
         drawIndicators(painter);
         break;
-    case NORMAL_SPLIT:
+    case Mode::NormalSplit:
         drawSplittedPreview(Palette::HOVER);
         drawResultantPreview(Palette::HOVER);
         drawDipolePreview(strokeColor());
         drawAliasPreview(fillColor());
         drawIndicators(painter);
         break;
-    case OVER_SPLIT:
+    case Mode::OverSplit:
         drawSplittedPreview(Palette::HOVER);
         drawDipolePreview(strokeColor());
         drawAliasPreview(fillColor());
         drawIndicators(painter);
         break;
-    case SWITCH_PREVIOUS: {
+    case Mode::SwitchPrevious: {
         drawHoveredAlias(Palette::HOVER);
         break;
     }
-    case PROHIBITED:
+    case Mode::Prohibited:
         drawAliasPreview(Palette::CONSTRUCTION_PROHIBITED);
-        if(_state == CONSTRUCTING) drawDipolePreview(Palette::CONSTRUCTION_PROHIBITED);
-        if(_hoverCategory == ObjectCategory::Dipole) drawHoveredDipole(Palette::CONSTRUCTION_PROHIBITED);
+        if(_state == CONSTRUCTING)
+            drawDipolePreview(Palette::CONSTRUCTION_PROHIBITED);
+        if(_hoverCategory == ObjectCategory::Dipole)
+            drawHoveredDipole(Palette::CONSTRUCTION_PROHIBITED);
         break;
     }
 }

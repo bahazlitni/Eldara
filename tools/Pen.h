@@ -5,10 +5,6 @@
 #include "MouseTool.h"
 #include "objects/BCPath.h"
 
-
-
-class ComboCommand;
-class Command;
 class Node;
 class Dipole;
 class EventsManager;
@@ -20,14 +16,14 @@ class Pen: public MouseTool {
 
 protected:
     enum Mode {
-       PROHIBITED,
-       ALIAS_AND_DIPOLE,
-       ALIAS_ONLY,
-       DIPOLE_ONLY,
-       ALIAS_SPLIT,
-       NORMAL_SPLIT,
-       OVER_SPLIT,
-       SWITCH_PREVIOUS
+       Prohibited,
+       AliasAndDipole,
+       AliasOnly,
+       DipoleOnly,
+       AliasSplit,
+       NormalSplit,
+       OverSplit,
+       SwitchPrevious
     };
 
 public:

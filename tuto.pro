@@ -20,7 +20,6 @@ SOURCES += \
     commands/RemoveObjectsCommand.cpp \
     commands/RemoveVariablesCommand.cpp \
     commands/SplitDipoleCommand.cpp \
-    commands/Timeline.cpp \
     objects/BCPath.cpp \
     objects/Dipole.cpp \
     tools/MouseTool.cpp \
@@ -53,7 +52,6 @@ HEADERS += \
     Window.h \
     commands/AddVariablesCommand.h \
     commands/ChangeVariablesCommand.h \
-    commands/Command.h \
     commands/EmbedParamCommand.h \
     commands/InsertObjectsCommand.h \
     commands/MergeSelectionCommand.h \
@@ -61,7 +59,6 @@ HEADERS += \
     commands/RemoveObjectsCommand.h \
     commands/RemoveVariablesCommand.h \
     commands/SplitDipoleCommand.h \
-    commands/Timeline.h \
     objects/Alias.h \
     objects/BCControlPoint.h \
     objects/BCPath.h \

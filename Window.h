@@ -94,12 +94,18 @@ private:
     };
 
     QSplitter *splitter;
-    QMenu *fileMenu;
-    QMenu *editMenu;
+    QMenu   *fileMenu;
+    QMenu   *editMenu;
     QAction *openAction;
     QAction *saveAction;
     QAction *saveAsAction;
     QAction *preferencesAction;
+    QAction *undoAction;
+    QAction *redoAction;
+
+    QDockWidget *historyDock;
+    QUndoView   *undoView;
+
     Scene *scene;
     MainPanel *mainPanel;
 
@@ -116,6 +122,9 @@ private slots:
     void saveFileAs();
     void openPreferences();
     void applySettings();
+
+    void setupHistoryDock();
+
 
 protected:
     void closeEvent(QCloseEvent *event) override;

@@ -2,7 +2,6 @@
 #include "utils/Globals.h"
 
 #include "Grid.h"
-#include "commands/Timeline.h"
 #include "tools/MouseTool.h"
 #include "tools/Pen.h"
 #include "tools/Selector.h"
@@ -15,6 +14,8 @@ class Scene : public QWidget {
 public:
     Scene(QWidget *parent = nullptr);
     ~Scene() = default;
+
+    QUndoStack undoStack;
 
     Grid grid;
     Pen pen;
@@ -44,7 +45,7 @@ public:
 
     void undo();
     void redo();
-    void execute(std::unique_ptr<Command> cmd);
+    void execute(QUndoCommand *cmd);
 
     bool pressed(Qt::Key key) const { return keys.contains(key); }
     bool shift() const { return pressed(Qt::Key_Shift); };
@@ -80,7 +81,9 @@ public:
     inline uint64_t id(){ return trackid++; }
     inline uint64_t address(){ return trackAddress++; }
 
-    inline bool hasChanged() const { return !timeline.isEmpty(); }
+    inline bool hasChanged() const {
+        return true;
+    }
 
     void reset();
 
@@ -122,8 +125,6 @@ public:
 
 
 private:
-    Timeline timeline;
-
     IDTracker trackid = 0;
     IDTracker trackAddress = 0;
 
