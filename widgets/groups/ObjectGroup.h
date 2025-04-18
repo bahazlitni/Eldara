@@ -3,6 +3,7 @@
 #include "utils/Globals.h"
 
 class MainPanel;
+
 class ObjectGroup : public InputGroup {
     Q_OBJECT
 private:

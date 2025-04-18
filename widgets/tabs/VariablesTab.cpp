@@ -7,6 +7,9 @@
 
 #include "SelectionTab.h"
 
+#include <QScrollArea>
+#include <QVBoxLayout>
+
 inline void VariablesTab::exe_changeVariables(
     const QVector<QString> &names, const QVector<QVariant> &newValues
 ){

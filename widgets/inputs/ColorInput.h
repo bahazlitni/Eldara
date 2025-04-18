@@ -1,11 +1,13 @@
 #pragma once
+#include "utils/Globals.h"
+
+#include <QString>
+#include <QColor>
 
 #include <QWidget>
-#include <QLineEdit>
 #include <QPushButton>
-#include <QHBoxLayout>
-#include <QColor>
-#include <QColorDialog>
+#include <QLineEdit>
+
 #include <QWheelEvent>
 
 class InputGroup;
@@ -34,10 +36,7 @@ public:
     }
 
 private slots:
-    // Called when the user finishes editing the hex text.
     void onHexEditingFinished();
-    // Called for live preview updates as the text changes.
     void onHexTextChanged(const QString &newText);
-    // Called when the preview button is clicked to open a color picker.
     void onPreviewClicked();
 };

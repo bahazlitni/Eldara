@@ -1,0 +1,11 @@
+#include "pch.h"
+
+#include "commands/AddVariablesCommand.cpp"
+#include "commands/ChangeVariablesCommand.cpp"
+#include "commands/EmbedParamCommand.cpp"
+#include "commands/InsertObjectsCommand.cpp"
+#include "commands/MergeSelectionCommand.cpp"
+#include "commands/MovePointsCommand.cpp"
+#include "commands/RemoveObjectsCommand.cpp"
+#include "commands/RemoveVariablesCommand.cpp"
+#include "commands/SplitDipoleCommand.cpp"

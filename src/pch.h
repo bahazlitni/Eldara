@@ -1,0 +1,105 @@
+// =============================================
+// Standard C++ headers
+// =============================================
+#include <atomic>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <memory>
+#include <algorithm>
+#include <thread>
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
+
+// =============================================
+// Linear Algerbra
+// =============================================
+#include "eigen-3.4.0/Eigen/Eigen"
+
+// =============================================
+// Qt Core
+// =============================================
+#include <QObject>
+#include <QtMath>
+#include <QVariant>
+#include <QString>
+#include <QStringList>
+#include <QStringListModel>
+#include <QHash>
+#include <QMap>
+#include <QSet>
+#include <QList>
+#include <QPointF>
+#include <QQueue>
+#include <QLineF>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
+#include <QMutex>
+#include <QFuture>
+#include <QtConcurrent/QtConcurrent>
+#include <QSettings>
+#include <QTimer>
+#include <QElapsedTimer>
+#include <QFile>
+#include <QThread>
+
+// =============================================
+// Qt GUI
+// =============================================
+#include <QColor>
+#include <QCursor>
+#include <QImage>
+#include <QTransform>
+#include <QPainter>
+#include <QPainterPath>
+#include <QKeyEvent>
+#include <QWheelEvent>
+#include <QSvgRenderer>
+#include <QGraphicsColorizeEffect>
+#include <QGuiApplication>
+
+// =============================================
+// Qt Widgets
+// =============================================
+#include <QWidget>
+#include <QMainWindow>
+#include <QDialog>
+#include <QPushButton>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QDoubleSpinBox>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QGridLayout>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QScrollArea>
+#include <QSpinBox>
+#include <QTabWidget>
+#include <QToolButton>
+#include <QDialogButtonBox>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QSplitter>
+#include <QFrame>
+#include <QCompleter>
+#include <QStyle>
+#include <QStack>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QButtonGroup>
+#include <QBoxLayout>
+#include <QMouseEvent>
+#include <QColorDialog>
+#include <QHeaderView>
+#include <QUndoCommand>
+#include <QUndoStack>
+#include <QKeySequence>
+#include <QUndoView>
+#include <QDockWidget>

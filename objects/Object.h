@@ -1,9 +1,18 @@
 #pragma once
-#include <QRectF>
-#include <QColor>
-#include <iostream>
-#include <QPainter>
 #include "utils/Globals.h"
+
+#include <iostream>
+
+#include <QColor>
+#include <QPainter>
+#include <QVariant>
+#include <QString>
+#include <QSizeF>
+#include <QPointF>
+#include <QBrush>
+#include <QPen>
+#include <QRectF>
+#include <QLineF>
 
 class Object {
 public:

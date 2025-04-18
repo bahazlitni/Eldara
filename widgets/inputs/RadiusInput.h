@@ -1,10 +1,15 @@
 #pragma once
-#include "widgets/custom/CustomSpinBox.h"
 #include "utils/Globals.h"
+
+#include "widgets/custom/CustomSpinBox.h"
 #include "widgets/groups/InputGroup.h"
-#include "Scene.h"
 #include "widgets/MainPanel.h"
 
+#include "Scene.h"
+
+#include <QLineEdit>
+
+#include <QWheelEvent>
 
 class RadiusInput: public CustomSpinBox {
     Q_OBJECT

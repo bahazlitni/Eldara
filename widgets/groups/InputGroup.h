@@ -1,6 +1,14 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QString>
+#include <QIcon>
+#include <QColor>
+
+#include <QWidget>
+#include <QToolButton>
+#include <QGridLayout>
+
 class ColorInput;
 class MainPanel;
 

@@ -3,14 +3,19 @@
 #include "widgets/inputs/AddressInput.h"
 #include "widgets/inputs/CoordinateInput.h"
 #include "widgets/inputs/RadiusInput.h"
+#include "widgets/inputs/BooleanInput.h"
+
 #include "widgets/MainPanel.h"
+
+#include <QLabel>
 
 AliasGroup::AliasGroup(MainPanel *mainPanel):
     ObjectGroup(mainPanel),
     Address(new AddressInput(this)),
     X(new CoordinateInput(this, Attr::X)),
     Y(new CoordinateInput(this, Attr::Y)),
-    Radius(new RadiusInput(this))
+    Radius(new RadiusInput(this)),
+    Gnd(new BooleanInput(this, Attr::Gnd, this))
 {
 
     QHBoxLayout *positionLayout = new QHBoxLayout();
@@ -30,8 +35,16 @@ AliasGroup::AliasGroup(MainPanel *mainPanel):
 
     contentLayout->addWidget(new QLabel("Address"), 2, 0);
     contentLayout->addWidget(Address, 2, 1);
+
+    contentLayout->addWidget(new QLabel("GND"), 3, 0);
+    contentLayout->addWidget(Gnd, 3, 1);
+
+    connect(Gnd, &QPushButton::toggled, this, &AliasGroup::onGndStateChanged);
 }
 
+void AliasGroup::updateData(){
+    updateSelection(mainPanel->scene->selector.filter(category()));
+}
 
 void AliasGroup::updateSelection(const Selection &selection){
     ObjectGroup::updateSelection(selection);
@@ -39,10 +52,16 @@ void AliasGroup::updateSelection(const Selection &selection){
     X->updateData();
     Y->updateData();
     Radius->updateData();
+    Gnd->updateData();
 }
 
 
 void AliasGroup::updateCoordinates(){
     X->updateData();
     Y->updateData();
+}
+
+
+void AliasGroup::onGndStateChanged(){
+    Address->updateData();
 }

@@ -1,5 +1,4 @@
 #pragma once
-#include <QGroupBox>
 #include "ColorsGroup.h"
 
 class RadiusInput;

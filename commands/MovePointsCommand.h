@@ -1,7 +1,10 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QUndoCommand>
+
 class Scene;
+
 class MovePointsCommand: public QUndoCommand {
 public:
     explicit MovePointsCommand(

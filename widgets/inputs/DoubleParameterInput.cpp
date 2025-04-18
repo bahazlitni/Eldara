@@ -1,9 +1,17 @@
 #include "DoubleParameterInput.h"
+
+#include "widgets/tabs/VariablesTab.h"
+
 #include "widgets/custom/CustomDoubleSpinBox.h"
 #include "widgets/inputs/BooleanInput.h"
 #include "widgets/MainPanel.h"
+
 #include "Scene.h"
-#include "widgets/tabs/VariablesTab.h"
+
+#include <QCompleter>
+#include <QButtonGroup>
+
+#include <QStringListModel>
 
 inline int indexToMagnitude(const QPair<int,int> &range, int index){
     return std::max(range.second - index*3, range.first);
@@ -18,7 +26,7 @@ DoubleParameterInput::DoubleParameterInput(
     const QString &label,
     const bool hasShowLabel,
     QWidget* parent
-):
+    ):
     QWidget(parent),
     group(group),
     label(label),
@@ -28,7 +36,7 @@ DoubleParameterInput::DoubleParameterInput(
     magnitudeRange(unitMagnitudeRange(unit)),
     maxValue(pow(10.0, magnitudeRange.second + 3)),
     minValue(pow(10.0, magnitudeRange.first)),
-    unitSymbol(getUnitSymbol(unit)),
+    unitSymb(unitSymbol(unit)),
     mainLayout(new QVBoxLayout(this)),
     headerWidget(new QWidget(this)),
     constantButton(new QPushButton("Constant", headerWidget)),
@@ -37,7 +45,7 @@ DoubleParameterInput::DoubleParameterInput(
     constantWidget(new QWidget(this)),
     valueSpin(new CustomDoubleSpinBox(constantWidget)),
     magnitudeCombo(new QComboBox(constantWidget)),
-    toggleRawButton(new QPushButton(unitSymbol, constantWidget)),
+    toggleRawButton(new QPushButton(unitSymb, constantWidget)),
     variableWidget(new QWidget(this)),
     varnameLineEdit(new QLineEdit(variableWidget)),
     variableCompleter(new QCompleter(this))
@@ -49,7 +57,7 @@ DoubleParameterInput::DoubleParameterInput(
             QIcon(":/assets/icons/eye_shut.png"),
             QSize(16,16),
             parent
-        );
+            );
 
     setupHeaderUi();
     setupConstantUi();
@@ -123,7 +131,7 @@ void DoubleParameterInput::setupConstantUi(){
 
     int order = magnitudeRange.second;
     while(order >= magnitudeRange.first){
-        magnitudeCombo->addItem(getOrderSymbol(order) + unitSymbol);
+        magnitudeCombo->addItem(getOrderSymbol(order) + unitSymb);
         order -= 3;
     }
 
@@ -134,7 +142,7 @@ void DoubleParameterInput::setupConstantUi(){
     valueSpin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
     // Configure raw mode toggle
-    toggleRawButton->setText(unitSymbol);
+    toggleRawButton->setText(unitSymb);
     toggleRawButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     toggleRawButton->setCursor(Qt::PointingHandCursor);
     toggleRawButton->setStyleSheet(R"(
@@ -374,7 +382,7 @@ void DoubleParameterInput::onAddVariables(
     const QVector<QString> &names,
     [[maybe_unused]] const QVector<QVariant> &values,
     const QVector<VariableType> &types
-){
+    ){
     for(int i = 0; i < names.size(); ++i){
         if(types[i] != vartype) continue;
         variables.append(names[i]);
@@ -388,11 +396,11 @@ void DoubleParameterInput::onAddVariables(
 void DoubleParameterInput::onChangeVariables(
     [[maybe_unused]] const QVector<QString> &names,
     [[maybe_unused]] const QVector<QVariant> &newValues
-){}
+    ){}
 
 void DoubleParameterInput::onRemoveVariables(
     const QVector<QString> &names
-){
+    ){
     for(int i = 0; i < names.size(); ++i){
         variables.removeOne(names[i]);
     }

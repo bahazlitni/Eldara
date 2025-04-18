@@ -2,6 +2,9 @@
 #include "Dipole.h"
 #include "utils/Globals.h"
 
+#include <QString>
+#include <QVector>
+
 class Capacitor: public Dipole {
 protected:
     double _C, _Q0;
@@ -54,7 +57,8 @@ public:
     int halfBoxWidth() const override { return HALF_CAPACITOR_WIDTH; }
     int halfBoxHeight() const override { return HALF_CAPACITOR_HEIGHT; }
 
-    ObjectType type() const override { return ObjectType::Capacitor; }
+    inline ObjectType type() const override { return ObjectType::Capacitor; }
+    inline DCRole dcRole() const override { return DCRole::R; }
 
     inline QString label(const bool raw) const override {
         return _nameC.isEmpty() ? formatDouble(_C, 3, FARAD, raw) : _nameC;

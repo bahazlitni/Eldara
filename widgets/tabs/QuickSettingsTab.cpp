@@ -1,9 +1,9 @@
 #include "QuickSettingsTab.h"
-#include "Scene.h"
 
 #include "widgets/groups/PenGroup.h"
 #include "widgets/MainPanel.h"
 
+#include "Scene.h"
 
 QuickSettingsTab::QuickSettingsTab(MainPanel *mainPanel) :
     QWidget(mainPanel),

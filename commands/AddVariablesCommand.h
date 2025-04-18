@@ -1,6 +1,12 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QVector>
+#include <QString>
+#include <QVariant>
+
+#include <QUndoCommand>
+
 class VariablesTab;
 
 class AddVariablesCommand : public QUndoCommand {

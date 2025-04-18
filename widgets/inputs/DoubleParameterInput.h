@@ -1,14 +1,22 @@
 #pragma once
+#include "utils/Globals.h"
+
 #include "widgets/groups/ObjectGroup.h"
 
+#include <QString>
+#include <QPair>
+#include <QStringList>
+#include <QVector>
+#include <QVariant>
+
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QComboBox>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QCheckBox>
 
 class CustomDoubleSpinBox;
-class QComboBox;
-class QLineEdit;
-class QCheckBox;
-class QCompleter;
-class QPushButton;
-class QVBoxLayout;
 class BooleanInput;
 
 class DoubleParameterInput : public QWidget {
@@ -49,7 +57,7 @@ private:
     const QPair<int, int> magnitudeRange;
     const double maxValue;
     const double minValue;
-    const QString unitSymbol;
+    const QString unitSymb;
     int currentOrder;
     double multiplier;
     double rawValue;

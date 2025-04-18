@@ -3,6 +3,7 @@
 #include "widgets/MainPanel.h"
 #include "widgets/tabs/SelectionTab.h"
 #include "widgets/tabs/QuickSettingsTab.h"
+#include "widgets/tabs/VariablesTab.h"
 #include "tools/Selector.h"
 #include "tools/Pen.h"
 #include "dialogs/PreferencesDialog.h"
@@ -15,7 +16,26 @@
 #include "objects/DCI.h"
 #include "objects/Battery.h"
 
-#include "widgets/tabs/VariablesTab.h"
+#include <QSettings>
+#include <QColor>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
+#include <QKeySequence>
+#include <QSplitter>
+#include <QDockWidget>
+#include <QUndoView>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QFile>
+#include <QIODevice>
+#include <QDataStream>
+#include <QString>
+#include <QVector>
+#include <QHash>
+#include <QPen>
+#include <QBrush>
+#include <cstring>
 
 Window::Window()
     : QMainWindow(),
@@ -27,37 +47,19 @@ Window::Window()
     setupMenuBar();
     setupSplitter();
     setupHistoryDock();
-    setupConnections();
     applySettings();
+    setupConnections();
 }
 
 void Window::setupMenuBar() {
+    // ─── File Menu ─────────────────────────────────────────────────────────────
     fileMenu = menuBar()->addMenu(tr("&File"));
-    openAction = fileMenu->addAction(
-        tr("&Open..."),
-        QKeySequence::Open,
-        this,
-        &Window::openFile
-    );
+    openAction = fileMenu->addAction(tr("&Open..."), QKeySequence::Open, this, &Window::openFile);
+    saveAction = fileMenu->addAction(tr("&Save"),    QKeySequence::Save, this, &Window::saveFile);
+    saveAsAction = fileMenu->addAction(tr("Save &As..."), QKeySequence::SaveAs, this, &Window::saveFileAs);
 
-    saveAction = fileMenu->addAction(
-        tr("&Save"),
-        QKeySequence::Save,
-        this,
-        &Window::saveFile
-    );
-
-    saveAsAction = fileMenu->addAction(
-        tr("Save &As..."),
-        QKeySequence::SaveAs,
-        this,
-        &Window::saveFileAs
-    );
-
-    // Edit menu
+    // ─── Edit Menu ─────────────────────────────────────────────────────────────
     editMenu = menuBar()->addMenu(tr("&Edit"));
-
-    // Undo/Redo from QUndoStack
     undoAction = scene->undoStack.createUndoAction(this, tr("&Undo"));
     undoAction->setShortcuts(QKeySequence::Undo);
     editMenu->addAction(undoAction);
@@ -67,9 +69,12 @@ void Window::setupMenuBar() {
     editMenu->addAction(redoAction);
 
     editMenu->addSeparator();
-
-    // Preferences
     preferencesAction = editMenu->addAction(tr("&Preferences..."), this, &Window::openPreferences);
+
+    // ─── Simulation Menu ───────────────────────────────────────────────────────
+    simulationMenu = menuBar()->addMenu(tr("&Simulation"));
+    simulationAction = simulationMenu->addAction(tr("&Run"), this, &Window::onSimulationActionTriggered);
+    simulationAction->setShortcut(QKeySequence(tr("Ctrl+R")));
 }
 
 void Window::setupSplitter() {
@@ -107,6 +112,11 @@ void Window::setupConnections() {
             mainPanel->selectionTab, &SelectionTab::updateCoordinates);
     connect(&scene->pen, &Pen::dataChanged,
             mainPanel->quickSettingsTab, &QuickSettingsTab::updatePenData);
+
+    connect(&scene->simulator, &Simulator::simulationStarted,
+            this, &Window::updateSimulationActionToStop);
+    connect(&scene->simulator, &Simulator::simulationEnded,
+            this, &Window::updateSimulationActionToRun);
 }
 
 void Window::applySettings() {
@@ -121,9 +131,11 @@ void Window::applySettings() {
     scene->setDisplayRawValues(settings.value("scene/displayRaw", false).toBool());
 
     Pen &pen = scene->pen;
+    pen.setRadius(settings.value("pen/radius", 8).toInt());
     pen.setStrokeWidth(settings.value("pen/strokeWidth", 1).toInt());
     pen.setStrokeColor(settings.value("pen/strokeColor", QColor("#CCC")).value<QColor>());
     pen.setFillColor(settings.value("pen/fillColor", QColor("#FFF")).value<QColor>());
+    pen.setShowLabel(settings.value("pen/showLabel", true).toBool());
     pen.setAllowSplitting(settings.value("pen/allowSplit", true).toBool());
     pen.setAllowOnClickColoring(settings.value("pen/allowOnClickColor", true).toBool());
     pen.setDefaultResistance(settings.value("pen/defaultResistance", 1e3).toDouble());
@@ -571,3 +583,26 @@ bool Window::saveToFile(const QString &filename) {
 void Window::closeEvent(QCloseEvent *event) {
     event->accept();
 }
+
+
+void Window::onSimulationActionTriggered() {
+    if (scene->simulator.isRunning())
+        scene->simulator.stop();
+    else
+        scene->simulator.run();
+}
+
+void Window::updateSimulationActionToRun() {
+    simulationAction->setText(tr("&Run"));
+    simulationAction->setShortcut(QKeySequence(tr("Ctrl+R")));
+}
+
+void Window::updateSimulationActionToStop() {
+    simulationAction->setText(tr("&Stop"));
+    simulationAction->setShortcut(QKeySequence(tr("Ctrl+W")));
+}
+
+
+
+
+

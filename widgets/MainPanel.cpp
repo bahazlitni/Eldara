@@ -9,6 +9,9 @@
 #include "widgets/tabs/SelectionTab.h"
 #include "widgets/tabs/VariablesTab.h"
 
+#include <QTextStream>
+#include <QFile>
+
 MainPanel::MainPanel(Scene *scene, QWidget *parent) :
     QTabWidget(parent),
     scene(scene),

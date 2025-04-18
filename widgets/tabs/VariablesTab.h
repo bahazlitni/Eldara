@@ -1,13 +1,24 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QHash>
+#include <QString>
+#include <QVariant>
+#include <QPair>
+
+#include <QWidget>
+#include <QComboBox>
+#include <QTableWidget>
+#include <QPushButton>
+#include <QLabel>
+
 class MainPanel;
 class Scene;
+
 class VariablesTab : public QWidget {
     Q_OBJECT
 
 private:
-    // Helper functions working directly with table items.
     int rowOfTypeComboBox(QComboBox *typeCombo) const;
     bool containsName(const QString &name, int ignoreRow = -1);
     int rowOfName(const QString &name) const;

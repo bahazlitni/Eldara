@@ -1,8 +1,18 @@
 #pragma once
-#include <QPushButton>
+#include "utils/Globals.h"
+
 #include "widgets/groups/InputGroup.h"
-#include "Scene.h"
 #include "widgets/MainPanel.h"
+
+#include "objects/Alias.h"
+
+#include <QSize>
+#include <QIcon>
+
+#include <QPushButton>
+
+#include "Scene.h"
+
 
 class BooleanInput : public QPushButton {
     Q_OBJECT
@@ -54,7 +64,6 @@ public:
         updateIcon();
 
         setStyleSheet("border: none;");
-
     }
 
     void updateData() {

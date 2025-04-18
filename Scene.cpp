@@ -1,14 +1,17 @@
 #include "Scene.h"
 #include "objects/Alias.h"
-#include "objects/Resistor.h"
-#include "widgets/tabs/VariablesTab.h"
+#include "objects/Dipole.h"
+#include <QList>
+#include <QSet>
+#include <QPointF>
 
 Scene::Scene(QWidget *parent):
     QWidget(parent),
     grid(Grid(this)),
     pen(Pen(this)),
     selector(Selector(this)),
-    grabber(Grabber(this))
+    grabber(Grabber(this)),
+    simulator(Simulator(this))
 {
     mouse = &selector;
     mouse->init();
@@ -153,14 +156,17 @@ void Scene::reset() {
     QList<SharedAlias> aliasesList = aliases.values();
     DipolesSet visitedDipoles;
     for(const auto &alias : aliasesList){
-        deepRemoval(alias);
+        deepRemoval(std::static_pointer_cast<Object>(alias));
         for(const auto &dipole : alias->connections()){
             if(visitedDipoles.contains(dipole)) continue;
             visitedDipoles.insert(dipole);
-            deepRemoval(dipole);
+            deepRemoval(std::static_pointer_cast<Object>(dipole));
         }
     }
     aliases.clear();
 
     grid.reset();
 }
+
+
+

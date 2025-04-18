@@ -1,10 +1,8 @@
 #pragma once
-#include "WorldPoint.h"
-#include "utils/Geometry.h"
+#include "utils/Globals.h"
 
-#pragma once
 #include "WorldPoint.h"
-#include "utils/Geometry.h"
+
 #include <memory>
 
 class BCControlPoint;

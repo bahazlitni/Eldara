@@ -1,7 +1,10 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QUndoCommand>
+
 class Scene;
+
 class SplitDipoleCommand: public QUndoCommand {
 private:
     Scene *scene;

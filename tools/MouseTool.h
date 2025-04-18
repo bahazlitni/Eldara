@@ -1,8 +1,13 @@
 #pragma once
 #include "utils/Globals.h"
 
-const int DBL_CLICK_GAP_MS = 500;
-const int CLICK_GAP_MS = 300;
+#include <QVariant>
+#include <QString>
+#include <QPointF>
+#include <QPainterPath>
+#include <QObject>
+
+class Scene;
 
 enum ToolState {
     SELECTOR,
@@ -22,14 +27,14 @@ enum ToolState {
     GRABBING_TMP
 };
 
-class Scene;
 class MouseTool: public QObject {
     Q_OBJECT
 
 public:
+    static constexpr int DBL_CLICK_GAP_MS = 500;
+    static constexpr int CLICK_GAP_MS = 300;
+
     MouseTool(Scene *scene): scene(scene) {}
-
-
     void init(){
         resetHover();
         _indicators.clear();

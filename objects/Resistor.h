@@ -2,7 +2,9 @@
 #include "Dipole.h"
 #include "utils/Globals.h"
 
-class Alias;
+#include <QString>
+#include <QVector>
+
 class Resistor: public Dipole {
 protected:
     double _R;
@@ -44,7 +46,8 @@ public:
     int halfBoxWidth() const override { return HALF_RESISTOR_WIDTH; }
     int halfBoxHeight() const override { return HALF_RESISTOR_HEIGHT; }
 
-    ObjectType type() const override { return ObjectType::Resistor; }
+    inline ObjectType type() const override { return ObjectType::Resistor; }
+    inline DCRole dcRole() const override { return DCRole::R; }
 
     inline QString label(const bool raw) const override {
         return _nameR.isEmpty() ? formatDouble(_R, 2, OHM, raw) : _nameR;

@@ -1,6 +1,12 @@
 #pragma once
-
 #include "utils/Globals.h"
+
+#include <QString>
+#include <QVariant>
+
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QScrollArea>
 
 class InputGroup;
 class DipoleGroup;

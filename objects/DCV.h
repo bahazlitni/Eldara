@@ -2,7 +2,9 @@
 #include "Dipole.h"
 #include "utils/Globals.h"
 
-class Node;
+#include <QString>
+#include <QVector>
+
 class DCV: public Dipole {
 protected:
     double _V;
@@ -44,7 +46,8 @@ public:
     int halfBoxWidth() const override { return DEFAULT_CIRCLE_RADIUS; }
     int halfBoxHeight() const override { return halfBoxWidth(); }
 
-    ObjectType type() const override { return ObjectType::DCV; }
+    inline ObjectType type() const override { return ObjectType::DCV; }
+    inline DCRole dcRole() const override { return DCRole::V; }
 
     inline QString label(const bool raw) const override {
         return _nameV.isEmpty() ? formatDouble(_V, 2, VOLT, raw) : _nameV;

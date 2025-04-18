@@ -1,10 +1,12 @@
 #pragma once
-#include "Grid.h"
 #include "widgets/custom/CustomDoubleSpinBox.h"
-#include <QLineEdit>
 #include "widgets/groups/InputGroup.h"
-#include "Scene.h"
 #include "widgets/MainPanel.h"
+
+#include <QLineEdit>
+
+#include "Grid.h"
+#include "Scene.h"
 
 class CoordinateInput: public CustomDoubleSpinBox {
     Q_OBJECT

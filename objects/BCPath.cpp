@@ -2,7 +2,6 @@
 #include "BCPoint.h"
 #include "BCControlPoint.h"
 
-
 // Sceneend a new point at the tail (stack push)
 void BCPath::stack(const std::shared_ptr<BCPoint>& bcp) {
     if (!bcp) return;

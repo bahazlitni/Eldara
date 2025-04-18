@@ -1,10 +1,18 @@
 #pragma once
+#include "utils/Globals.h"
+
+#include "widgets/groups/InputGroup.h"
+
+#include "objects/Object.h"
+
+#include "Scene.h"
+
 #include <QLabel>
 #include <QLineEdit>
+
 #include <QFontMetrics>
-#include "Scene.h"
-#include "widgets/groups/InputGroup.h"
-#include "objects/Object.h"
+
+
 
 class IDLabel: public QLabel {
 private:

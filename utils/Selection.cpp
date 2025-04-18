@@ -1,12 +1,13 @@
 #include "objects/Alias.h"
 #include "objects/Dipole.h"
-
+#include "objects/BCPath.h"
 #include "objects/BCPoint.h"
 #include "objects/BCControlPoint.h"
-#include "objects/BCPath.h"
 
 #include "Scene.h"
 #include "Grid.h"
+
+
 
 inline void ProcessAlias(
     QSet<SharedPoint> *set,
@@ -92,7 +93,7 @@ inline SharedAlias getAliasCopy(
 ){
     if(aliasCopyCache.contains(original)) return aliasCopyCache.value(original);
     const auto &copied = original->clone(scene->id());
-    if(generateNewAddresses) copied->setAddress(scene->address());
+    if(generateNewAddresses) copied->setAddress(scene->address(original->gnd()));
     copied->translate(dp);
     aliasCopyCache.insert(original, copied);
     copy.insert(copied);

@@ -1,7 +1,10 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QUndoCommand>
+
 class Scene;
+
 class RemoveObjectsCommand: public QUndoCommand {
 public:
     RemoveObjectsCommand(Scene *scene, const Selection &selection, QUndoCommand *parent = nullptr);

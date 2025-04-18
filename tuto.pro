@@ -1,54 +1,30 @@
-QT += core gui widgets svg
+QT       += core gui widgets svg
 
-TARGET = CircuitsSimulator
-TEMPLATE = app
+TARGET    = Eldara
+TEMPLATE  = app
 
-CONFIG += c++20
+# Use C++20 and enable precompiled headers
+CONFIG   += c++20 precompile_header
+PRECOMPILE_HEADER = src/pch.h
 
 greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
 
-SOURCES += \
-    Grid.cpp \
-    Window.cpp \
-    Scene.cpp \
-    commands/AddVariablesCommand.cpp \
-    commands/ChangeVariablesCommand.cpp \
-    commands/EmbedParamCommand.cpp \
-    commands/InsertObjectsCommand.cpp \
-    commands/MergeSelectionCommand.cpp \
-    commands/MovePointsCommand.cpp \
-    commands/RemoveObjectsCommand.cpp \
-    commands/RemoveVariablesCommand.cpp \
-    commands/SplitDipoleCommand.cpp \
-    objects/BCPath.cpp \
-    objects/Dipole.cpp \
-    tools/MouseTool.cpp \
-    tools/Selector.cpp \
-    tools/Grabber.cpp \
-    tools/Pen.cpp \
-    utils/Geometry.cpp \
-    utils/Globals.cpp \
-    utils/Selection.cpp \
-    main.cpp \
-    widgets/MainPanel.cpp \
-    widgets/custom/CustomDoubleSpinBox.cpp \
-    widgets/custom/CustomSpinBox.cpp \
-    widgets/groups/AliasGroup.cpp \
-    widgets/groups/ColorsGroup.cpp \
-    widgets/groups/DipoleGroup.cpp \
-    widgets/groups/InputGroup.cpp \
-    widgets/groups/ObjectGroup.cpp \
-    widgets/groups/PenGroup.cpp \
-    widgets/inputs/ColorInput.cpp \
-    widgets/inputs/DoubleParameterInput.cpp \
-    widgets/tabs/QuickSettingsTab.cpp \
-    widgets/tabs/SelectionTab.cpp \
-    widgets/tabs/VariablesTab.cpp \
-    dialogs/PreferencesDialog.cpp
+# Use ccache to speed up repeated builds
+QMAKE_CC    = ccache gcc
+QMAKE_CXX   = ccache g++
+QMAKE_LINK  = ccache g++
+
+# Unity (jumbo) build: compile every .cpp via a single TU
+SOURCES = \
+    src/unity_commands.cpp \
+    src/unity_core.cpp \
+    src/unity_tools.cpp \
+    src/unity_ui.cpp
 
 HEADERS += \
     Grid.h \
     Scene.h \
+    Simulator.h \
     Window.h \
     commands/AddVariablesCommand.h \
     commands/ChangeVariablesCommand.h \

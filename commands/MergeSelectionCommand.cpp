@@ -1,10 +1,10 @@
 #include "MergeSelectionCommand.h"
 #include "utils/Selection.h"
-#include "Scene.h"
 
-#include "objects/Object.h"
 #include "objects/Alias.h"
 #include "objects/Dipole.h"
+
+#include "Scene.h"
 
 MergeSelectionCommand::MergeSelectionCommand(
     Scene *scene, const MergeMap &mergeMap, QUndoCommand *parent

@@ -1,11 +1,14 @@
 #pragma once
+#include "utils/Globals.h"
 #include "MouseTool.h"
+
 #include <QMap>
 #include <QPointF>
 #include <QSet>
-#include "utils/Globals.h"
+#include <QCursor>
 
 class Scene;
+
 class Selector: public MouseTool {
     Q_OBJECT
 

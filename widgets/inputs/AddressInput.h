@@ -1,10 +1,28 @@
 #pragma once
+#include "utils/Globals.h"
+
+#include "widgets/groups/InputGroup.h"
+#include "widgets/inputs/BooleanInput.h"
+
+#include "objects/Alias.h"
+
+#include <QSet>
+#include <QStringList>
+
+#include <QWidget>
 #include <QLineEdit>
 #include <QCompleter>
-#include "widgets/groups/InputGroup.h"
+#include <QHBoxLayout>
+
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
+#include <QStringListModel>
+
+#include <QWheelEvent>
+
 #include "Scene.h"
-#include "objects/Alias.h"
-#include "widgets/inputs/BooleanInput.h"
+
+
 
 class AddressInput : public QWidget {
     Q_OBJECT

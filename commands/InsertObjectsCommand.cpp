@@ -1,10 +1,10 @@
 #include "InsertObjectsCommand.h"
 #include "utils/Selection.h"
-#include "Scene.h"
 
-#include "objects/Object.h"
 #include "objects/Alias.h"
 #include "objects/Dipole.h"
+
+#include "Scene.h"
 
 InsertObjectsCommand::InsertObjectsCommand(
     Scene *scene,

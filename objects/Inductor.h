@@ -2,6 +2,9 @@
 #include "Dipole.h"
 #include "utils/Globals.h"
 
+#include <QString>
+#include <QVector>
+
 class Inductor: public Dipole {
 protected:
     double _L, _I0;
@@ -55,7 +58,8 @@ public:
     int halfBoxWidth() const override { return HALF_INDUCTOR_WIDTH; }
     int halfBoxHeight() const override { return HALF_INDUCTOR_HEIGHT; }
 
-    ObjectType type() const override { return ObjectType::Inductor; }
+    inline ObjectType type() const override { return ObjectType::Inductor; }
+    inline DCRole dcRole() const override { return DCRole::R; }
 
     inline QString label(const bool raw) const override {
         return _nameL.isEmpty() ? formatDouble(_L, 2, HENRY, raw) : _nameL;

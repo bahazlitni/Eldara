@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QVariantMap>
 
+class QWidget;
 class QTabWidget;
 class QSpinBox;
 class QCheckBox;
@@ -50,9 +51,11 @@ private:
     QCheckBox *displayRawCheck;
 
     // Pen tool widgets
+    QSpinBox *radiusSpin;
     QSpinBox *strokeWidthSpin;
     QPushButton *strokeColorBtn;
     QPushButton *fillColorBtn;
+    QCheckBox *showLabelCheck;
     QCheckBox *allowSplitCheck;
     QCheckBox *allowOnClickCheck;
     QDoubleSpinBox *defaultResSpin;

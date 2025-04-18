@@ -1,16 +1,28 @@
 #pragma once
 #include "Object.h"
-#include <QLineF>
+
 #include "utils/Globals.h"
 #include "utils/Geometry.h"
+#include "utils/Globals.h"
+
+#include <QVariant>
+#include <QString>
+#include <QSizeF>
+#include <QPointF>
+#include <QBrush>
+#include <QPen>
+#include <QRectF>
+#include <QLineF>
 
 class Dipole: public Object {
 private:
     const uint64_t _id;
 
 protected:
-    WeakAlias _A, _B;
+    SharedAlias _A, _B;
     bool _showLabel;
+
+    double _refCurrent = 0.0;
 
 public:
     Dipole(const uint64_t id, const SharedAlias &A, const SharedAlias &B, const QBrush &brush, const QPen &pen, const bool showLabel):
@@ -34,7 +46,9 @@ public:
         setB(B);
     }
 
-    ObjectCategory category() const override { return ObjectCategory::Dipole; }
+    inline ObjectCategory category() const override { return ObjectCategory::Dipole; }
+
+    virtual DCRole dcRole() const = 0;
 
     inline QPair<int, int> paramMagnitudeRange(const Param param) {
         switch (param) {
@@ -122,19 +136,22 @@ public:
 
     inline void setA(const SharedAlias &A){ _A = A; }
     inline void setB(const SharedAlias &B){ _B = B; }
-    inline SharedAlias A() const { return _A.lock(); }
-    inline SharedAlias B() const { return _B.lock(); }
+    inline SharedAlias A() const { return _A; }
+    inline SharedAlias B() const { return _B; }
     inline SharedAlias other(const SharedAlias &a) const {
         return a == A() ? B() : a == B() ? A() : nullptr;
     }
 
     // Visual
     inline bool connectedTo(const SharedAlias &alias){
-        return (!_A.expired() && A() == alias) || (!_B.expired() && B() == alias);
+        return _A == alias || _B == alias;
     }
 
     bool dirtyVisibleCheckFlag = false;
 
     virtual SharedDipole clone(const uint64_t id, const SharedAlias &A, const SharedAlias &B) = 0;
 
+    // Simulation
+    inline double refCurrent() const { return _refCurrent; }
+    inline void setRefCurrent(const double v) { _refCurrent = v; }
 };

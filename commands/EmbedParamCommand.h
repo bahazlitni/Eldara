@@ -1,6 +1,8 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QUndoCommand>
+
 class VariablesTab;
 class EmbedParamCommand : public QUndoCommand {
 public:

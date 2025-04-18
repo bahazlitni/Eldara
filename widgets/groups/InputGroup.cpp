@@ -1,7 +1,9 @@
 #include "InputGroup.h"
-#include "Scene.h"
-#include "tools/Selector.h"
 #include "widgets/MainPanel.h"
+
+#include <QSize>
+
+#include <QVBoxLayout>
 
 // Constructor: sets up the header button and content area.
 InputGroup::InputGroup(MainPanel *mainPanel, QWidget *parent):

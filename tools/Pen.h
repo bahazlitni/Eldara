@@ -1,6 +1,8 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QCursor>
+
 #include "Grid.h"
 #include "MouseTool.h"
 #include "objects/BCPath.h"
@@ -48,11 +50,17 @@ public:
     QVariant getAttr(const Attr attr) const override;
     void setAttr(const Attr attr, const QVariant &v) override;
 
-    bool onControl() const { return _state == INITIAL_CONTROLLING || _state == CONTROLLING; };
+    inline bool makingAlias() const {
+        return type == ObjectType::Alias || type == ObjectType::Ground;
+    }
+    inline bool onControl() const {
+        return _state == INITIAL_CONTROLLING || _state == CONTROLLING;
+    }
 
     void setType(ObjectType type);
 
-    bool willDraw(const SharedObject &obj) const override { return isHovered(obj); }
+    inline bool willDraw(const SharedObject &obj) const override { return isHovered(obj); }
+    inline bool willMakeGround() const { return shift() || type == ObjectType::Ground; }
 
     void deepRemoval(const SharedObject &obj) override;
 

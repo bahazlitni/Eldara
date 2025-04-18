@@ -2,7 +2,11 @@
 #include "widgets/groups/InputGroup.h"
 #include "Scene.h"
 #include "widgets/MainPanel.h"
-#include "widgets/groups/InputGroup.h"
+
+#include <QHBoxLayout>
+#include <QColorDialog>
+
+#include <QRegularExpressionValidator>
 
 ColorInput::ColorInput(InputGroup *group, QWidget *parent):
     QWidget(parent),
@@ -68,7 +72,6 @@ void ColorInput::onHexTextChanged(const QString &newText){
 }
 
 void ColorInput::onPreviewClicked(){
-    // Open a color dialog starting with the current color.
     QColor color = QColorDialog::getColor(currentColor, this, "Select Color");
     if(color.isValid()){
         setColor(color);
@@ -81,6 +84,6 @@ void ColorInput::onPreviewClicked(){
 void ColorInput::resizeEvent(QResizeEvent *event) {
     QWidget::resizeEvent(event);
 
-    int size = hexCodeText->height();  // Get the height of the line edit
-    previewButton->setFixedSize(size, size);  // Set the button to 1:1 aspect ratio
+    int size = hexCodeText->height();
+    previewButton->setFixedSize(size, size);
 }

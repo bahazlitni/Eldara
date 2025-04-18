@@ -1,8 +1,15 @@
 #pragma once
+#include "utils/Globals.h"
+
 #include "InputGroup.h"
+
 #include <QHash>
 #include <QVector>
-#include "utils/Globals.h"
+#include <QVariant>
+#include <QColor>
+
+#include <QLabel>
+#include <QVBoxLayout>
 
 class ColorInput;
 class MainPanel;

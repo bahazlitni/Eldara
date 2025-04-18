@@ -1,6 +1,8 @@
 #include "dialogs/PreferencesDialog.h"
+
 #include <QSettings>
 #include <QTabWidget>
+#include <QWidget>
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QPushButton>
@@ -9,6 +11,11 @@
 #include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QDialogButtonBox>
+#include <QPalette>
+#include <QString>
+#include <QVariant>
+
+#include <cstring>
 
 PreferencesDialog::PreferencesDialog(QWidget *parent) : QDialog(parent) {
     setWindowTitle(tr("Preferences"));
@@ -63,11 +70,14 @@ void PreferencesDialog::buildPenToolTab() {
     QWidget *tab = new QWidget;
     QFormLayout *layout = new QFormLayout(tab);
 
+    radiusSpin = new QSpinBox;
     strokeWidthSpin = new QSpinBox;
+    radiusSpin->setRange(6, 20);
     strokeWidthSpin->setRange(1, 5);
 
     strokeColorBtn = new QPushButton;
     fillColorBtn = new QPushButton;
+    showLabelCheck = new QCheckBox;
     allowSplitCheck = new QCheckBox;
     allowOnClickCheck = new QCheckBox;
 
@@ -106,9 +116,11 @@ void PreferencesDialog::buildPenToolTab() {
     defaultQtySpin->setRange(0, 1e5);
     defaultQtySpin->setSuffix(" C");
 
+    layout->addRow(tr("Radius:"), radiusSpin);
     layout->addRow(tr("Stroke Width:"), strokeWidthSpin);
     layout->addRow(tr("Stroke Color:"), strokeColorBtn);
     layout->addRow(tr("Fill Color:"), fillColorBtn);
+    layout->addRow(tr("Show Label:"), showLabelCheck);
     layout->addRow(tr("Allow Splitting:"), allowSplitCheck);
     layout->addRow(tr("Allow On-Click Coloring:"), allowOnClickCheck);
     layout->addRow(tr("Default Resistance:"), defaultResSpin);
@@ -151,9 +163,11 @@ void PreferencesDialog::loadSettings() {
     showGridCheck->setChecked(s.value("scene/showGrid", true).toBool());
     displayRawCheck->setChecked(s.value("scene/displayRaw", false).toBool());
 
+    radiusSpin->setValue(s.value("pen/radius", 8).toInt());
     strokeWidthSpin->setValue(s.value("pen/strokeWidth", 1).toInt());
     updateColorButton(strokeColorBtn, s.value("pen/strokeColor", QColor("#CCC")).value<QColor>());
     updateColorButton(fillColorBtn, s.value("pen/fillColor", QColor("#FFF")).value<QColor>());
+    showLabelCheck->setChecked(s.value("pen/showLabel", true).toBool());
     allowSplitCheck->setChecked(s.value("pen/allowSplit", true).toBool());
     allowOnClickCheck->setChecked(s.value("pen/allowOnClickColor", true).toBool());
     defaultResSpin->setValue(s.value("pen/defaultResistance", 1e3).toDouble());
@@ -176,9 +190,11 @@ void PreferencesDialog::saveSettings() {
     s.setValue("scene/showGrid", showGridCheck->isChecked());
     s.setValue("scene/displayRaw", displayRawCheck->isChecked());
 
+    s.setValue("pen/radius", radiusSpin->value());
     s.setValue("pen/strokeWidth", strokeWidthSpin->value());
     s.setValue("pen/strokeColor", strokeColorBtn->palette().button().color());
     s.setValue("pen/fillColor", fillColorBtn->palette().button().color());
+    s.setValue("pen/showLabel", showLabelCheck->isChecked());
     s.setValue("pen/allowSplit", allowSplitCheck->isChecked());
     s.setValue("pen/allowOnClickColor", allowOnClickCheck->isChecked());
     s.setValue("pen/defaultResistance", defaultResSpin->value());

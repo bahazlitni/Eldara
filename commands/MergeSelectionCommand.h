@@ -1,7 +1,10 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QUndoCommand>
+
 class Scene;
+
 class MergeSelectionCommand: public QUndoCommand {
 public:
     MergeSelectionCommand(Scene *scene, const MergeMap &mergeMap, QUndoCommand *parent = nullptr);

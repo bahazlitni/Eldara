@@ -1,9 +1,7 @@
 #include "Selector.h"
 #include "Scene.h"
-#include <QDebug>
-#include <QPen>
-#include <QCursor>
 #include "Grid.h"
+
 #include "commands/MergeSelectionCommand.h"
 #include "commands/RemoveObjectsCommand.h"
 #include "commands/MovePointsCommand.h"
@@ -11,8 +9,14 @@
 
 #include "objects/Alias.h"
 #include "objects/Dipole.h"
-#include "objects/Object.h"
+
 #include "utils/Selection.h"
+
+#include <QDebug>
+#include <QPen>
+
+
+
 
 Selector::Selector(Scene *scene) : MouseTool(scene),
     selectorCursor(QCursor(QPixmap(":assets/cursor/selector.png"), 0, 0)),
@@ -257,6 +261,10 @@ void Selector::keyDown(Qt::Key key){
         scene->setMouse(&scene->pen);
         scene->pen.setType(ObjectType::Alias);
         break;
+    case Qt::Key_G:
+        scene->setMouse(&scene->pen);
+        scene->pen.setType(ObjectType::Ground);
+        break;
     case Qt::Key_W:
         scene->setMouse(&scene->pen);
         scene->pen.setType(ObjectType::Wire);
@@ -383,7 +391,7 @@ void Selector::draw(QPainter *painter){
 
     switch(_state){
     case SELECTING: {
-        scene->grid.setupPainterMode(SELECTION_BOX);
+        scene->grid.setupPainterMode(Grid::SELECTION_BOX);
         painter->drawRect(scene->grid.toScreen(box));
         break;
     }
@@ -399,7 +407,7 @@ void Selector::draw(QPainter *painter){
 
         drawIndicators(painter);
         for(const auto &merging : mergeMap.keys()){
-            scene->grid.setupPainterMode(MERGE_INDICATOR);
+            scene->grid.setupPainterMode(Grid::MERGE_INDICATOR);
             switch(merging->category()){
             case ObjectCategory::Node: {
                 const auto &mergingAlias = std::static_pointer_cast<Alias>(merging);

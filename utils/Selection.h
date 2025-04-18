@@ -1,5 +1,6 @@
 #pragma once
 #include "Globals.h"
+#include <QPointF>
 
 class Scene;
 QSet<SharedPoint> GetWorldPointSelection(const Selection &selection);

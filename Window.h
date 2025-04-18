@@ -1,8 +1,20 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QMainWindow>
+#include <QMenu>
+#include <QAction>
+#include <QSplitter>
+#include <QDockWidget>
+#include <QUndoView>
+#include <QKeySequence>
+
 class Scene;
 class MainPanel;
+class SelectionTab;
+class QuickSettingsTab;
+class PreferencesDialog;
+class QString;
 
 class Window : public QMainWindow {
     Q_OBJECT
@@ -12,7 +24,8 @@ public:
 
 private:
     struct AliasData {
-        uint64_t id, address;
+        uint64_t id;
+        int64_t address;
         float x, y;
         bool showLabel;
         uint32_t strokeColor, fillColor;
@@ -93,38 +106,42 @@ private:
         uint16_t param;
     };
 
-    QSplitter *splitter;
-    QMenu   *fileMenu;
-    QMenu   *editMenu;
-    QAction *openAction;
-    QAction *saveAction;
-    QAction *saveAsAction;
-    QAction *preferencesAction;
-    QAction *undoAction;
-    QAction *redoAction;
+    QSplitter   *splitter;
+    QMenu       *fileMenu;
+    QMenu       *editMenu;
+    QMenu       *simulationMenu;
+    QAction     *openAction;
+    QAction     *saveAction;
+    QAction     *saveAsAction;
+    QAction     *preferencesAction;
+    QAction     *undoAction;
+    QAction     *redoAction;
+    QAction     *simulationAction;
 
     QDockWidget *historyDock;
     QUndoView   *undoView;
 
-    Scene *scene;
-    MainPanel *mainPanel;
+    Scene       *scene;
+    MainPanel   *mainPanel;
+
+    QString currentSavePath;
+    bool saveToFile(const QString &filename);
 
     void setupMenuBar();
     void setupSplitter();
     void setupConnections();
-
-    QString currentSavePath;
-    bool saveToFile(const QString &filename);
+    void applySettings();
+    void setupHistoryDock();
 
 private slots:
     void openFile();
     void saveFile();
     void saveFileAs();
     void openPreferences();
-    void applySettings();
 
-    void setupHistoryDock();
-
+    void onSimulationActionTriggered();
+    void updateSimulationActionToRun();
+    void updateSimulationActionToStop();
 
 protected:
     void closeEvent(QCloseEvent *event) override;

@@ -1,6 +1,9 @@
 #pragma once
 #include "MouseTool.h"
 
+#include <QPointF>
+#include <QCursor>
+
 class Scene;
 class Grabber: public MouseTool {
     Q_OBJECT

@@ -12,29 +12,33 @@ bool Dipole::hover(const QPointF &p, const float zoom){
         )
     );
 }
-bool Dipole::visible(const QRectF &viewport, [[maybe_unused]] const float zoom){ return LinR(line(), viewport); }
-bool Dipole::inside(const QRectF &box, [[maybe_unused]] const float zoom){ return LinR(line(), box); }
+bool Dipole::visible(const QRectF &viewport, [[maybe_unused]] const float zoom){
+    return LinR(line(), viewport);
+}
+bool Dipole::inside(const QRectF &box, [[maybe_unused]] const float zoom){
+    return LinR(line(), box);
+}
 
-float Dipole::x1() const { return _A.expired() ? 0 : A()->x(); }
-float Dipole::x2() const { return _B.expired() ? 0 : B()->x(); }
-float Dipole::y1() const { return _A.expired() ? 0 : A()->y(); }
-float Dipole::y2() const { return _B.expired() ? 0 : B()->y(); }
+float Dipole::x1() const { return A()->x(); }
+float Dipole::x2() const { return B()->x(); }
+float Dipole::y1() const { return A()->y(); }
+float Dipole::y2() const { return B()->y(); }
 
 void Dipole::setX1(const float v) {
-    if(auto A = _A.lock()) A->setX(v);
+    _A->setX(v);
 }
 void Dipole::setX2(const float v) {
-    if(auto B = _B.lock()) B->setX(v);
+    _B->setX(v);
 }
 void Dipole::setY1(const float v) {
-    if(auto A = _A.lock()) A->setY(v);
+    _A->setY(v);
 }
 void Dipole::setY2(const float v) {
-    if(auto B = _B.lock()) B->setY(v);
+    _B->setY(v);
 }
 
-QPointF Dipole::p2() const { return _B.expired() ? QPointF() : *B(); }
-QPointF Dipole::p1() const { return _A.expired() ? QPointF() : *A(); }
+QPointF Dipole::p2() const { return *B(); }
+QPointF Dipole::p1() const { return *A(); }
 
 
 QVariant Dipole::getAttr(const Attr attr) const {

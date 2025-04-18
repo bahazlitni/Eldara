@@ -1,11 +1,21 @@
 #pragma once
 #include "utils/Globals.h"
 
+// Qt base
+#include <QWidget>
+#include <QUndoStack>
+#include <QKeyEvent>
+#include <QMouseEvent>
+#include <QWheelEvent>
+#include <QResizeEvent>
+#include <QPaintEvent>
+
 #include "Grid.h"
 #include "tools/MouseTool.h"
 #include "tools/Pen.h"
 #include "tools/Selector.h"
 #include "tools/Grabber.h"
+#include "Simulator.h"
 
 class VariablesTab;
 class Scene : public QWidget {
@@ -17,13 +27,14 @@ public:
 
     QUndoStack undoStack;
 
-    Grid grid;
-    Pen pen;
-    Selector selector;
-    Grabber grabber;
-    MouseTool *mouse;
+    Grid grid; Pen pen; Selector selector; Grabber grabber;
 
+    MouseTool *mouse;
     AliasMap aliases;
+
+    Simulator simulator;
+
+
 
     void addAlias(const SharedAlias &alias);
     void removeAlias(const SharedAlias &alias);
@@ -78,8 +89,12 @@ public:
         return _record[1][i];
     }
 
-    inline uint64_t id(){ return trackid++; }
-    inline uint64_t address(){ return trackAddress++; }
+    inline uint64_t id(){
+        return trackid++;
+    }
+    inline int64_t address(const bool gnd){
+        return gnd? -(trackGndAddress++) : (trackAddress++);
+    }
 
     inline bool hasChanged() const {
         return true;
@@ -127,6 +142,7 @@ public:
 private:
     IDTracker trackid = 0;
     IDTracker trackAddress = 0;
+    IDTracker trackGndAddress = 0;
 
     MouseTool *prevMouse = nullptr;
     Qt::Key returningKey;

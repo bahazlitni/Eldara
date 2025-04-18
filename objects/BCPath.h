@@ -1,4 +1,6 @@
 #pragma once
+#include "utils/Globals.h"
+
 #include <memory>
 #include <QPointF>
 #include <QDebug>

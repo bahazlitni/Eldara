@@ -1,6 +1,5 @@
 #include "MouseTool.h"
 #include "Scene.h"
-#include "objects/Object.h"
 #include "Grid.h"
 
 float MouseTool::x() const {return scene->x(); }
@@ -31,6 +30,6 @@ bool MouseTool::isHovered(const SharedObject &obj) const {
 }
 
 void MouseTool::drawIndicators(QPainter *painter){
-    scene->grid.setupPainterMode(INDICATOR_STROKE, *painter);
+    scene->grid.setupPainterMode(Grid::INDICATOR_STROKE, *painter);
     painter->drawPath(_indicators);
 }

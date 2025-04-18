@@ -1,6 +1,5 @@
 #include "Pen.h"
 #include "Scene.h"
-#include "objects/Object.h"
 #include "objects/Alias.h"
 #include "objects/BCControlPoint.h"
 #include "objects/BCPath.h"
@@ -67,7 +66,7 @@ void Pen::deepRemoval(const SharedObject &obj) {
 void Pen::setType(ObjectType type){
     if(type == this->type) return;
     this->type = type;
-    if(type == ObjectType::Alias) setState(PEN);
+    if(makingAlias()) setState(PEN);
     else if(onControl()){
         _path.clear();
         setState(CONSTRUCTING);
@@ -98,8 +97,15 @@ void Pen::move(){
 }
 
 SharedAlias Pen::MakeAlias(const QPointF &p){
-    const uint64_t address = previous && type == ObjectType::Alias && alt() ? previous->address() : scene->address();
-    return std::make_shared<Alias>(scene->id(), address, p.x(), p.y(), radius(), brush(), showLabel());
+    const int64_t address = previous && makingAlias() && alt() ? previous->address() : scene->address(willMakeGround());
+    return std::make_shared<Alias>(
+        scene->id(),
+        address,
+        p.x(), p.y(),
+        radius(),
+        brush(),
+        showLabel()
+    );
 }
 SharedDipole Pen::MakeDipole(const SharedAlias &A, const SharedAlias &B, ObjectType type){
     switch(type){
@@ -303,7 +309,7 @@ void Pen::downL(){
     construct();
     switch(_state){
     case PEN:
-        if(type != ObjectType::Alias && previous)
+        if(!makingAlias() && previous)
             setState(CONSTRUCTING);
         break;
     default:
@@ -531,6 +537,9 @@ void Pen::keyDown([[maybe_unused]] Qt::Key key){
     case Qt::Key_P:
         setType(ObjectType::Alias);
         break;
+    case Qt::Key_G:
+        setType(ObjectType::Ground);
+        break;
     case Qt::Key_R:
         setType(ObjectType::Resistor);
         break;
@@ -561,7 +570,7 @@ void Pen::keyUp([[maybe_unused]] Qt::Key key){}
 void Pen::drawAliasPreview(const QColor &color){
     QBrush b = brush();
     b.setColor(color);
-    scene->grid.drawAlias(scene->grid.toScreen(t()), b, radius(), "");
+    scene->grid.drawAlias(scene->grid.toScreen(t()), b, radius(), willMakeGround());
 }
 
 

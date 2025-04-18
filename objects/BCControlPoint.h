@@ -1,6 +1,7 @@
 #pragma once
+#include "utils/Globals.h"
+
 #include "WorldPoint.h"
-#include "utils/Geometry.h"
 
 class BCControlPoint: public WorldPoint {
 public:
@@ -15,5 +16,4 @@ public:
         const float D = BC_EDIT_CONTROL_POINT_DIAGONAL_WIDTH/zoom;
         return PinDia(p, this->p(), D, D);
     }
-
 };

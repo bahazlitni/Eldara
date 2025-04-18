@@ -1,50 +1,1984 @@
-/* Window.h */
+/* Grid.cpp */
+#include "Grid.h"
+#include "Scene.h"
+#include "objects/Alias.h"
+#include "objects/Resistor.h"
+
+#include "tools/MouseTool.h"
+#include "utils/Geometry.h"
+
+
+Grid::Grid(Scene *scene): scene(scene) {
+    reset();
+}
+
+float Grid::snap(float x) const {
+    const int TILE_SIZE = scene->tileSize();
+    if(x < 0){
+        const float r = std::fmod(-x, TILE_SIZE);
+        return x + ((2*r > TILE_SIZE ? -TILE_SIZE : 0) + r);
+    }
+    const float r = std::fmod(x, TILE_SIZE);
+    return x + ((2*r > TILE_SIZE ? TILE_SIZE : 0) - r);
+}
+
+void Grid::setZoom(const QPointF &p, const int d){
+    const float previousZoom = zoom();
+    zoomIndex = std::clamp(zoomIndex + d, 0, MAJ_ZOOM_INDEX);
+    setTopLeft(topLeft() + p * (1.0f/previousZoom-1.0f/zoom()));
+    setWidth(scene->width()/zoom());
+    setHeight(scene->height()/zoom());
+    updateGridTile();
+    updateVisibility();
+}
+
+void Grid::reset(){
+    zoomIndex = DEFAULT_ZOOM_INDEX;
+    setZoom(QPointF(0.0f,0.0f),0);
+    moveTo(QPointF(0.0f, 0.0f));
+}
+
+void Grid::updateGridTile() {
+    // Compute the ideal step in screen pixels.
+    float step = scene->tileSize() * zoom();
+    // Quantize the step size to an integer for the pixmap.
+    int stepInt = std::max(1, static_cast<int>(std::ceil(step)));
+
+    // Create a pixmap with the quantized size.
+    QPixmap newTile(stepInt, stepInt);
+    newTile.fill(Qt::transparent);
+
+    QPainter tilePainter(&newTile);
+    tilePainter.setRenderHint(QPainter::Antialiasing, false);
+    setupPainterMode(GRID_STROKE, tilePainter);
+
+    // Draw the grid lines along the left and top edges.
+    tilePainter.drawLine(0, 0, 0, stepInt);
+    tilePainter.drawLine(0, 0, stepInt, 0);
+    tilePainter.end();
+
+    gridTile = newTile;
+}
+
+void Grid::drawLabelText(const QString &label, const int height){
+    if(label.isEmpty()) return;
+
+    painter.save();
+    painter.translate(midp - N*(height + 12));
+
+    // Rotate
+    if (ANGLE > DEG90)  painter.rotate(ANGLE/DEG1 - 180);
+    else if (ANGLE < -DEG90) painter.rotate(ANGLE/DEG1 + 180);
+    else painter.rotate(ANGLE/DEG1);
+
+    // Draw the text
+    QFontMetrics metrics(painter.font());
+    const int textWidth = metrics.horizontalAdvance(label);
+    painter.drawText(QPoint(-textWidth/2, 0), label);
+    painter.restore();
+}
+
+// Setup
+void Grid::setupPainterMode(PainterMode type, QPainter &painter){
+    QPen pen;
+    switch(type){
+    case SELECTION_BOX:
+        painter.setRenderHint(QPainter::Antialiasing, false);
+        painter.setPen(1);
+        painter.setPen(Palette::SELECT);
+        painter.setBrush(QColor(
+            Palette::SELECT.red(),
+            Palette::SELECT.green(),
+            Palette::SELECT.blue(),
+            25
+        ));
+        break;
+    case INDICATOR_STROKE:
+        painter.setRenderHint(QPainter::Antialiasing, false);
+        pen.setColor(Palette::INDICATOR_STROKE);
+        pen.setStyle(Qt::DashLine);
+        pen.setWidth(1);
+        painter.setPen(pen);
+        painter.setBrush(Qt::NoBrush);
+        break;
+    case SELECTED_OBJECT_STROKE:
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        pen.setColor(Palette::RUBBER_BAND_FILL);
+        pen.setStyle(Qt::DashLine);
+        pen.setWidth(1);
+        painter.setPen(pen);
+        painter.setBrush(Qt::NoBrush);
+        break;
+    case GRID_STROKE:
+        painter.setRenderHint(QPainter::Antialiasing, false);
+        pen.setColor(scene->gridStrokeColor());
+        pen.setWidth(1);
+        painter.setPen(pen);
+        painter.setBrush(Qt::NoBrush);
+        break;
+    case MERGE_INDICATOR:
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        pen.setColor(Palette::MERGE_INDICATOR_STROKE);
+        pen.setWidth(2);
+        painter.setPen(pen);
+        painter.setBrush(Qt::NoBrush);
+        break;
+    default:
+        break;
+    }
+}
+
+
+// NODE
+void Grid::drawAliasLabel(const QPointF &center, const QString &label, const QColor &color){
+    QFontMetrics fm(painter.font());
+    const int textWidth = fm.horizontalAdvance(label);
+    const int textHeight = fm.height();
+    painter.setPen(color);
+    painter.drawText(
+        center.x() - textWidth/2,
+        center.y() - textHeight/2,
+        textWidth, textHeight,
+        Qt::AlignCenter, label
+    );
+}
+
+void Grid::drawAlias(
+    const QPointF &center,
+    const QBrush &brush,
+    const int radius,
+    const QString &label,
+    const QPen &pen
+) {
+    painter.setBrush(brush);
+    painter.setPen(pen);
+    painter.drawEllipse(center.x()-radius, center.y()-radius, radius*2, radius*2);
+    if (label.isEmpty()) return;
+    drawAliasLabel(center, label, isDarkColor(brush.color())? Qt::white : Qt::black);
+}
+
+
+// GND
+void Grid::drawGround(
+    const QPointF &center,
+    const QBrush &brush,
+    const int radius,
+    const QString &label,
+    const QPen &pen
+) {
+    drawAlias(center, brush, radius, label);
+
+    if(pen.style() == Qt::NoPen){
+        QPen p(brush.color());
+        p.setWidth(1);
+        painter.setPen(p);
+    }
+    else
+        painter.setPen(pen);
+
+    painter.setBrush(Qt::NoBrush);
+
+    int y = center.y() + (int) radius;
+
+    QPainterPath path;
+    path.moveTo(center.x(), y);
+
+    y += GROUND_ANTENNA_H;
+    path.lineTo(center.x(), y);
+
+    path.moveTo(center.x() - GROUND_WIDTH_1 / 2, y);
+    path.lineTo(center.x() + GROUND_WIDTH_1 / 2, y);
+
+    y += GROUND_ROW_GAP;
+    path.moveTo(center.x() - GROUND_WIDTH_2 / 2, y);
+    path.lineTo(center.x() + GROUND_WIDTH_2 / 2, y);
+
+    y += GROUND_ROW_GAP;
+    path.moveTo(center.x() - GROUND_WIDTH_3 / 2, y);
+    path.lineTo(center.x() + GROUND_WIDTH_3 / 2, y);
+
+    painter.drawPath(path);
+}
+
+// Resistor
+void Grid::drawResistor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
+    setupDipoleDrawingGeometry(A, B);
+    const QPointF H(N*HALF_RESISTOR_HEIGHT);
+
+    const QPointF STEP(T*RESISTOR_WIDTH/RESISTOR_OSCILLATIONS);
+
+    QPointF P(midp - T*HALF_RESISTOR_WIDTH);
+    int sign = 1;
+
+    QPainterPath path;
+
+    // Begin line
+    path.moveTo(A);
+    path.lineTo(P);
+
+    // First Oscilation
+    P += STEP + sign*H;
+    path.lineTo(P);
+    sign = -sign;
+
+    // Mid Oscillations
+    for(int i = 1; i<RESISTOR_OSCILLATIONS-1; i++){
+        P += STEP + 2*sign*H;
+        path.lineTo(P);
+        sign = -sign;
+    }
+
+    // Last Oscillation
+    P += STEP + sign*H;
+    path.lineTo(P);
+
+    // Finish line
+    path.lineTo(B);
+
+    painter.drawPath(path);
+
+    drawLabelText(label, HALF_RESISTOR_HEIGHT);
+}
+
+// Capacitor
+void Grid::drawCapacitor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
+    setupDipoleDrawingGeometry(A, B);
+    const QPointF H(N*HALF_CAPACITOR_HEIGHT);
+
+    QPointF P0 = midp - T*HALF_CAPACITOR_WIDTH;
+    QPointF P1 = midp + T*HALF_CAPACITOR_WIDTH;
+
+    QPainterPath path;
+    path.moveTo(A);
+    path.lineTo(P0);
+    path.moveTo(P0 + H);
+    path.lineTo(P0 - H);
+    path.moveTo(P1 + H);
+    path.lineTo(P1 - H);
+    path.moveTo(P1);
+    path.lineTo(B);
+    painter.drawPath(path);
+
+    drawLabelText(label, HALF_CAPACITOR_HEIGHT);
+}
+
+// Inductor
+void Grid::drawInductor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
+    setupDipoleDrawingGeometry(A, B);
+
+    constexpr float K = 0.5522847498;
+    const QPointF H(N*HALF_INDUCTOR_HEIGHT);
+    const QPointF STEP(T*INDUCTOR_WIDTH/((float) INDUCTOR_OSCILLATIONS));
+
+    QPointF S = midp - T*HALF_INDUCTOR_WIDTH;
+    QPointF E = S + STEP + H;
+    QPointF dC1 = (STEP/2.0 - H*4.0)*K;
+    QPointF dC2 = (STEP/2.0 + H*4.0)*K;
+
+    QPainterPath path;
+
+    // Begin line
+    path.moveTo(A);
+    path.lineTo(S);
+
+    // First Oscillation
+    path.cubicTo(S + dC1, E - dC2, E);
+
+    // Mid Oscillations
+    S += H;
+    dC1 -= H*K;
+    dC2 += H*K;
+    for(int i = 1; i < INDUCTOR_OSCILLATIONS-1; i++){
+        S += STEP;
+        E += STEP;
+        path.cubicTo(S + dC1, E - dC2, E);
+    }
+    S -= H;
+    E -= H;
+    dC1 += H*2.0*K;
+    dC2 -= H*2.0*K;
+
+    // Last Oscillation
+    S += STEP;
+    E += STEP;
+    path.cubicTo(S + dC1, E - dC2, E);
+
+    // Finish line
+    path.lineTo(B);
+
+    painter.drawPath(path);
+
+    drawLabelText(label, HALF_INDUCTOR_HEIGHT);
+};
+
+// Battery
+void Grid::drawBattery(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
+    setupDipoleDrawingGeometry(A, B);
+
+    QPointF P0 = midp - T*HALF_BATTERY_WIDTH;
+    QPointF P1 = midp + T*HALF_BATTERY_WIDTH;
+
+    painter.drawLine(A, P0);
+    painter.drawLine(P1, B);
+    painter.drawLine(P0 - N*HALF_BATTERY_NEGATIVE_HEIGHT, P0 + N*HALF_BATTERY_NEGATIVE_HEIGHT);
+    painter.drawLine(P1 - N*HALF_BATTERY_POSITIVE_HEIGHT, P1 + N*HALF_BATTERY_POSITIVE_HEIGHT);
+
+    drawLabelText(label, HALF_BATTERY_POSITIVE_HEIGHT);
+}
+
+// DCV
+void Grid::drawDCV(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
+    setupDipoleDrawingGeometry(A, B);
+
+    const QPointF v1 = -QPointF(std::cos(ANGLE-DEFAULT_ARROW_ANGLE), std::sin(ANGLE-DEFAULT_ARROW_ANGLE));
+    const QPointF v2 = -QPointF(std::cos(ANGLE+DEFAULT_ARROW_ANGLE), std::sin(ANGLE+DEFAULT_ARROW_ANGLE));
+
+    const QPointF P0 = midp - DEFAULT_CIRCLE_RADIUS*T;
+    const QPointF P1 = midp - 0.6*DEFAULT_CIRCLE_RADIUS*T;
+    const QPointF P2 = midp + 0.6*DEFAULT_CIRCLE_RADIUS*T;
+    const QPointF P3 = P2 + DCV_ARROW_H*v1;
+    const QPointF P4 = P2 + DCV_ARROW_H*v2;
+    const QPointF P5 = midp + DEFAULT_CIRCLE_RADIUS*T;
+
+    QPainterPath path;
+    path.moveTo(A);
+    path.lineTo(P0);
+    path.moveTo(P1);
+    path.lineTo(P2);
+    path.moveTo(P3);
+    path.lineTo(P2);
+    path.lineTo(P4);
+    path.moveTo(P5);
+    path.lineTo(B);
+    painter.drawPath(path);
+
+    painter.drawEllipse(midp, DEFAULT_CIRCLE_RADIUS, DEFAULT_CIRCLE_RADIUS);
+
+    drawLabelText(label, DEFAULT_CIRCLE_RADIUS);
+}
+
+// DCI
+void Grid::drawDCI(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
+    setupDipoleDrawingGeometry(A, B);
+
+    const QPointF P0 = midp - DEFAULT_CIRCLE_RADIUS*T;
+    const QPointF P1 = midp - DEFAULT_CIRCLE_RADIUS*N;
+    const QPointF P2 = midp + DEFAULT_CIRCLE_RADIUS*N;
+    const QPointF P3 = midp + DEFAULT_CIRCLE_RADIUS*T;
+
+    QPainterPath path;
+    path.moveTo(A);
+    path.lineTo(P0);
+    path.moveTo(P1);
+    path.lineTo(P2);
+    path.moveTo(P3);
+    path.lineTo(B);
+    painter.drawPath(path);
+
+    painter.drawEllipse(midp, DEFAULT_CIRCLE_RADIUS, DEFAULT_CIRCLE_RADIUS);
+    drawLabelText(label, DEFAULT_CIRCLE_RADIUS);
+}
+
+void Grid::drawDipole(const ObjectType type, const QPointF &A, const QPointF &B, const QPen &pen, const QString &label){
+    switch (type) {
+    case ObjectType::Resistor: return drawResistor(A, B, pen, label);
+    case ObjectType::Capacitor: return drawCapacitor(A, B, pen, label);
+    case ObjectType::Inductor: return drawInductor(A, B, pen, label);
+    case ObjectType::Battery: return drawBattery(A, B, pen, label);
+    case ObjectType::DCV: return drawDCV(A, B, pen, label);
+    case ObjectType::DCI: return drawDCI(A, B, pen, label);
+    default: return;
+    }
+}
+
+void Grid::drawObject(const SharedObject &obj, const QPen &pen, const QBrush &brush){
+    if(const auto &a = dynamic_pointer_cast<Alias>(obj))
+        drawAlias(
+            toScreen(a->p()), brush,
+            a->radius(),
+            a->showLabel() ? a->label(scene->displayRawValues()) : "",
+            pen
+        );
+    else if(const auto &d = dynamic_pointer_cast<Dipole>(obj))
+        drawDipole(
+            d->type(),
+            toScreen(d->p1()),
+            toScreen(d->p2()),
+            pen, d->showLabel()? d->label(scene->displayRawValues()) : ""
+        );
+}
+
+// Update the grid size and then update the grid cache.
+void Grid::updateSize(){
+    setSize(scene->size()/zoom());
+    updateGridTile();
+    updateVisibility();
+}
+
+void Grid::updateVisibility(const SharedAlias &alias){
+    if(alias->visible(*this, zoom())) addVisible(alias);
+    else removeVisible(alias);
+}
+void Grid::updateVisibility(const SharedDipole &dipole){
+    if(dipole->visible(*this, zoom())) addVisible(dipole);
+    else removeVisible(dipole);
+}
+
+void Grid::addVisible(const SharedObject &obj){
+    switch(obj->category()){
+    case ObjectCategory::Node:
+        addVisible(std::static_pointer_cast<Alias>(obj));
+        break;
+    case ObjectCategory::Dipole:
+        addVisible(std::static_pointer_cast<Dipole>(obj));
+        break;
+    default:
+        break;
+    }
+}
+void Grid::removeVisible(const SharedObject &obj){
+    switch(obj->category()){
+    case ObjectCategory::Node:
+        removeVisible(std::static_pointer_cast<Alias>(obj));
+        break;
+    case ObjectCategory::Dipole:
+        removeVisible(std::static_pointer_cast<Dipole>(obj));
+        break;
+    default:
+        break;
+    }
+}
+void Grid::updateVisibility(const SharedObject &obj){
+    switch(obj->category()){
+    case ObjectCategory::Node:
+        updateVisibility(std::static_pointer_cast<Alias>(obj));
+        break;
+    case ObjectCategory::Dipole:
+        updateVisibility(std::static_pointer_cast<Dipole>(obj));
+        break;
+    default:
+        break;
+    }
+}
+
+void Grid::updateVisibility() {
+    // Create temporary containers for thread-safe collection
+    QSet<SharedAlias> threadSafeVisibleAliases;
+    QSet<SharedDipole> threadSafeVisibleDipoles;
+    QMutex aliasMutex, dipoleMutex;
+
+    const bool NOT_dirtyVisibleCheckFlagInitial = !dirtyVisibleCheckFlagInitial;
+
+    // Prepare for parallel processing
+    const QHash<int, SharedAlias>& aliases = scene->aliases;
+    const QList<int> aliasKeys = aliases.keys(); // Get keys for indexing
+    const int totalAliases = aliasKeys.size();
+
+    threadSafeVisibleAliases.reserve(visibleAliases.size());
+    threadSafeVisibleDipoles.reserve(visibleDipoles.size());
+
+    const int idealThreadCount = QThread::idealThreadCount();
+    const int chunkSize = qMax(1, totalAliases / idealThreadCount);
+
+    const int assumptionThreadSizeForAliases = visibleAliases.size()/idealThreadCount;
+    const int assumptionThreadSizeForDipoles = visibleDipoles.size()/idealThreadCount;
+
+    // Create a list of futures for parallel execution
+    QList<QFuture<void>> futures;
+
+    for (int startIdx = 0; startIdx < totalAliases; startIdx += chunkSize) {
+        int endIdx = qMin(startIdx + chunkSize, totalAliases);
+
+        // Process each chunk in a separate thread
+        futures.append(QtConcurrent::run([&, startIdx, endIdx, NOT_dirtyVisibleCheckFlagInitial]() {
+            QSet<SharedAlias> localVisibleAliases;
+            QSet<SharedDipole> localVisibleDipoles;
+            localVisibleAliases.reserve(assumptionThreadSizeForAliases);
+            localVisibleDipoles.reserve(assumptionThreadSizeForDipoles);
+
+            for (int i = startIdx; i < endIdx; i++) {
+                const int aliasKey = aliasKeys[i];
+                const auto& alias = aliases[aliasKey];
+
+                if (alias->visible(*this, zoom())) {
+                    localVisibleAliases.insert(alias);
+                    for (const auto& dipole : alias->connections()) {
+                        if (dipole->dirtyVisibleCheckFlag == dirtyVisibleCheckFlagInitial) {
+                            localVisibleDipoles.insert(dipole);
+                        }
+                        dipole->dirtyVisibleCheckFlag = NOT_dirtyVisibleCheckFlagInitial;
+                    }
+                } else {
+                    for (const auto& dipole : alias->connections()) {
+                        if (dipole->dirtyVisibleCheckFlag == dirtyVisibleCheckFlagInitial &&
+                            dipole->visible(*this, zoom())) {
+                            localVisibleDipoles.insert(dipole);
+                        }
+                        dipole->dirtyVisibleCheckFlag = NOT_dirtyVisibleCheckFlagInitial;
+                    }
+                }
+            }
+
+            if (!localVisibleAliases.isEmpty()) {
+                QMutexLocker aliasLocker(&aliasMutex);
+                threadSafeVisibleAliases.unite(localVisibleAliases);
+            }
+
+            if (!localVisibleDipoles.isEmpty()) {
+                QMutexLocker dipoleLocker(&dipoleMutex);
+                threadSafeVisibleDipoles.unite(localVisibleDipoles);
+            }
+        }));
+    }
+
+    for (auto& future : futures) future.waitForFinished();
+
+    visibleAliases.clear();
+    visibleDipoles.clear();
+
+    visibleAliases = std::move(threadSafeVisibleAliases);
+    visibleDipoles = std::move(threadSafeVisibleDipoles);
+
+    dirtyVisibleCheckFlagInitial = NOT_dirtyVisibleCheckFlagInitial;
+}
+
+// Render the grid and the rest of the scene.
+void Grid::render([[maybe_unused]] QPaintEvent *event){
+    QRectF viewportRect = toScreen(*this);
+
+    painter.begin(scene);
+    painter.setClipRect(viewportRect);
+    painter.fillRect(viewportRect, scene->backgroundColor());
+
+    if (scene->showGrid() && zoom() > 1.5f && !gridTile.isNull()) {
+        setupPainterMode(GRID_STROKE, painter);
+        painter.drawTiledPixmap(viewportRect, gridTile, QPointF(x() - snap(x()), y() - snap(y()))*zoom());
+    }
+
+    // Draw objects.
+    for (const auto &dipole : visibleDipoles){
+        if(scene->mouse->willDraw(dipole)) continue;
+        drawObject(dipole, dipole->pen(), dipole->brush());
+    }
+
+    for (const auto &alias : visibleAliases){
+        if (scene->mouse->willDraw(alias)) continue;
+        drawAlias(
+            toScreen(alias->p()), alias->brush(),
+            alias->radius(),
+            alias->showLabel() ? alias->label(true) : ""
+        );
+    }
+
+    if(scene->simulator.isRunning())
+        scene->simulator.draw(&painter);
+
+    scene->mouse->draw(&painter);
+
+    painter.end();
+}
+
+
+
+/* Grid.h */
 #pragma once
 #include "utils/Globals.h"
 
-class Scene;
-class MainPanel;
+enum PainterMode {
+    CONSTRUCTION_PREVIEW,
+    IMAGINARY_LINES,
+    SELECTION_BOX,
+    WORLDOBJECT_FILL,
+    WORLDOBJECT_STROKE,
+    INDICATOR_STROKE,
+    SELECTED_OBJECT_STROKE,
+    GRID_STROKE,
+    MERGE_INDICATOR
+};
 
-class Window : public QMainWindow {
-    Q_OBJECT
+static int constexpr DEFAULT_ZOOM_INDEX = 5;
+static int constexpr NUMBER_OF_ZOOM_STATES = 14;
+static int constexpr MAJ_ZOOM_INDEX = NUMBER_OF_ZOOM_STATES-1;
+float const ZOOM_STATES[NUMBER_OF_ZOOM_STATES] = {
+    0.2f, 0.5f, 0.8f, 0.9f, 1.0f, 1.1f, 1.5f,
+    2.0f, 2.5f, 3.0f, 4.0f, 5.0f, 6.0f, 8.0f
+};
+
+class Scene;
+class BCPath;
+class Grid: public QRectF {
+private:
+    Scene *scene;
+    QPainter painter;
+    int zoomIndex;
+    QPixmap gridTile;
+    bool dirtyVisibleCheckFlagInitial = false;
+
+    QPointF midp;
+    QPointF T;
+    QPointF N;
+    float ANGLE;
+
+
+
 
 public:
-    explicit Window();
+    static constexpr int MAX_COORDINATE_RANGE = 100000;
 
-private:
-    [...]
+    Grid(Scene *scene);
+    ~Grid(){}
 
-    QSplitter *splitter;
-    QMenu *fileMenu;
-    QMenu *editMenu;
-    QAction *openAction;
-    QAction *saveAction;
-    QAction *saveAsAction;
-    QAction *preferencesAction;
-    Scene *scene;
-    MainPanel *mainPanel;
+    bool getDirtyVisibleCheckFlagInitial() const { return dirtyVisibleCheckFlagInitial; }
 
-    void setupMenuBar();
-    void setupSplitter();
-    void setupConnections();
+    void setupDipoleDrawingGeometry(const QPointF &A, const QPointF &B){
+        ANGLE = std::atan2(B.y() - A.y(), B.x() - A.x());
+        T = QPointF(std::cos(ANGLE), std::sin(ANGLE));
+        N = QPointF(-T.y(), T.x());
+        midp = (A + B)/2.0;
+    }
 
-    QString currentSavePath;
-    bool saveToFile(const QString &filename);
+    QSet<SharedAlias> visibleAliases;
+    QSet<SharedDipole> visibleDipoles;
 
-private slots:
-    void openFile();
-    void saveFile();
-    void saveFileAs();
-    void openPreferences();
-    void applySettings();
+    inline void addVisible(const SharedAlias &alias){ visibleAliases.insert(alias); }
+    inline void removeVisible(const SharedAlias &alias){ visibleAliases.remove(alias); }
+    void updateVisibility(const SharedAlias &alias);
 
-protected:
-    void closeEvent(QCloseEvent *event) override;
+    inline void addVisible(const SharedDipole &dipole){ visibleDipoles.insert(dipole); }
+    inline void removeVisible(const SharedDipole &dipole){ visibleDipoles.remove(dipole); }
+    void updateVisibility(const SharedDipole &dipole);
+
+    void addVisible(const SharedObject &obj);
+    void removeVisible(const SharedObject &obj);
+    void updateVisibility(const SharedObject &obj);
+
+    inline void addVisible(const Selection &selection){ for(const auto &obj : selection) addVisible(obj); }
+    inline void removeVisible(const Selection &selection){ for(const auto &obj : selection) removeVisible(obj); }
+    inline void updateVisibility(const Selection &selection){ for(const auto &obj : selection) updateVisibility(obj); }
+
+    void updateVisibility();
+    void updateSize();
+    void updateGridTile();
+
+    void reset();
+
+    inline void deepRemoval(const SharedObject &obj) { removeVisible(obj); }
+
+    inline float zoom() const { return ZOOM_STATES[zoomIndex]; };
+    void setZoom(const QPointF &p, const int d);
+
+    void render([[maybe_unused]] QPaintEvent *event);
+
+    inline void moveTo(const float x, const float y){
+        const QSizeF sz = size();
+        setX(x);
+        setY(y);
+        setSize(sz);
+        updateGridTile();
+        updateVisibility();
+    }
+    inline void moveTo(const QPointF &p){ moveTo(p.x(), p.y()); }
+
+    inline float toScreenX(const float x) const { return (x - left())*zoom(); }
+    inline float toScreenY(const float y) const { return (y - top())*zoom(); }
+    inline QPointF toScreen(const QPointF &pos) const { return QPointF(toScreenX(pos.x()), toScreenY(pos.y())); }
+    inline QLine toScreen(const QLineF &line) const { return QLine(toScreenX(line.x1()), toScreenY(line.y1()), toScreenX(line.x2()), toScreenY(line.y2())); }
+    inline QRectF toScreen(const QRectF &rect) const { return QRectF(toScreenX(rect.x()), toScreenY(rect.y()), rect.width()*zoom(), rect.height()*zoom()); }
+    float snap(float x) const;
+    inline QPointF snap(const QPointF &p) const { return QPointF(snap(p.x()), snap(p.y())); }
+
+    inline float toWorldX(const float x) const { return left() + x/zoom(); }
+    inline float toWorldY(const float y) const { return top() + y/zoom(); }
+    inline QPointF toWorld(const QPointF &pos) const { return QPointF(toWorldX(pos.x()), toWorldY(pos.y())); }
+    inline QLine toWorld(const QLineF &line) const { return QLine(toWorldX(line.x1()), toWorldY(line.y1()), toWorldX(line.x2()), toWorldY(line.y2())); }
+    inline QRectF toWorld(const QRectF &rect) const { return QRectF(toWorldX(rect.x()), toWorldY(rect.y()), rect.width()/zoom(), rect.height()/zoom()); }
+
+    void drawAliasLabel(const QPointF &center, const QString &label, const QColor &color);
+    void drawLabelText(const QString &label, const int height);
+
+    void setupPainterMode(PainterMode type, QPainter &painter);
+    inline void setupPainterMode(PainterMode type){ setupPainterMode(type, painter); };
+
+    // Drawing functions
+    void drawAlias(const QPointF &center, const QBrush &bursh, const int radius, const QString &label = "", const QPen &pen = Qt::NoPen);
+    void drawGround(const QPointF &center, const QBrush &bursh, const int radius, const QString &label = "", const QPen &pen = Qt::NoPen);
+    void drawResistor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label = "");
+    void drawCapacitor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label = "");
+    void drawInductor(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label = "");
+    void drawBattery(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label = "");
+    void drawDCV(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label = "");
+    void drawDCI(const QPointF &A, const QPointF &B, const QPen &pen, const QString &label = "");
+
+    void drawDipole(
+        const ObjectType type,
+        const QPointF &A,
+        const QPointF &B,
+        const QPen &pen,
+        const QString &label = ""
+    );
+
+    void drawObject(
+        const SharedObject &obj,
+        const QPen &pen,
+        const QBrush &brush
+    );
 };
 
 
 
-/* Window.cpp */
+/* LICENSE */
+MIT License
+
+Copyright (c) 2025 Phosdoq
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+
+/* main.cpp */
+#include <QApplication>
+#include "Window.h"
+
+using namespace std;
+
+int main(int argc, char *argv[]) {
+    QApplication scene(argc, argv);
+
+    Window window = Window();
+    window.show();
+    return scene.exec();
+}
+
+
+
+/* mainwindow.ui */
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <property name="windowOpacity">
+   <double>1.000000000000000</double>
+  </property>
+  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuXD">
+    <property name="title">
+     <string>XD</string>
+    </property>
+   </widget>
+   <addaction name="menuXD"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+
+
+
+
+/* Scene.cpp */
+#include "Scene.h"
+#include "objects/Alias.h"
+#include "objects/Resistor.h"
+#include "widgets/tabs/VariablesTab.h"
+
+Scene::Scene(QWidget *parent):
+    QWidget(parent),
+    grid(Grid(this)),
+    pen(Pen(this)),
+    selector(Selector(this)),
+    grabber(Grabber(this)),
+    simulator(Simulator(this))
+{
+    mouse = &selector;
+    mouse->init();
+    setFocusPolicy(Qt::StrongFocus);
+    setMouseTracking(true);
+}
+
+void Scene::addAlias(const SharedAlias &alias){ aliases.insert(alias->id(), alias); }
+void Scene::removeAlias(const SharedAlias &alias){ aliases.remove(alias->id()); }
+
+void Scene::resizeEvent(QResizeEvent *event) {
+    QWidget::resizeEvent(event);
+    grid.updateSize();
+    update();
+}
+void Scene::mouseMoveEvent(QMouseEvent *event){
+    _dp = event->pos() - _p;
+    _p = event->pos();
+    _worldP = grid.toWorld(_p);
+    const QPointF prevTarget = mouse->t();
+    mouse->updateMovement();
+    mouse->setDt(mouse->t() - prevTarget);
+    mouse->move();
+    update();
+}
+void Scene::wheelEvent(QWheelEvent *event){
+    grid.setZoom(event->position(), event->angleDelta().y() / 120);
+    mouse->move();
+    update();
+}
+void Scene::mousePressEvent(QMouseEvent *event){
+    const Qt::MouseButton btn = event->button();
+    mouse->set_tDown(btn, mouse->t());
+    set_pDown(btn, _p);
+    switch(btn){
+    case Qt::LeftButton: mouse->downL(); break;
+    case Qt::MiddleButton: mouse->downM(); break;
+    case Qt::RightButton: mouse->downR(); break;
+    default: break;
+    }
+    update();
+}
+void Scene::mouseReleaseEvent(QMouseEvent *event){
+    const Qt::MouseButton btn = event->button();
+    mouse->set_tUp(btn, mouse->t());
+    set_pUp(btn, _p);
+    switch(btn){
+    case Qt::LeftButton: mouse->upL(); break;
+    case Qt::MiddleButton: mouse->upM(); break;
+    case Qt::RightButton: mouse->upR(); break;
+    default: break;
+    }
+    update();
+}
+
+void Scene::keyPressEvent(QKeyEvent *event){
+    const Qt::Key key = static_cast<Qt::Key>(event->key());
+    keys.insert(key);
+
+    if(event->isAutoRepeat()) mouse->keyPress(key);
+    else mouse->keyDown(key);
+
+    if (ctrl()) {
+        switch (key) {
+        case Qt::Key_Z: undo(); break;
+        case Qt::Key_Y: redo(); break;
+        default: break;
+        }
+    }
+    update();
+}
+
+
+void Scene::keyReleaseEvent(QKeyEvent *event){
+    const Qt::Key key = (Qt::Key) event->key();
+    keys.remove(key);
+
+    if (event->isAutoRepeat()) return;
+    if(prevMouse && key == returningKey) {
+        mouse = prevMouse;
+        mouse->setCursor();
+        prevMouse = nullptr;
+        return;
+    }
+    mouse->keyUp(key);
+    update();
+}
+void Scene::mouseDoubleClickEvent(QMouseEvent *event){
+    const Qt::MouseButton btn = event->button();
+    mouse->set_tUp(btn, mouse->t());
+    set_pUp(btn, mouse->p());
+    switch(btn){
+    case Qt::LeftButton:
+        mouse->downL();
+        return mouse->doubleL();
+    case Qt::MiddleButton:
+        mouse->downM();
+        return mouse->doubleM();
+    case Qt::RightButton:
+        mouse->downR();
+        return mouse->doubleR();
+    default: return;
+    }
+    update();
+}
+
+
+// DISPLAY
+void Scene::paintEvent(QPaintEvent *event){ grid.render(event); }
+
+void Scene::setMouse(MouseTool *m){
+    if(m == mouse) return;
+    mouse->end();
+    m->init();
+    mouse = m;
+}
+void Scene::setTempMouse(MouseTool *m, const Qt::Key key){
+    prevMouse = mouse;
+    mouse = m;
+    mouse->init();
+    returningKey = key;
+}
+
+void Scene::undo(){ undoStack.undo(); grid.updateVisibility(); }
+void Scene::redo(){ undoStack.redo(); grid.updateVisibility(); }
+void Scene::execute(QUndoCommand *cmd){
+    undoStack.push(cmd); grid.updateVisibility();
+}
+
+void Scene::deepRemoval(const SharedObject &obj){
+    selector.deepRemoval(obj);
+    pen.deepRemoval(obj);
+    grabber.deepRemoval(obj);
+    grid.deepRemoval(obj);
+    if(obj->category() == ObjectCategory::Node) {
+        const auto &alias = std::static_pointer_cast<Alias>(obj);
+        removeAlias(alias);
+    }
+}
+
+void Scene::reset() {
+    QList<SharedAlias> aliasesList = aliases.values();
+    DipolesSet visitedDipoles;
+    for(const auto &alias : aliasesList){
+        deepRemoval(alias);
+        for(const auto &dipole : alias->connections()){
+            if(visitedDipoles.contains(dipole)) continue;
+            visitedDipoles.insert(dipole);
+            deepRemoval(dipole);
+        }
+    }
+    aliases.clear();
+
+    grid.reset();
+}
+
+
+
+
+
+
+/* Scene.h */
+#pragma once
+#include "utils/Globals.h"
+
+#include "Grid.h"
+#include "tools/MouseTool.h"
+#include "tools/Pen.h"
+#include "tools/Selector.h"
+#include "tools/Grabber.h"
+
+#include "Simulator.h"
+
+
+class VariablesTab;
+class Scene : public QWidget {
+    Q_OBJECT
+
+public:
+    Scene(QWidget *parent = nullptr);
+    ~Scene() = default;
+
+    QUndoStack undoStack;
+
+    Grid grid;
+    Pen pen;
+    Selector selector;
+    Grabber grabber;
+    MouseTool *mouse;
+
+    Simulator simulator;
+
+    AliasMap aliases;
+
+    void addAlias(const SharedAlias &alias);
+    void removeAlias(const SharedAlias &alias);
+    void deepRemoval(const SharedObject &obj);
+
+    void zoom(int degrees);
+    void resizeEvent(QResizeEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
+    void keyReleaseEvent(QKeyEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
+
+    void setMouse(MouseTool *m);
+    void setTempMouse(MouseTool *m, const Qt::Key key);
+
+    void undo();
+    void redo();
+    void execute(QUndoCommand *cmd);
+
+    bool pressed(Qt::Key key) const { return keys.contains(key); }
+    bool shift() const { return pressed(Qt::Key_Shift); };
+    bool ctrl() const { return pressed(Qt::Key_Control); };
+    bool alt() const { return pressed(Qt::Key_Alt) || pressed(Qt::Key_AltGr); };
+
+    float x() const { return _p.x(); }
+    float y() const { return _p.y(); }
+    float dx() const { return _dp.x(); }
+    float dy() const { return _dp.y(); }
+    QPointF p() const { return _p; }
+    QPointF dp() const { return _dp; }
+    QPointF worldP() const { return _worldP; }
+    QPointF pDown(const Qt::MouseButton btn) const {
+        int i = 0;
+        switch(btn){
+        case Qt::MiddleButton: i = 1; break;
+        case Qt::RightButton: i = 2; break;
+        default: break;
+        }
+        return _record[0][i];
+    }
+    QPointF pUp(const Qt::MouseButton btn) const {
+        int i = 0;
+        switch(btn){
+        case Qt::MiddleButton: i = 1; break;
+        case Qt::RightButton: i = 2; break;
+        default: break;
+        }
+        return _record[1][i];
+    }
+
+    inline uint64_t id(){ return trackid++; }
+    inline uint64_t address(){ return trackAddress++; }
+
+    inline bool hasChanged() const {
+        return true;
+    }
+
+    void reset();
+
+private:
+    struct Settings {
+        bool   snapPosition             ;
+        bool   allowMerging             ;
+        bool   showGrid                 ;
+        bool   displayRawValues         ;
+        int    tileSize                 ;
+        QColor backgroundColor          ;
+        QColor gridStrokeColor          ;
+    };
+
+    Settings settings;
+
+public:
+    inline void setSnapPosition     ( const bool v   ) { settings.snapPosition     = v; }
+    inline void setAllowMerging     ( const bool v   ) { settings.allowMerging     = v; }
+    inline void setShowGrid         ( const bool v   ) { settings.showGrid         = v; }
+    inline void setDisplayRawValues ( const bool v   ) { settings.displayRawValues = v; }
+    inline void setTileSize         ( const int  v   ) {
+        settings.tileSize = v;
+        grid.updateGridTile();
+    }
+    inline void setBackgroundColor  ( const QColor &v) { settings.backgroundColor  = v; }
+    inline void setGridStrokeColor  ( const QColor &v) {
+        settings.gridStrokeColor = v;
+        grid.updateGridTile();
+    }
+
+    inline bool   snapPosition     () const { return settings.snapPosition    ; }
+    inline bool   allowMerging     () const { return settings.allowMerging    ; }
+    inline bool   showGrid         () const { return settings.showGrid        ; }
+    inline bool   displayRawValues () const { return settings.displayRawValues; }
+    inline int    tileSize         () const { return settings.tileSize        ; }
+    inline QColor backgroundColor  () const { return settings.backgroundColor ; }
+    inline QColor gridStrokeColor  () const { return settings.gridStrokeColor ; }
+
+
+private:
+    IDTracker trackid = 0;
+    IDTracker trackAddress = 0;
+
+    MouseTool *prevMouse = nullptr;
+    Qt::Key returningKey;
+
+    void set_pDown(const Qt::MouseButton btn, const QPointF &p){
+        int i = 0;
+        switch(btn){
+        case Qt::MiddleButton: i = 1; break;
+        case Qt::RightButton: i = 2; break;
+        default: break;
+        }
+        _record[0][i] = p;
+    }
+    void set_pUp(const Qt::MouseButton btn, const QPointF &p){
+        int i = 0;
+        switch(btn){
+        case Qt::MiddleButton: i = 1; break;
+        case Qt::RightButton: i = 2; break;
+        default: break;
+        }
+        _record[1][i] = p;
+    }
+
+    QSet<Qt::Key> keys;
+    QPointF _record[2][3];
+    QPointF _p, _dp, _worldP;
+};
+
+
+
+/* Simulator.cpp */
+// Simulator.cpp
+#include "Simulator.h"
+#include "Scene.h"
+
+#include "objects/Alias.h"
+#include "objects/Resistor.h"
+#include "objects/DCV.h"
+#include "objects/DCI.h"
+
+#include <QSet>
+#include <QList>
+#include <QQueue>
+#include <QHash>
+#include <algorithm>
+#include <QDebug>
+#include <chrono>
+#include <thread>
+
+Simulator::Simulator(Scene *scene)
+    : QObject(nullptr)
+    , scene(scene)
+    , workerThread(new QThread(this))
+{
+    // Move this object into the worker thread
+    this->moveToThread(workerThread);
+
+    // When the thread starts, call runLoop()
+    connect(workerThread, &QThread::started,
+            this,         &Simulator::runLoop);
+    // When simulationEnded() is emitted, quit the thread
+    connect(this, &Simulator::simulationEnded,
+            workerThread, &QThread::quit);
+
+    // Give it high priority
+    workerThread->setPriority(QThread::HighPriority);
+}
+
+Simulator::~Simulator() {
+    stop();
+    workerThread->wait();
+}
+
+void Simulator::run() {
+    if (m_running.load()) return;
+    workerThread->start();
+}
+
+void Simulator::stop() {
+    m_running.store(false);
+}
+
+void Simulator::runLoop() {
+    m_running.store(true);
+    emit simulationStarted();
+
+    while (m_running.load()) {
+        stepOnce();
+        // tiny sleep to yield CPU; adjust as needed
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    emit simulationEnded();
+}
+
+void Simulator::stepOnce() {
+    //
+    // === Stage 1: Scan scene & collect nodes, components, adjacency ===
+    //
+    const auto &aliases = scene->aliases;
+    int approx = aliases.size();
+
+    // map node‑ID → list of alias pointers
+    QHash<uint64_t, QVector<SharedAlias>> nodeToAliasMap;
+    nodeToAliasMap.reserve(approx);
+
+    // flat list of all non‑capacitor elements (resistors, sources, zero‑Ω → 0 V)
+       struct Component { SharedDipole dp; double val; DCRole role; };
+    QVector<Component> components;
+    components.reserve(approx * 2);
+
+    // raw adjacency on original node IDs
+    QHash<uint64_t, QVector<uint64_t>> adj;
+    adj.reserve(approx);
+
+    // track which dipoles we've already seen
+    QSet<SharedDipole> visited;
+    visited.reserve(approx);
+
+    for (const auto &aliasPtr : aliases) {
+        uint64_t addr = aliasPtr->address();
+        nodeToAliasMap[addr].append(aliasPtr);
+
+        // each dipole (wire, R, L, source) will be handled exactly once
+        for (const auto &dp : aliasPtr->connections()) {
+            if (visited.contains(dp))
+                continue;
+            visited.insert(dp);
+
+            uint64_t a = dp->A()->address();
+            uint64_t b = dp->B()->address();
+
+            switch (dp->type()) {
+            case ObjectType::Capacitor:
+                // open at DC → ignore
+                continue;
+
+            case ObjectType::Inductor:
+                // treat as ideal short ⇒ zero‑volt source
+                components.append({ dp, 0.0, DCRole::V });
+                break;
+
+            case ObjectType::Resistor: {
+                double R = std::static_pointer_cast<Resistor>(dp)->R();
+                if (R == 0.0) {
+                    // zero‑Ω resistor ⇒ zero‑volt source
+                    components.append({ dp, 0.0, DCRole::V });
+                } else {
+                    components.append({ dp, R,   DCRole::R });
+                }
+                break;
+            }
+
+            case ObjectType::DCV:
+            case ObjectType::Battery: {
+                double V = std::static_pointer_cast<DCV>(dp)->V();
+                components.append({ dp, V,   DCRole::V });
+                break;
+            }
+
+            case ObjectType::DCI: {
+                double I = std::static_pointer_cast<DCI>(dp)->I();
+                components.append({ dp, I,   DCRole::I });
+                break;
+            }
+            default:
+                break;
+            }
+
+            // record connectivity for CC search
+            adj[a].append(b);
+            adj[b].append(a);
+        }
+    }
+
+    //
+    // === Stage 2: Find connected components of the raw node graph ===
+    //
+    QList<QSet<uint64_t>> ccList;
+    QSet<uint64_t> seen;
+    seen.reserve(adj.size());
+
+    QVector<uint64_t> queue;
+    queue.reserve(adj.size());
+
+    for (auto it = adj.constBegin(); it != adj.constEnd(); ++it) {
+        uint64_t start = it.key();
+        if (seen.contains(start))
+            continue;
+        seen.insert(start);
+
+        QSet<uint64_t> comp;
+        comp.insert(start);
+
+        queue.clear();
+        queue.append(start);
+        for (int qi = 0; qi < queue.size(); ++qi) {
+            uint64_t u = queue[qi];
+            for (uint64_t v : adj[u]) {
+                if (!seen.contains(v)) {
+                    seen.insert(v);
+                    comp.insert(v);
+                    queue.append(v);
+                }
+            }
+        }
+        ccList.append(comp);
+    }
+    // include any truly isolated nodes
+    for (auto it = nodeToAliasMap.constBegin(); it != nodeToAliasMap.constEnd(); ++it) {
+        uint64_t node = it.key();
+        if (!seen.contains(node)) {
+            ccList.append(QSet<uint64_t>{ node });
+        }
+    }
+
+    //
+    // === Stage 3: For each sub‑circuit, build & solve MNA ===
+    //
+    for (const auto &nodes : ccList) {
+        if (nodes.isEmpty())
+            continue;
+
+        // collect only components touching this sub‑circuit
+        QVector<const Component*> sub;
+        sub.reserve(components.size());
+        for (const auto &c : components) {
+            uint64_t a = c.dp->A()->address();
+            uint64_t b = c.dp->B()->address();
+            if (nodes.contains(a) || nodes.contains(b))
+                sub.append(&c);
+        }
+
+        // choose reference (ground) = smallest node ID
+        uint64_t reference = *std::min_element(nodes.begin(), nodes.end());
+
+        // build ordered list of non‑reference nodes
+        QVector<uint64_t> nodeList = nodes.values();
+        nodeList.removeAll(reference);
+        std::sort(nodeList.begin(), nodeList.end());
+        int N = nodeList.size();
+
+        // split components by role
+        QVector<const Component*> Rs, Vs, Is;
+        Rs.reserve(sub.size());
+        Vs.reserve(sub.size());
+        Is.reserve(sub.size());
+        for (auto cptr : sub) {
+            if (cptr->role == DCRole::R)      Rs.append(cptr);
+            else if (cptr->role == DCRole::V) Vs.append(cptr);
+            else if (cptr->role == DCRole::I) Is.append(cptr);
+        }
+        int M = Vs.size();
+        int dim = N + M;
+        if (dim == 0)
+            continue;
+
+        // map each node ID → matrix index
+        QHash<uint64_t,int> idxMap;
+        idxMap.reserve(N);
+        for (int i = 0; i < N; ++i)
+            idxMap[nodeList[i]] = i;
+
+        Eigen::MatrixXd A = Eigen::MatrixXd::Zero(dim, dim);
+        Eigen::VectorXd b = Eigen::VectorXd::Zero(dim);
+
+        // --- stamp resistors (R > 0) into G-matrix ---
+        for (auto cptr : Rs) {
+            double R = cptr->val;               // guaranteed R>0
+            double g = 1.0 / R;
+            uint64_t aa = cptr->dp->A()->address();
+            uint64_t bb = cptr->dp->B()->address();
+            int i = (aa == reference ? -1 : idxMap.value(aa, -1));
+            int j = (bb == reference ? -1 : idxMap.value(bb, -1));
+
+            if (i >= 0) {
+                A(i,i) += g;
+                if (j >= 0) {
+                    A(i,j) -= g;
+                    A(j,i) -= g;
+                    A(j,j) += g;
+                }
+            } else if (j >= 0) {
+                A(j,j) += g;
+            }
+        }
+
+        // --- stamp current sources (KCL) ---
+        for (auto cptr : Is) {
+            double I = cptr->val;
+            uint64_t aa = cptr->dp->A()->address();
+            uint64_t bb = cptr->dp->B()->address();
+            int i = (aa == reference ? -1 : idxMap.value(aa, -1));
+            int j = (bb == reference ? -1 : idxMap.value(bb, -1));
+            if (i >= 0) b(i) -= I;
+            if (j >= 0) b(j) += I;
+        }
+
+        // --- stamp voltage sources (including zero‑volt shorts) ---
+        for (int k = 0; k < M; ++k) {
+            auto cptr = Vs[k];
+            double V = cptr->val;  // zero for treated shorts
+            uint64_t aa = cptr->dp->A()->address();
+            uint64_t bb = cptr->dp->B()->address();
+            int i = (aa == reference ? -1 : idxMap.value(aa, -1));
+            int j = (bb == reference ? -1 : idxMap.value(bb, -1));
+            int row = N + k;
+
+            if (i >= 0) { A(i,row) = +1; A(row,i) = +1; }
+            if (j >= 0) { A(j,row) = -1; A(row,j) = -1; }
+            b(row) = V;
+        }
+
+        // --- solve A·x = b ---
+        Eigen::FullPivLU<Eigen::MatrixXd> lu(A);
+        if (!lu.isInvertible())
+            continue;
+        Eigen::VectorXd x = lu.solve(b);
+
+        // --- write back node voltages ---
+        for (auto &aliasPtr : nodeToAliasMap[reference])
+            aliasPtr->setRefV(0.0);
+        for (int i = 0; i < N; ++i) {
+            double vi = x(i);
+            uint64_t rep = nodeList[i];
+            for (auto &aliasPtr : nodeToAliasMap[rep])
+                aliasPtr->setRefV(vi);
+        }
+
+        // --- write back source currents ---
+        // voltage‑source currents (including zero‑volt shorts)
+        for (int k = 0; k < M; ++k) {
+            double I = x(N + k);
+            Vs[k]->dp->setRefCurrent(I);
+        }
+        // resistor currents
+        for (auto cptr : Rs) {
+            double va = cptr->dp->A()->refV();
+            double vb = cptr->dp->B()->refV();
+            cptr->dp->setRefCurrent((va - vb) / cptr->val);
+        }
+
+        scene->update();
+    }
+}
+
+
+
+
+
+void Simulator::draw(QPainter *painter){
+    painter->setBrush(Qt::NoBrush);
+
+    painter->setPen(Qt::cyan);
+    for(const auto &dipole : scene->grid.visibleDipoles){
+        QPointF A = scene->grid.toScreen(dipole->p1());
+        QPointF B = scene->grid.toScreen(dipole->p2());
+        scene->grid.setupDipoleDrawingGeometry(A, B);
+        scene->grid.drawLabelText(
+            formatDouble(dipole->refCurrent(), 6, AMP, scene->displayRawValues()), 40
+        );
+    }
+
+    for(const auto &alias : scene->grid.visibleAliases){
+        QPointF A = scene->grid.toScreen(*alias) + QPointF(0,20);
+        scene->grid.drawAliasLabel(
+            A, formatDouble(alias->refV(), 6, VOLT, scene->displayRawValues()), Qt::yellow
+        );
+    }
+}
+
+
+
+/* Simulator.h */
+#pragma once
+#include "utils/Globals.h"
+
+class Scene;
+class Simulator : public QObject {
+    Q_OBJECT
+public:
+    explicit Simulator(Scene *scene);
+    ~Simulator() override;
+
+    void run();
+    void stop();
+
+    bool isRunning() const { return m_running; }
+    void draw(QPainter *painter);
+
+signals:
+    void simulationStarted();
+    void simulationEnded();
+
+private slots:
+    void runLoop();
+
+private:
+    Scene               *scene;
+    std::atomic<bool>    m_running{false};
+    QThread             *workerThread;
+
+    void stepOnce();
+};
+
+
+
+/* tuto.pro */
+# CircuitsSimulator.pro
+
+QT       += core gui widgets svg
+
+TARGET    = CircuitsSimulator
+TEMPLATE  = app
+
+# Use C++20 and enable precompiled headers
+CONFIG   += c++20 precompile_header
+PRECOMPILE_HEADER = pch.h
+
+greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
+
+# -------------------------------------------------
+# Use ccache to speed up repeated builds
+# (requires ccache installed and in your PATH)
+QMAKE_CC    = ccache gcc
+QMAKE_CXX   = ccache g++
+QMAKE_LINK  = ccache g++
+# -------------------------------------------------
+
+# -------------------------------------------------
+# Unity (jumbo) build: compile every .cpp via a single TU
+SOURCES = \
+    unity_all.cpp \
+    unity_all.cpp
+# -------------------------------------------------
+
+HEADERS += \
+    pch.h \
+    Grid.h \
+    Scene.h \
+    Simulator.h \
+    Window.h \
+    commands/AddVariablesCommand.h \
+    commands/ChangeVariablesCommand.h \
+    commands/EmbedParamCommand.h \
+    commands/InsertObjectsCommand.h \
+    commands/MergeSelectionCommand.h \
+    commands/MovePointsCommand.h \
+    commands/RemoveObjectsCommand.h \
+    commands/RemoveVariablesCommand.h \
+    commands/SplitDipoleCommand.h \
+    objects/Alias.h \
+    objects/BCControlPoint.h \
+    objects/BCPath.h \
+    objects/BCPoint.h \
+    objects/Battery.h \
+    objects/Capacitor.h \
+    objects/DCI.h \
+    objects/DCV.h \
+    objects/Dipole.h \
+    objects/Inductor.h \
+    objects/Object.h \
+    objects/Resistor.h \
+    objects/WorldPoint.h \
+    tools/MouseTool.h \
+    tools/Grabber.h \
+    tools/Pen.h \
+    tools/Selector.h \
+    utils/Geometry.h \
+    utils/Selection.h \
+    utils/Globals.h \
+    widgets/MainPanel.h \
+    widgets/custom/CustomDoubleSpinBox.h \
+    widgets/custom/CustomSpinBox.h \
+    widgets/groups/AliasGroup.h \
+    widgets/groups/ColorsGroup.h \
+    widgets/groups/DipoleGroup.h \
+    widgets/groups/InputGroup.h \
+    widgets/groups/ObjectGroup.h \
+    widgets/groups/PenGroup.h \
+    widgets/inputs/AddressInput.h \
+    widgets/inputs/BooleanInput.h \
+    widgets/inputs/ColorInput.h \
+    widgets/inputs/CoordinateInput.h \
+    widgets/inputs/DoubleParameterInput.h \
+    widgets/inputs/IDLabel.h \
+    widgets/inputs/RadiusInput.h \
+    widgets/tabs/QuickSettingsTab.h \
+    widgets/tabs/SelectionTab.h \
+    widgets/tabs/VariablesTab.h \
+    dialogs/PreferencesDialog.h
+
+# Deployment rules
+qnx: target.path = /tmp/$${TARGET}/bin
+else: unix:!android: target.path = /opt/$${TARGET}/bin
+!isEmpty(target.path): INSTALLS += target
+
+RESOURCES += assets.qrc
+
+
+
+/* tuto.pro.user */
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE QtCreatorProject>
+<!-- Written by QtCreator 15.0.0, 2025-04-18T05:16:50. -->
+<qtcreator>
+ <data>
+  <variable>EnvironmentId</variable>
+  <value type="QByteArray">{ef22f81d-13a0-4b9c-877a-6dcc14102ff0}</value>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.ActiveTarget</variable>
+  <value type="qlonglong">0</value>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.EditorSettings</variable>
+  <valuemap type="QVariantMap">
+   <value type="bool" key="EditorConfiguration.AutoIndent">true</value>
+   <value type="bool" key="EditorConfiguration.AutoSpacesForTabs">false</value>
+   <value type="bool" key="EditorConfiguration.CamelCaseNavigation">true</value>
+   <valuemap type="QVariantMap" key="EditorConfiguration.CodeStyle.0">
+    <value type="QString" key="language">Cpp</value>
+    <valuemap type="QVariantMap" key="value">
+     <value type="QByteArray" key="CurrentPreferences">CppGlobal</value>
+    </valuemap>
+   </valuemap>
+   <valuemap type="QVariantMap" key="EditorConfiguration.CodeStyle.1">
+    <value type="QString" key="language">QmlJS</value>
+    <valuemap type="QVariantMap" key="value">
+     <value type="QByteArray" key="CurrentPreferences">QmlJSGlobal</value>
+    </valuemap>
+   </valuemap>
+   <value type="qlonglong" key="EditorConfiguration.CodeStyle.Count">2</value>
+   <value type="QByteArray" key="EditorConfiguration.Codec">UTF-8</value>
+   <value type="bool" key="EditorConfiguration.ConstrainTooltips">false</value>
+   <value type="int" key="EditorConfiguration.IndentSize">4</value>
+   <value type="bool" key="EditorConfiguration.KeyboardTooltips">false</value>
+   <value type="int" key="EditorConfiguration.LineEndingBehavior">1</value>
+   <value type="int" key="EditorConfiguration.MarginColumn">80</value>
+   <value type="bool" key="EditorConfiguration.MouseHiding">true</value>
+   <value type="bool" key="EditorConfiguration.MouseNavigation">true</value>
+   <value type="int" key="EditorConfiguration.PaddingMode">1</value>
+   <value type="int" key="EditorConfiguration.PreferAfterWhitespaceComments">0</value>
+   <value type="bool" key="EditorConfiguration.PreferSingleLineComments">false</value>
+   <value type="bool" key="EditorConfiguration.ScrollWheelZooming">true</value>
+   <value type="bool" key="EditorConfiguration.ShowMargin">false</value>
+   <value type="int" key="EditorConfiguration.SmartBackspaceBehavior">2</value>
+   <value type="bool" key="EditorConfiguration.SmartSelectionChanging">true</value>
+   <value type="bool" key="EditorConfiguration.SpacesForTabs">true</value>
+   <value type="int" key="EditorConfiguration.TabKeyBehavior">0</value>
+   <value type="int" key="EditorConfiguration.TabSize">8</value>
+   <value type="bool" key="EditorConfiguration.UseGlobal">true</value>
+   <value type="bool" key="EditorConfiguration.UseIndenter">false</value>
+   <value type="int" key="EditorConfiguration.Utf8BomBehavior">1</value>
+   <value type="bool" key="EditorConfiguration.addFinalNewLine">true</value>
+   <value type="bool" key="EditorConfiguration.cleanIndentation">true</value>
+   <value type="bool" key="EditorConfiguration.cleanWhitespace">true</value>
+   <value type="QString" key="EditorConfiguration.ignoreFileTypes">*.md, *.MD, Makefile</value>
+   <value type="bool" key="EditorConfiguration.inEntireDocument">false</value>
+   <value type="bool" key="EditorConfiguration.skipTrailingWhitespace">true</value>
+   <value type="bool" key="EditorConfiguration.tintMarginArea">true</value>
+  </valuemap>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.PluginSettings</variable>
+  <valuemap type="QVariantMap">
+   <valuemap type="QVariantMap" key="AutoTest.ActiveFrameworks">
+    <value type="bool" key="AutoTest.Framework.Boost">true</value>
+    <value type="bool" key="AutoTest.Framework.CTest">false</value>
+    <value type="bool" key="AutoTest.Framework.Catch">true</value>
+    <value type="bool" key="AutoTest.Framework.GTest">true</value>
+    <value type="bool" key="AutoTest.Framework.QtQuickTest">true</value>
+    <value type="bool" key="AutoTest.Framework.QtTest">true</value>
+   </valuemap>
+   <value type="bool" key="AutoTest.ApplyFilter">false</value>
+   <valuemap type="QVariantMap" key="AutoTest.CheckStates"/>
+   <valuelist type="QVariantList" key="AutoTest.PathFilters"/>
+   <value type="int" key="AutoTest.RunAfterBuild">0</value>
+   <value type="bool" key="AutoTest.UseGlobal">true</value>
+   <valuemap type="QVariantMap" key="ClangTools">
+    <value type="bool" key="ClangTools.AnalyzeOpenFiles">true</value>
+    <value type="bool" key="ClangTools.BuildBeforeAnalysis">true</value>
+    <value type="QString" key="ClangTools.DiagnosticConfig">Builtin.DefaultTidyAndClazy</value>
+    <value type="int" key="ClangTools.ParallelJobs">4</value>
+    <value type="bool" key="ClangTools.PreferConfigFile">true</value>
+    <valuelist type="QVariantList" key="ClangTools.SelectedDirs"/>
+    <valuelist type="QVariantList" key="ClangTools.SelectedFiles"/>
+    <valuelist type="QVariantList" key="ClangTools.SuppressedDiagnostics"/>
+    <value type="bool" key="ClangTools.UseGlobalSettings">true</value>
+   </valuemap>
+  </valuemap>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.Target.0</variable>
+  <valuemap type="QVariantMap">
+   <value type="QString" key="DeviceType">Desktop</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Desktop Qt 6.8.0 MinGW 64-bit</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Desktop Qt 6.8.0 MinGW 64-bit</value>
+   <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">qt.qt6.680.win64_mingw_kit</value>
+   <value type="qlonglong" key="ProjectExplorer.Target.ActiveBuildConfiguration">0</value>
+   <value type="qlonglong" key="ProjectExplorer.Target.ActiveDeployConfiguration">0</value>
+   <value type="qlonglong" key="ProjectExplorer.Target.ActiveRunConfiguration">0</value>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.0">
+    <value type="int" key="EnableQmlDebugging">0</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">C:\Eldara\build\Desktop_Qt_6_8_0_MinGW_64_bit-Debug</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory.shadowDir">C:/Eldara/build/Desktop_Qt_6_8_0_MinGW_64_bit-Debug</value>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">QtProjectManager.QMakeBuildStep</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.QMakeForced">false</value>
+      <valuelist type="QVariantList" key="QtProjectManager.QMakeBuildStep.SelectedAbis"/>
+     </valuemap>
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.1">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+     </valuemap>
+     <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">2</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Build</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Build</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Build</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.1">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeArguments">clean</value>
+     </valuemap>
+     <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">1</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Clean</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Clean</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Clean</value>
+    </valuemap>
+    <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">2</value>
+    <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.CustomParsers"/>
+    <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">false</value>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Debug</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4BuildConfiguration</value>
+    <value type="int" key="Qt4ProjectManager.Qt4BuildConfiguration.BuildConfiguration">2</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.1">
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">C:\Eldara\build\Desktop_Qt_6_8_0_MinGW_64_bit-Release</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory.shadowDir">C:/Eldara/build/Desktop_Qt_6_8_0_MinGW_64_bit-Release</value>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">QtProjectManager.QMakeBuildStep</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.QMakeForced">true</value>
+      <valuelist type="QVariantList" key="QtProjectManager.QMakeBuildStep.SelectedAbis"/>
+     </valuemap>
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.1">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+     </valuemap>
+     <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">2</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Build</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Build</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Build</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.1">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeArguments">clean</value>
+     </valuemap>
+     <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">1</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Clean</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Clean</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Clean</value>
+    </valuemap>
+    <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">2</value>
+    <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.CustomParsers"/>
+    <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">false</value>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Release</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4BuildConfiguration</value>
+    <value type="int" key="Qt4ProjectManager.Qt4BuildConfiguration.BuildConfiguration">0</value>
+    <value type="int" key="QtQuickCompiler">0</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.2">
+    <value type="int" key="EnableQmlDebugging">0</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">C:\Eldara\build\Desktop_Qt_6_8_0_MinGW_64_bit-Profile</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory.shadowDir">C:/Eldara/build/Desktop_Qt_6_8_0_MinGW_64_bit-Profile</value>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">QtProjectManager.QMakeBuildStep</value>
+      <value type="bool" key="QtProjectManager.QMakeBuildStep.QMakeForced">true</value>
+      <valuelist type="QVariantList" key="QtProjectManager.QMakeBuildStep.SelectedAbis"/>
+     </valuemap>
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.1">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+     </valuemap>
+     <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">2</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Build</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Build</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Build</value>
+    </valuemap>
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.1">
+     <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
+      <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.MakeStep</value>
+      <value type="QString" key="Qt4ProjectManager.MakeStep.MakeArguments">clean</value>
+     </valuemap>
+     <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">1</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Clean</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Clean</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Clean</value>
+    </valuemap>
+    <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">2</value>
+    <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.CustomParsers"/>
+    <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">false</value>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Profile</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4BuildConfiguration</value>
+    <value type="int" key="Qt4ProjectManager.Qt4BuildConfiguration.BuildConfiguration">0</value>
+    <value type="int" key="QtQuickCompiler">0</value>
+    <value type="int" key="SeparateDebugInfo">0</value>
+   </valuemap>
+   <value type="qlonglong" key="ProjectExplorer.Target.BuildConfigurationCount">3</value>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.DeployConfiguration.0">
+    <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
+     <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">0</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Deploy</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Deploy</value>
+     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.BuildSteps.Deploy</value>
+    </valuemap>
+    <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">1</value>
+    <valuemap type="QVariantMap" key="ProjectExplorer.DeployConfiguration.CustomData"/>
+    <value type="bool" key="ProjectExplorer.DeployConfiguration.CustomDataEnabled">false</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">ProjectExplorer.DefaultDeployConfiguration</value>
+   </valuemap>
+   <value type="qlonglong" key="ProjectExplorer.Target.DeployConfigurationCount">1</value>
+   <valuemap type="QVariantMap" key="ProjectExplorer.Target.RunConfiguration.0">
+    <value type="bool" key="Analyzer.Perf.Settings.UseGlobalSettings">true</value>
+    <value type="bool" key="Analyzer.QmlProfiler.Settings.UseGlobalSettings">true</value>
+    <value type="int" key="Analyzer.Valgrind.Callgrind.CostFormat">0</value>
+    <value type="bool" key="Analyzer.Valgrind.Settings.UseGlobalSettings">true</value>
+    <valuelist type="QVariantList" key="CustomOutputParsers"/>
+    <value type="int" key="PE.EnvironmentAspect.Base">2</value>
+    <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
+    <value type="bool" key="PE.EnvironmentAspect.PrintOnRun">false</value>
+    <value type="QString" key="PerfRecordArgsId">-e cpu-cycles --call-graph &quot;dwarf,4096&quot; -F 250</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">C:/Eldara/tuto.pro</value>
+    <value type="bool" key="ProjectExplorer.RunConfiguration.Customized">false</value>
+    <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
+    <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>
+    <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
+    <value type="QString" key="RunConfiguration.WorkingDirectory.default">C:/Eldara/build/Desktop_Qt_6_8_0_MinGW_64_bit-Debug</value>
+   </valuemap>
+   <value type="qlonglong" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
+  </valuemap>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.TargetCount</variable>
+  <value type="qlonglong">1</value>
+ </data>
+ <data>
+  <variable>ProjectExplorer.Project.Updater.FileVersion</variable>
+  <value type="int">22</value>
+ </data>
+ <data>
+  <variable>Version</variable>
+  <value type="int">22</value>
+ </data>
+</qtcreator>
+
+
+
+/* unity_all.cpp */
+// unity_all.cpp
+// #include pch first to force it to be the very first header
+#include "pch.h"
+
+// now pull in *all* your .cpp files into one TU:
+#include "Grid.cpp"
+#include "Simulator.cpp"
+#include "Window.cpp"
+#include "Scene.cpp"
+
+#include "commands/AddVariablesCommand.cpp"
+#include "commands/ChangeVariablesCommand.cpp"
+#include "commands/EmbedParamCommand.cpp"
+#include "commands/InsertObjectsCommand.cpp"
+#include "commands/MergeSelectionCommand.cpp"
+#include "commands/MovePointsCommand.cpp"
+#include "commands/RemoveObjectsCommand.cpp"
+#include "commands/RemoveVariablesCommand.cpp"
+#include "commands/SplitDipoleCommand.cpp"
+
+#include "objects/BCPath.cpp"
+#include "objects/Dipole.cpp"
+#include "objects/BCControlPoint.cpp"
+#include "objects/BCPoint.cpp"
+#include "objects/Battery.cpp"
+#include "objects/Capacitor.cpp"
+#include "objects/DCI.cpp"
+#include "objects/DCV.cpp"
+#include "objects/Inductor.cpp"
+#include "objects/Object.cpp"
+#include "objects/Resistor.cpp"
+#include "objects/WorldPoint.cpp"
+#include "objects/Alias.cpp"
+
+#include "tools/MouseTool.cpp"
+#include "tools/Selector.cpp"
+#include "tools/Grabber.cpp"
+#include "tools/Pen.cpp"
+
+#include "utils/Geometry.cpp"
+#include "utils/Globals.cpp"
+#include "utils/Selection.cpp"
+
+#include "widgets/MainPanel.cpp"
+#include "widgets/custom/CustomDoubleSpinBox.cpp"
+#include "widgets/custom/CustomSpinBox.cpp"
+#include "widgets/groups/AliasGroup.cpp"
+#include "widgets/groups/ColorsGroup.cpp"
+#include "widgets/groups/DipoleGroup.cpp"
+#include "widgets/groups/InputGroup.cpp"
+#include "widgets/groups/ObjectGroup.cpp"
+#include "widgets/groups/PenGroup.cpp"
+#include "widgets/inputs/ColorInput.cpp"
+#include "widgets/inputs/DoubleParameterInput.cpp"
+#include "widgets/tabs/QuickSettingsTab.cpp"
+#include "widgets/tabs/SelectionTab.cpp"
+#include "widgets/tabs/VariablesTab.cpp"
+#include "dialogs/PreferencesDialog.cpp"
+
+#include "main.cpp"
+
+
+
 /* Window.cpp */
 #include "Window.h"
 #include "Scene.h"
@@ -55,7 +1989,6 @@ protected:
 #include "tools/Pen.h"
 #include "dialogs/PreferencesDialog.h"
 
-#include "objects/Object.h"
 #include "objects/Alias.h"
 #include "objects/Resistor.h"
 #include "objects/Capacitor.h"
@@ -72,36 +2005,66 @@ Window::Window()
     scene(new Scene(splitter)),
     mainPanel(new MainPanel(scene, splitter))
 {
-    setWindowTitle("Circuits Simulator");
+    setWindowTitle("Eldara");
     setupMenuBar();
     setupSplitter();
-    setupConnections();
+    setupHistoryDock();
     applySettings();
+    setupConnections();
 }
 
 void Window::setupMenuBar() {
+    // ─── File Menu ─────────────────────────────────────────────────────────────
     fileMenu = menuBar()->addMenu(tr("&File"));
-    openAction = new QAction(tr("&Open..."), this);
-    openAction->setShortcut(QKeySequence::Open);
-    fileMenu->addAction(openAction);
-    saveAction = new QAction(tr("&Save"), this);
-    saveAction->setShortcut(QKeySequence::Save);
-    fileMenu->addAction(saveAction);
-    saveAsAction = new QAction(tr("Save &As..."), this);
-    saveAsAction->setShortcut(QKeySequence::SaveAs);
-    fileMenu->addAction(saveAsAction);
-    connect(openAction, &QAction::triggered, this, &Window::openFile);
-    connect(saveAction, &QAction::triggered, this, &Window::saveFile);
-    connect(saveAsAction, &QAction::triggered, this, &Window::saveFileAs);
+    openAction = fileMenu->addAction(tr("&Open..."), QKeySequence::Open, this, &Window::openFile);
+    saveAction = fileMenu->addAction(tr("&Save"),    QKeySequence::Save, this, &Window::saveFile);
+    saveAsAction = fileMenu->addAction(tr("Save &As..."), QKeySequence::SaveAs, this, &Window::saveFileAs);
 
+    // ─── Edit Menu ─────────────────────────────────────────────────────────────
     editMenu = menuBar()->addMenu(tr("&Edit"));
-    preferencesAction = new QAction(tr("&Preferences..."), this);
-    editMenu->addAction(preferencesAction);
-    connect(preferencesAction, &QAction::triggered, this, &Window::openPreferences);
+    undoAction = scene->undoStack.createUndoAction(this, tr("&Undo"));
+    undoAction->setShortcuts(QKeySequence::Undo);
+    editMenu->addAction(undoAction);
+
+    redoAction = scene->undoStack.createRedoAction(this, tr("&Redo"));
+    redoAction->setShortcuts(QKeySequence::Redo);
+    editMenu->addAction(redoAction);
+
+    editMenu->addSeparator();
+    preferencesAction = editMenu->addAction(tr("&Preferences..."), this, &Window::openPreferences);
+
+    // ─── Simulation Menu ───────────────────────────────────────────────────────
+    simulationMenu = menuBar()->addMenu(tr("&Simulation"));
+    simulationAction = simulationMenu->addAction(tr("&Run"), this, &Window::onSimulationActionTriggered);
+    simulationAction->setShortcut(QKeySequence(tr("Ctrl+R")));
 }
 
 void Window::setupSplitter() {
-    [...]
+    setCentralWidget(splitter);
+    splitter->setHandleWidth(1);
+    splitter->addWidget(scene);
+    splitter->addWidget(mainPanel);
+    splitter->setStretchFactor(0, 1);
+    splitter->setStretchFactor(1, 0);
+    splitter->setCollapsible(1, false);
+    splitter->setSizes({scene->width(), mainPanel->minimumWidth()});
+    splitter->setStyleSheet(R"(
+        QSplitter::handle {
+            background-color: #333;
+        }
+    )");
+}
+
+void Window::setupHistoryDock() {
+    undoView = new QUndoView(&scene->undoStack, this);
+    undoView->setWindowTitle(tr("Undo History"));
+
+    historyDock = new QDockWidget(tr("History"), this);
+    historyDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    historyDock->setWidget(undoView);
+    addDockWidget(Qt::RightDockWidgetArea, historyDock);
+    historyDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
+
 }
 
 void Window::setupConnections() {
@@ -111,32 +2074,643 @@ void Window::setupConnections() {
             mainPanel->selectionTab, &SelectionTab::updateCoordinates);
     connect(&scene->pen, &Pen::dataChanged,
             mainPanel->quickSettingsTab, &QuickSettingsTab::updatePenData);
+
+    connect(&scene->simulator, &Simulator::simulationStarted,
+            this, &Window::updateSimulationActionToStop);
+    connect(&scene->simulator, &Simulator::simulationEnded,
+            this, &Window::updateSimulationActionToRun);
 }
 
 void Window::applySettings() {
-    [...]
+    QSettings settings("EldaraSoft", "Eldara");
+
+    scene->setBackgroundColor(settings.value("scene/background", QColor(33, 33, 33)).value<QColor>());
+    scene->setGridStrokeColor(settings.value("scene/gridStroke", QColor(44, 44, 44)).value<QColor>());
+    scene->setTileSize(settings.value("scene/tileSize", 50).toInt());
+    scene->setSnapPosition(settings.value("scene/snapPosition", true).toBool());
+    scene->setAllowMerging(settings.value("scene/allowMerge", true).toBool());
+    scene->setShowGrid(settings.value("scene/showGrid", true).toBool());
+    scene->setDisplayRawValues(settings.value("scene/displayRaw", false).toBool());
+
+    Pen &pen = scene->pen;
+    pen.setStrokeWidth(settings.value("pen/strokeWidth", 1).toInt());
+    pen.setStrokeColor(settings.value("pen/strokeColor", QColor("#CCC")).value<QColor>());
+    pen.setFillColor(settings.value("pen/fillColor", QColor("#FFF")).value<QColor>());
+    pen.setAllowSplitting(settings.value("pen/allowSplit", true).toBool());
+    pen.setAllowOnClickColoring(settings.value("pen/allowOnClickColor", true).toBool());
+    pen.setDefaultResistance(settings.value("pen/defaultResistance", 1e3).toDouble());
+    pen.setDefaultCapacitance(settings.value("pen/defaultCapacitance", 1e-8).toDouble());
+    pen.setDefaultInductance(settings.value("pen/defaultInductance", 1e-4).toDouble());
+    pen.setDefaultBatteryVoltage(settings.value("pen/defaultBatteryVoltage", 5.0).toDouble());
+    pen.setDefaultDCVoltage(settings.value("pen/defaultDCVVoltage", 15.0).toDouble());
+    pen.setDefaultIntensity(settings.value("pen/defaultIntensity", 1e-3).toDouble());
+    pen.setDefaultQuantity(settings.value("pen/defaultQuantity", 1.0).toDouble());
+
+    scene->update();
 }
 
 void Window::openPreferences() {
-    [...]
+    PreferencesDialog dlg(this);
+    connect(&dlg, &PreferencesDialog::settingsApplied, this, &Window::applySettings);
+    if (dlg.exec() == QDialog::Accepted) {
+        applySettings();
+    }
 }
 
 void Window::openFile() {
-    [...]
+    if (scene->hasChanged()) {
+        auto reply = QMessageBox::question(
+            this, tr("Unsaved Changes"),
+            tr("You have unsaved changes. Do you want to save them before opening a new file?"),
+            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel
+            );
+        if (reply == QMessageBox::Yes) {
+            saveFile();
+        } else if (reply == QMessageBox::Cancel) {
+            return;
+        }
+    }
+
+    const QString filename = QFileDialog::getOpenFileName(
+        this, tr("Open File"), QString(), tr("Dara Files (*.dara);;All Files (*)")
+        );
+    if (filename.isEmpty()) return;
+
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::critical(this, tr("Error"), tr("Could not open file for reading."));
+        return;
+    }
+
+    QDataStream in(&file);
+    in.setByteOrder(QDataStream::LittleEndian);
+
+    char header[4];
+    if (in.readRawData(header, 4) != 4 || strncmp(header, "DARA", 4) != 0) {
+        QMessageBox::critical(this, tr("Invalid File"), tr("Not a valid .dara file."));
+        return;
+    }
+
+    quint32 version;
+    in >> version;
+    if (version != 1) {
+        QMessageBox::critical(this, tr("Unsupported Version"), tr("Only .dara version 1 is supported."));
+        return;
+    }
+
+    scene->reset();
+    mainPanel->reset();
+
+
+    auto readBlock = [&](auto &vec) {
+        quint32 count;
+        in >> count;
+        vec.resize(count);
+        for (quint32 i = 0; i < count; ++i)
+            in.readRawData(reinterpret_cast<char *>(&vec[i]), sizeof(vec[i]));
+    };
+
+    // --- Read Aliases ---
+    QVector<AliasData> aliasData;
+    readBlock(aliasData);
+    for (const auto &d : aliasData) {
+        QPen pen; pen.setColor(QColor::fromRgb(d.strokeColor));
+        pen.setWidth(d.strokeWidth);
+        pen.setStyle(static_cast<Qt::PenStyle>(d.penStyle));
+        QBrush brush; brush.setColor(QColor::fromRgb(d.fillColor));
+        brush.setStyle(static_cast<Qt::BrushStyle>(d.brushStyle));
+
+        auto alias = std::make_shared<Alias>(
+            d.id, d.address, d.x, d.y, d.radius, brush, pen, d.showLabel
+        );
+        scene->addAlias(alias);
+    }
+
+    // --- Read Dipole Data Blocks ---
+    QVector<ResistorData>    vec_resData;
+    QVector<CapacitorData>   vec_capData;
+    QVector<InductorData>    vec_indData;
+    QVector<DCVData>         vec_dcvData;
+    QVector<DCIData>         vec_dciData;
+    QVector<BatteryData>     vec_batData;
+
+    readBlock(vec_resData);
+    readBlock(vec_capData);
+    readBlock(vec_indData);
+    readBlock(vec_dcvData);
+    readBlock(vec_dciData);
+    readBlock(vec_batData);
+
+    QHash<uint64_t, SharedDipole> dipolesMap;
+
+    // --- Helper: build QPen from Data struct ---
+    auto makePen = [&](auto &d){
+        QPen pen;
+        pen.setColor(QColor::fromRgb(d.strokeColor));
+        pen.setWidth(d.strokeWidth);
+        pen.setStyle(static_cast<Qt::PenStyle>(d.penStyle));
+        return pen;
+    };
+
+    // --- Generic loader for all two‐terminal elements ---
+    auto forEachDipoleBlock = [&](auto &vec, auto ctor){
+        for (auto &d : vec) {
+            auto A = scene->aliases[d.idA];
+            auto B = scene->aliases[d.idB];
+            dipolesMap.insert(d.id, ctor(d, A, B, makePen(d)));
+        }
+    };
+
+    forEachDipoleBlock(vec_resData, [&](auto &d, auto A, auto B, auto pen){
+        return std::make_shared<Resistor>(d.id, A, B, pen, d.showLabel, d.R);
+    });
+    forEachDipoleBlock(vec_capData, [&](auto &d, auto A, auto B, auto pen){
+        return std::make_shared<Capacitor>(d.id, A, B, pen, d.showLabel, d.C, d.Q0);
+    });
+    forEachDipoleBlock(vec_indData, [&](auto &d, auto A, auto B, auto pen){
+        return std::make_shared<Inductor>(d.id, A, B, pen, d.showLabel, d.L, d.I0);
+    });
+    forEachDipoleBlock(vec_dcvData, [&](auto &d, auto A, auto B, auto pen){
+        return std::make_shared<DCV>(d.id, A, B, pen, d.showLabel, d.V);
+    });
+    forEachDipoleBlock(vec_dciData, [&](auto &d, auto A, auto B, auto pen){
+        return std::make_shared<DCI>(d.id, A, B, pen, d.showLabel, d.I);
+    });
+    forEachDipoleBlock(vec_batData, [&](auto &d, auto A, auto B, auto pen){
+        return std::make_shared<Battery>(d.id, A, B, pen, d.showLabel, d.V);
+    });
+
+    // --- Connect aliases & dipoles ---
+    for (auto &dip : dipolesMap) {
+        if (auto A = dip->A()) A->connect(dip);
+        if (auto B = dip->B()) B->connect(dip);
+    }
+
+    // --- Variables: read and stash links ---
+    QVector<DoubleVariableData> vec_doubles;
+    readBlock(vec_doubles);
+    QVector<VariableLink> links_double;
+    for (auto &v : vec_doubles)
+        for (uint32_t i = 0; i < v.linksCount; ++i) {
+            VariableLink link;
+            in.readRawData(reinterpret_cast<char *>(&link), sizeof(link));
+            links_double.append(link);
+        }
+
+    QVector<IntVariableData> vec_ints;
+    readBlock(vec_ints);
+    for (auto &v : vec_ints)
+        for (uint32_t i = 0; i < v.linksCount; ++i) {
+            VariableLink link;
+            in.readRawData(reinterpret_cast<char *>(&link), sizeof(link));
+        }
+
+    QVector<StringVariableData> vec_strs;
+    readBlock(vec_strs);
+    for (auto &v : vec_strs)
+        for (uint32_t i = 0; i < v.linksCount; ++i) {
+            VariableLink link;
+            in.readRawData(reinterpret_cast<char *>(&link), sizeof(link));
+        }
+
+    // --- Populate VariablesTab ---
+    QVector<QString> names;
+    QVector<QVariant> values;
+    QVector<VariableType> types;
+
+    for (auto &v : vec_doubles) {
+        QString nm = QString::fromUtf8(v.name).trimmed();
+        if (!nm.isEmpty()) {
+            names.append(nm);
+            values.append(QVariant(v.value));
+            types.append((VariableType)v.type);
+        }
+    }
+    for (auto &v : vec_ints) {
+        QString nm = QString::fromUtf8(v.name).trimmed();
+        if (!nm.isEmpty()) {
+            names.append(nm);
+            values.append(QVariant(v.value));
+            types.append((VariableType)v.type);
+        }
+    }
+    for (auto &v : vec_strs) {
+        QString nm = QString::fromUtf8(v.name).trimmed();
+        QString val = QString::fromUtf8(v.value).trimmed();
+        if (!nm.isEmpty()) {
+            names.append(nm);
+            values.append(QVariant(val));
+            types.append((VariableType)v.type);
+        }
+    }
+    mainPanel->variablesTab->addVariables(names, values, types);
+
+    // --- Apply variable links for double vars ---
+    for (auto &v : vec_doubles) {
+        QString nm = QString::fromUtf8(v.name).trimmed();
+        for (uint32_t i = 0; i < v.linksCount; ++i) {
+            VariableLink link;
+            in.readRawData(reinterpret_cast<char *>(&link), sizeof(link));
+            if (auto dip = dipolesMap.value(link.id)) {
+                dip->setParamValue((Param)link.param, v.value);
+                dip->setParamVarname((Param)link.param, nm);
+            }
+        }
+    }
+
+    file.close();
+    currentSavePath = filename;
+    scene->grid.moveTo(QPointF(0.0f, 0.0f));
+    scene->update();
 }
 
 void Window::saveFile() {
-    [...]
+    if (currentSavePath.isEmpty()) {
+        saveFileAs();
+    } else {
+        saveToFile(currentSavePath);
+    }
 }
 
 void Window::saveFileAs() {
-    [...]
+    const QString filename = QFileDialog::getSaveFileName(
+        this, tr("Save File As"), QString(), tr("Dara Files (*.dara);;All Files (*)")
+        );
+    if (!filename.isEmpty() && saveToFile(filename)) {
+        currentSavePath = filename;
+    }
 }
 
 bool Window::saveToFile(const QString &filename) {
-    [...]
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::critical(this, tr("Error"), tr("Could not open file for writing."));
+        return false;
+    }
+
+    QDataStream out(&file);
+    out.setByteOrder(QDataStream::LittleEndian);
+
+    // header + version
+    out.writeRawData("DARA", 4);
+    out << static_cast<quint32>(1);
+
+    // helper to write vectors of structs
+    auto writeBlock = [&](auto &vec){
+        out << static_cast<quint32>(vec.size());
+        for (auto &item : vec)
+            out.writeRawData(reinterpret_cast<const char *>(&item), sizeof(item));
+    };
+
+    // prepare data vectors & links map
+    QVector<AliasData>     vec_alData;
+    QVector<ResistorData>  vec_resData;
+    QVector<CapacitorData> vec_capData;
+    QVector<InductorData>  vec_indData;
+    QVector<DCVData>       vec_dcvData;
+    QVector<DCIData>       vec_dciData;
+    QVector<BatteryData>   vec_batData;
+    QHash<QString, QVector<VariableLink>> varLinks;
+    QSet<SharedDipole> visitedDipoles;
+
+    // common pack + record helpers
+    auto packCommon = [&](auto &dip, auto &d){
+        d.id          = dip->id();
+        d.idA         = dip->A()->id();
+        d.idB         = dip->B()->id();
+        d.strokeWidth = (uint8_t)dip->strokeWidth();
+        d.penStyle    = (uint8_t)dip->pen().style();
+        d.strokeColor = (uint32_t)dip->strokeColor().rgb();
+        d.showLabel   = dip->showLabel();
+    };
+    auto recordLink = [&](uint64_t id, Param p, const QString &varname){
+        if (!varname.isEmpty())
+            varLinks[varname].append({id, (uint8_t)p});
+    };
+
+    // walk aliases → dipoles once
+    for (auto &alias : scene->aliases) {
+        AliasData a{};
+        a.id          = alias->id();
+        a.address     = alias->address();
+        a.x           = alias->x();
+        a.y           = alias->y();
+        a.radius      = (uint8_t)alias->radius();
+        a.strokeWidth = (uint8_t)alias->strokeWidth();
+        a.penStyle    = (uint8_t)alias->pen().style();
+        a.brushStyle  = (uint8_t)alias->brush().style();
+        a.fillColor   = (uint32_t)alias->fillColor().rgb();
+        a.strokeColor = (uint32_t)alias->strokeColor().rgb();
+        a.showLabel   = alias->showLabel();
+        vec_alData.append(a);
+
+        for (auto &dip : alias->connections()) {
+            if (visitedDipoles.contains(dip)) continue;
+            visitedDipoles.insert(dip);
+
+            switch (dip->type()) {
+            case ObjectType::Resistor: {
+                auto r = std::static_pointer_cast<Resistor>(dip);
+                ResistorData d{};
+                packCommon(r, d);
+                d.R = r->R();
+                vec_resData.append(d);
+                recordLink(d.id, Param::R, r->paramVarname(Param::R));
+                break;
+            }
+            case ObjectType::Capacitor: {
+                auto c = std::static_pointer_cast<Capacitor>(dip);
+                CapacitorData d{};
+                packCommon(c, d);
+                d.C  = c->C();
+                d.Q0 = c->Q0();
+                vec_capData.append(d);
+                recordLink(d.id, Param::C,  c->paramVarname(Param::C));
+                recordLink(d.id, Param::Q0, c->paramVarname(Param::Q0));
+                break;
+            }
+            case ObjectType::Inductor: {
+                auto l = std::static_pointer_cast<Inductor>(dip);
+                InductorData d{};
+                packCommon(l, d);
+                d.L  = l->L();
+                d.I0 = l->I0();
+                vec_indData.append(d);
+                recordLink(d.id, Param::L,  l->paramVarname(Param::L));
+                recordLink(d.id, Param::I0, l->paramVarname(Param::I0));
+                break;
+            }
+            case ObjectType::DCV: {
+                auto v = std::static_pointer_cast<DCV>(dip);
+                DCVData d{};
+                packCommon(v, d);
+                d.V = v->V();
+                vec_dcvData.append(d);
+                recordLink(d.id, Param::V, v->paramVarname(Param::V));
+                break;
+            }
+            case ObjectType::DCI: {
+                auto i = std::static_pointer_cast<DCI>(dip);
+                DCIData d{};
+                packCommon(i, d);
+                d.I = i->I();
+                vec_dciData.append(d);
+                recordLink(d.id, Param::I, i->paramVarname(Param::I));
+                break;
+            }
+            case ObjectType::Battery: {
+                auto b = std::static_pointer_cast<Battery>(dip);
+                BatteryData d{};
+                packCommon(b, d);
+                d.V = b->V();
+                vec_batData.append(d);
+                recordLink(d.id, Param::V, b->paramVarname(Param::V));
+                break;
+            }
+            default:
+                break;
+            }
+        }
+    }
+
+    // write all blocks
+    writeBlock(vec_alData);
+    writeBlock(vec_resData);
+    writeBlock(vec_capData);
+    writeBlock(vec_indData);
+    writeBlock(vec_dcvData);
+    writeBlock(vec_dciData);
+    writeBlock(vec_batData);
+
+    // --- Variables ---
+    QVector<DoubleVariableData> vec_varDouble;
+    QVector<IntVariableData>    vec_varInt;
+    QVector<StringVariableData> vec_varString;
+
+    const auto &names  = mainPanel->variablesTab->names();
+    const auto &values = mainPanel->variablesTab->values();
+    const auto &types  = mainPanel->variablesTab->types();
+
+    for (int i = 0; i < names.size(); ++i) {
+        const auto &nm   = names[i];
+        const auto &val  = values[i];
+        auto type        = types[i];
+        auto links       = varLinks.value(nm);
+
+        if (varIsDouble(type)) {
+            DoubleVariableData d{};
+            strncpy(d.name, nm.toUtf8().constData(), sizeof(d.name)-1);
+            d.value      = val.toDouble();
+            d.type       = (uint8_t)type;
+            d.linksCount = links.size();
+            vec_varDouble.append(d);
+        } else if (type == VAR_INT) {
+            IntVariableData d{};
+            strncpy(d.name, nm.toUtf8().constData(), sizeof(d.name)-1);
+            d.value      = val.toInt();
+            d.type       = (uint8_t)type;
+            d.linksCount = links.size();
+            vec_varInt.append(d);
+        } else {
+            StringVariableData d{};
+            strncpy(d.name,  nm.toUtf8().constData(), sizeof(d.name)-1);
+            strncpy(d.value, val.toString().toUtf8().constData(), sizeof(d.value)-1);
+            d.type       = (uint8_t)type;
+            d.linksCount = links.size();
+            vec_varString.append(d);
+        }
+    }
+
+    writeBlock(vec_varDouble);
+    for (auto &v : vec_varDouble)
+        for (auto &ln : varLinks[v.name])
+            out.writeRawData(reinterpret_cast<const char *>(&ln), sizeof(ln));
+
+    writeBlock(vec_varInt);
+    for (auto &v : vec_varInt)
+        for (auto &ln : varLinks[v.name])
+            out.writeRawData(reinterpret_cast<const char *>(&ln), sizeof(ln));
+
+    writeBlock(vec_varString);
+    for (auto &v : vec_varString)
+        for (auto &ln : varLinks[v.name])
+            out.writeRawData(reinterpret_cast<const char *>(&ln), sizeof(ln));
+
+    file.close();
+    return true;
 }
 
 void Window::closeEvent(QCloseEvent *event) {
     event->accept();
 }
+
+
+void Window::onSimulationActionTriggered() {
+    if (scene->simulator.isRunning())
+        scene->simulator.stop();
+    else
+        scene->simulator.run();
+}
+
+void Window::updateSimulationActionToRun() {
+    simulationAction->setText(tr("&Run"));
+    simulationAction->setShortcut(QKeySequence(tr("Ctrl+R")));
+}
+
+void Window::updateSimulationActionToStop() {
+    simulationAction->setText(tr("&Stop"));
+    simulationAction->setShortcut(QKeySequence(tr("Ctrl+W")));
+}
+
+
+
+
+
+
+
+
+/* Window.h */
+// Window.h
+#pragma once
+
+#include "utils/Globals.h"
+#include "Scene.h"
+#include "widgets/MainPanel.h"
+
+#include <QMainWindow>
+#include <QMenu>
+#include <QAction>
+#include <QSplitter>
+#include <QDockWidget>
+#include <QUndoView>
+#include <QKeySequence>
+
+class Window : public QMainWindow {
+    Q_OBJECT
+
+public:
+    explicit Window();
+
+private:
+    struct AliasData {
+        uint64_t id, address;
+        float x, y;
+        bool showLabel;
+        uint32_t strokeColor, fillColor;
+        uint8_t radius, strokeWidth, penStyle, brushStyle;
+    };
+
+    struct ResistorData {
+        uint64_t id, idA, idB;
+        double R;
+        bool showLabel;
+        uint32_t strokeColor;
+        uint8_t strokeWidth, penStyle;
+    };
+
+    struct CapacitorData {
+        uint64_t id, idA, idB;
+        double C, Q0;
+        bool showLabel;
+        uint32_t strokeColor;
+        uint8_t strokeWidth, penStyle;
+    };
+
+    struct InductorData {
+        uint64_t id, idA, idB;
+        double L, I0;
+        bool showLabel;
+        uint32_t strokeColor;
+        uint8_t strokeWidth, penStyle;
+    };
+
+    struct DCVData {
+        uint64_t id, idA, idB;
+        double V;
+        bool showLabel;
+        uint32_t strokeColor;
+        uint8_t strokeWidth, penStyle;
+    };
+
+    struct DCIData {
+        uint64_t id, idA, idB;
+        double I;
+        bool showLabel;
+        uint32_t strokeColor;
+        uint8_t strokeWidth, penStyle;
+    };
+
+    struct BatteryData {
+        uint64_t id, idA, idB;
+        double V;
+        bool showLabel;
+        uint32_t strokeColor;
+        uint8_t strokeWidth, penStyle;
+    };
+
+    struct DoubleVariableData {
+        char name[VARNAME_MAX_LENGTH];
+        double value;
+        uint8_t type;
+        uint32_t linksCount;
+    };
+
+    struct IntVariableData {
+        char name[VARNAME_MAX_LENGTH];
+        int value;
+        uint8_t type;
+        uint32_t linksCount;
+    };
+
+    struct StringVariableData {
+        char name[VARNAME_MAX_LENGTH];
+        char value[VARVALUE_STRING_MAX_LENGTH];
+        uint8_t type;
+        uint32_t linksCount;
+    };
+
+    struct VariableLink {
+        uint64_t id;
+        uint16_t param;
+    };
+
+    QSplitter   *splitter;
+    QMenu       *fileMenu;
+    QMenu       *editMenu;
+    QMenu       *simulationMenu;
+    QAction     *openAction;
+    QAction     *saveAction;
+    QAction     *saveAsAction;
+    QAction     *preferencesAction;
+    QAction     *undoAction;
+    QAction     *redoAction;
+    QAction     *simulationAction;
+
+    QDockWidget *historyDock;
+    QUndoView   *undoView;
+
+    Scene       *scene;
+    MainPanel   *mainPanel;
+
+    QString currentSavePath;
+    bool saveToFile(const QString &filename);
+
+    void setupMenuBar();
+    void setupSplitter();
+    void setupConnections();
+    void applySettings();
+    void setupHistoryDock();
+
+private slots:
+    void openFile();
+    void saveFile();
+    void saveFileAs();
+    void openPreferences();
+
+    void onSimulationActionTriggered();
+    void updateSimulationActionToRun();
+    void updateSimulationActionToStop();
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
+};

@@ -1,6 +1,11 @@
 #pragma once
 #include "utils/Globals.h"
 
+#include <QString>
+
+#include <QWidget>
+#include <QTabWidget>
+
 class Scene;
 class QuickSettingsTab;
 class SelectionTab;
@@ -15,7 +20,6 @@ public:
     QuickSettingsTab *quickSettingsTab;
     SelectionTab *selectionTab;
     VariablesTab *variablesTab;
-
 
     void reset();
 

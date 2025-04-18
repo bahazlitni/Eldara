@@ -1,10 +1,16 @@
 #pragma once
 #include "Object.h"
-#include <memory>
-#include "../utils/Globals.h"
+
+#include "utils/Globals.h"
 #include "utils/Geometry.h"
 
+#include <memory>
+
+#include <QVariant>
+#include <QPointF>
+
 class Scene;
+
 class WorldPoint: public Object {
 private:
     SharedPoint point;
@@ -14,20 +20,32 @@ public:
     WorldPoint(QPointF p): point(std::make_shared<QPointF>(p)) {}
     WorldPoint(const SharedPoint &p): point(p) {}
 
-    WorldPoint(float x, float y, const QBrush &brush, const QPen &pen): Object(brush, pen), point(std::make_shared<QPointF>(QPointF(x, y))) {}
-    WorldPoint(QPointF p, const QBrush &brush, const QPen &pen): Object(brush, pen), point(std::make_shared<QPointF>(p)) {}
-    WorldPoint(const SharedPoint &p, const QBrush &brush, const QPen &pen): Object(brush, pen), point(p) {}
+    WorldPoint(float x, float y, const QBrush &brush, const QPen &pen):
+        Object(brush, pen), point(std::make_shared<QPointF>(QPointF(x, y))) {}
+    WorldPoint(QPointF p, const QBrush &brush, const QPen &pen):
+        Object(brush, pen), point(std::make_shared<QPointF>(p)) {}
+    WorldPoint(const SharedPoint &p, const QBrush &brush, const QPen &pen):
+        Object(brush, pen), point(p) {}
 
-    WorldPoint(float x, float y, const QBrush &brush): Object(brush), point(std::make_shared<QPointF>(QPointF(x, y))) {}
-    WorldPoint(QPointF p, const QBrush &brush): Object(brush), point(std::make_shared<QPointF>(p)) {}
-    WorldPoint(const SharedPoint &p, const QBrush &brush): Object(brush), point(p) {}
+    WorldPoint(float x, float y, const QBrush &brush):
+        Object(brush), point(std::make_shared<QPointF>(QPointF(x, y))) {}
+    WorldPoint(QPointF p, const QBrush &brush):
+        Object(brush), point(std::make_shared<QPointF>(p)) {}
+    WorldPoint(const SharedPoint &p, const QBrush &brush):
+        Object(brush), point(p) {}
 
-    WorldPoint(float x, float y, const QPen &pen): Object(pen), point(std::make_shared<QPointF>(QPointF(x, y))) {}
-    WorldPoint(QPointF p, const QPen &pen): Object(pen), point(std::make_shared<QPointF>(p)) {}
-    WorldPoint(const SharedPoint &p, const QPen &pen): Object(pen), point(p) {}
+    WorldPoint(float x, float y, const QPen &pen):
+        Object(pen), point(std::make_shared<QPointF>(QPointF(x, y))) {}
+    WorldPoint(QPointF p, const QPen &pen):
+        Object(pen), point(std::make_shared<QPointF>(p)) {}
+    WorldPoint(const SharedPoint &p, const QPen &pen):
+        Object(pen), point(p) {}
 
-    bool inside(const QRectF &box, [[maybe_unused]] const float zoom) override { return PinR(p(), box); }
-    bool visible(const QRectF &viewport, [[maybe_unused]] const float zoom) override { return PinR(p(), viewport); }
+    bool inside(const QRectF &box, [[maybe_unused]] const float zoom)
+        override { return PinR(p(), box); }
+
+    bool visible(const QRectF &viewport, [[maybe_unused]] const float zoom)
+        override { return PinR(p(), viewport); }
 
     // Implicit conversion to QPointF
     operator QPointF() const { return *point; }

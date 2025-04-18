@@ -1,15 +1,13 @@
 #pragma once
+#include "utils/Globals.h"
 
-#include <QGroupBox>
-#include <QSet>
-#include <QVBoxLayout>
 #include <QWidget>
-#include <QTabWidget>
-#include <QLabel>
+#include <QVBoxLayout>
 #include <QScrollArea>
 
 class MainPanel;
 class PenGroup;
+
 class QuickSettingsTab : public QWidget {
     Q_OBJECT
 

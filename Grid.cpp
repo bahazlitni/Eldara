@@ -7,6 +7,11 @@
 #include "utils/Geometry.h"
 
 
+#include <QMutex>
+#include <QThread>
+#include <QFuture>
+#include <QtConcurrent/QtConcurrent>
+
 Grid::Grid(Scene *scene): scene(scene) {
     reset();
 }
@@ -129,21 +134,11 @@ void Grid::setupPainterMode(PainterMode type, QPainter &painter){
 
 
 // NODE
-void Grid::drawAlias(
-    const QPointF &center,
-    const QBrush &brush,
-    const int radius,
-    const QString &label,
-    const QPen &pen
-) {
-    painter.setBrush(brush);
-    painter.setPen(pen);
-    painter.drawEllipse(center.x()-radius, center.y()-radius, radius*2, radius*2);
-    if (label.isEmpty()) return;
+void Grid::drawAliasLabel(const QPointF &center, const QString &label, const QColor &color){
     QFontMetrics fm(painter.font());
     const int textWidth = fm.horizontalAdvance(label);
     const int textHeight = fm.height();
-    painter.setPen(isDarkColor(brush.color()) ? Qt::white : Qt::black);
+    painter.setPen(color);
     painter.drawText(
         center.x() - textWidth/2,
         center.y() - textHeight/2,
@@ -152,47 +147,53 @@ void Grid::drawAlias(
     );
 }
 
-
-// GND
-void Grid::drawGround(
+void Grid::drawAlias(
     const QPointF &center,
     const QBrush &brush,
     const int radius,
+    const bool gnd,
     const QString &label,
     const QPen &pen
 ) {
-    drawAlias(center, brush, radius, label);
+    painter.setBrush(brush);
+    painter.setPen(pen);
+    painter.drawEllipse(center.x()-radius, center.y()-radius, radius*2, radius*2);
 
-    if(pen.style() == Qt::NoPen){
-        QPen p(brush.color());
-        p.setWidth(1);
-        painter.setPen(p);
+    if(gnd){
+        if(pen.style() == Qt::NoPen){
+            QPen p(brush.color());
+            p.setWidth(1);
+            painter.setPen(p);
+        }
+        else
+            painter.setPen(pen);
+
+        painter.setBrush(Qt::NoBrush);
+
+        int y = center.y() + (int) radius;
+
+        QPainterPath path;
+        path.moveTo(center.x(), y);
+
+        y += GROUND_ANTENNA_H;
+        path.lineTo(center.x(), y);
+
+        path.moveTo(center.x() - GROUND_WIDTH_1 / 2, y);
+        path.lineTo(center.x() + GROUND_WIDTH_1 / 2, y);
+
+        y += GROUND_ROW_GAP;
+        path.moveTo(center.x() - GROUND_WIDTH_2 / 2, y);
+        path.lineTo(center.x() + GROUND_WIDTH_2 / 2, y);
+
+        y += GROUND_ROW_GAP;
+        path.moveTo(center.x() - GROUND_WIDTH_3 / 2, y);
+        path.lineTo(center.x() + GROUND_WIDTH_3 / 2, y);
+
+        painter.drawPath(path);
     }
-    else
-        painter.setPen(pen);
 
-    painter.setBrush(Qt::NoBrush);
-
-    int y = center.y() + (int) radius;
-
-    QPainterPath path;
-    path.moveTo(center.x(), y);
-
-    y += GROUND_ANTENNA_H;
-    path.lineTo(center.x(), y);
-
-    path.moveTo(center.x() - GROUND_WIDTH_1 / 2, y);
-    path.lineTo(center.x() + GROUND_WIDTH_1 / 2, y);
-
-    y += GROUND_ROW_GAP;
-    path.moveTo(center.x() - GROUND_WIDTH_2 / 2, y);
-    path.lineTo(center.x() + GROUND_WIDTH_2 / 2, y);
-
-    y += GROUND_ROW_GAP;
-    path.moveTo(center.x() - GROUND_WIDTH_3 / 2, y);
-    path.lineTo(center.x() + GROUND_WIDTH_3 / 2, y);
-
-    painter.drawPath(path);
+    if (label.isEmpty()) return;
+    drawAliasLabel(center, label, isDarkColor(brush.color())? Qt::white : Qt::black);
 }
 
 // Resistor
@@ -408,7 +409,7 @@ void Grid::drawObject(const SharedObject &obj, const QPen &pen, const QBrush &br
     if(const auto &a = dynamic_pointer_cast<Alias>(obj))
         drawAlias(
             toScreen(a->p()), brush,
-            a->radius(),
+            a->radius(), a->gnd(),
             a->showLabel() ? a->label(scene->displayRawValues()) : "",
             pen
         );
@@ -571,18 +572,28 @@ void Grid::render([[maybe_unused]] QPaintEvent *event){
     // Draw objects.
     for (const auto &dipole : visibleDipoles){
         if(scene->mouse->willDraw(dipole)) continue;
-        drawObject(dipole, dipole->pen(), dipole->brush());
+        drawDipole(
+            dipole->type(),
+            toScreen(dipole->p1()),
+            toScreen(dipole->p2()),
+            dipole->pen(),
+            dipole->showLabel() ? dipole->label(scene->displayRawValues()) : ""
+        );
     }
 
     for (const auto &alias : visibleAliases){
         if (scene->mouse->willDraw(alias)) continue;
         drawAlias(
             toScreen(alias->p()), alias->brush(),
-            alias->radius(),
+            alias->radius(), alias->gnd(),
             alias->showLabel() ? alias->label(true) : ""
         );
     }
 
+    if(scene->simulator.isRunning())
+        scene->simulator.draw(&painter);
+
     scene->mouse->draw(&painter);
+
     painter.end();
 }

@@ -1,8 +1,8 @@
 #pragma once
-#include "DCV.h"
 #include "utils/Globals.h"
 
-class Node;
+#include "DCV.h"
+
 class Battery: public DCV {
 public:
     Battery(const uint64_t id,

@@ -1,31 +1,35 @@
 #pragma once
-#include "WorldPoint.h"
-#include "../utils/Globals.h"
+#include "utils/Globals.h"
 #include "utils/Geometry.h"
-#include <QRegularExpression>
-#include <cstdint>
 
-class Dipole;
+#include "WorldPoint.h"
+
+#include <QVariant>
+#include <QString>
+#include <QSizeF>
+#include <QPointF>
+#include <QBrush>
+#include <QPen>
+#include <QRectF>
 
 class Alias : public WorldPoint {
 private:
-    // Member variables
     const uint64_t _id;
-    uint64_t _address;
+    int64_t _address;
     QString _label;
     int _radius;
-    QColor _color;
     DipolesSet _connections;
     bool _showLabel;
+    double _refV;
 
 public:
     // Constructor & Destructor
     Alias(const uint64_t id,
-        const uint64_t address,
+        const int64_t address,
         float x, float y, int r,
         const QBrush &brush,
         const bool showLabel
-    ) :
+    ):
         WorldPoint(x, y, brush),
         _id(id),
         _radius(r),
@@ -35,7 +39,7 @@ public:
     }
 
     Alias(const uint64_t id,
-          const uint64_t address,
+          const int64_t address,
           float x, float y, int r,
           const QBrush &brush,
           const QPen &pen,
@@ -75,7 +79,7 @@ public:
     inline void setShowLabel(bool b) override { _showLabel = b; }
 
     // Interface Methods (type and category)
-    ObjectType type() const override { return ObjectType::Alias; }
+    ObjectType type() const override { return gnd()? ObjectType::Ground : ObjectType::Alias; }
     ObjectCategory category() const override { return ObjectCategory::Node; }
 
     // Geometric methods
@@ -92,11 +96,11 @@ public:
     }
 
     // Address-related Methods
-    inline void setAddress(uint64_t address) {
+    inline void setAddress(int64_t address) {
         _address = address;
-        _label = numToAlpha(address);
+        _label = numToAlpha(qAbs(address));
     }
-    inline uint64_t address() const { return _address; }
+    inline int64_t address() const { return _address; }
 
     // Connection Methods
     void connect(const SharedDipole &dipole) { _connections.insert(dipole); }
@@ -107,13 +111,14 @@ public:
     QVariant getAttr(const Attr attr) const override {
         switch(attr){
         case Attr::ID: return _id;
-        case Attr::Address: return numToAlpha(_address);
+        case Attr::Address: return numToAlpha(qAbs(_address));
         case Attr::Radius: return _radius;
         case Attr::Diameter: return diameter();
         case Attr::Width: return width();
         case Attr::Height: return height();
         case Attr::Size: return size();
         case Attr::Rect: return rect();
+        case Attr::Gnd: return gnd();
         default: return WorldPoint::getAttr(attr);
         }
     }
@@ -121,6 +126,7 @@ public:
         switch(attr){
         case Attr::Address: setAddress(alphaToNum(v.toString())); return;
         case Attr::Radius: setRadius(v.toUInt()); return;
+        case Attr::Gnd: _address = v.toBool()? -qAbs(_address) : qAbs(_address); return;
         default: WorldPoint::setAttr(attr, v); return;
         }
     }
@@ -128,4 +134,9 @@ public:
     SharedAlias clone(const uint64_t id) const {
         return std::make_shared<Alias>(id, address(), x(), y(), radius(), _brush, showLabel());
     }
+
+    // Simulation
+    inline bool gnd() const { return _address <= 0; }
+    inline double refV() const { return gnd()? 0.0 : _refV; }
+    inline void setRefV(const double v) { _refV = v; }
 };
