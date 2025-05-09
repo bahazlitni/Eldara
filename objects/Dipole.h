@@ -19,7 +19,7 @@ private:
     const uint64_t _id;
 
 protected:
-    SharedAlias _A, _B;
+    WeakAlias _A, _B;
     bool _showLabel;
 
     double _refCurrent = 0.0;
@@ -118,8 +118,8 @@ public:
 
     inline float dx() const { return x2() - x1(); };
     inline float dy() const { return y2() - y1(); };
-    QPointF p1() const;
-    QPointF p2() const;
+    inline QPointF p1() const { return QPointF(x1(), y1()); }
+    inline QPointF p2() const { return QPointF(x2(), y2()); }
     inline QPointF center() const{ return (p1() + p2())/2.0; }
     inline QLineF line() const { return QLineF(p1(), p2()); }
     inline float length() const {
@@ -136,15 +136,15 @@ public:
 
     inline void setA(const SharedAlias &A){ _A = A; }
     inline void setB(const SharedAlias &B){ _B = B; }
-    inline SharedAlias A() const { return _A; }
-    inline SharedAlias B() const { return _B; }
+    inline SharedAlias A() const { return _A.lock(); }
+    inline SharedAlias B() const { return _B.lock(); }
     inline SharedAlias other(const SharedAlias &a) const {
         return a == A() ? B() : a == B() ? A() : nullptr;
     }
 
     // Visual
     inline bool connectedTo(const SharedAlias &alias){
-        return _A == alias || _B == alias;
+        return _A.lock() == alias || _B.lock() == alias;
     }
 
     bool dirtyVisibleCheckFlag = false;

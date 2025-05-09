@@ -6,9 +6,9 @@
 class IDLabel;
 class AddressInput;
 class CoordinateInput;
-class RadiusInput;
 class BooleanInput;
 class MainPanel;
+class SimpleIntegerInput;
 
 class AliasGroup: public ObjectGroup {
     Q_OBJECT
@@ -16,7 +16,8 @@ class AliasGroup: public ObjectGroup {
 protected:
     AddressInput *Address;
     CoordinateInput *X, *Y;
-    RadiusInput *Radius;
+    SimpleIntegerInput *Radius;
+    SimpleIntegerInput *StrokeWidth;
     BooleanInput *Gnd;
 
 public:

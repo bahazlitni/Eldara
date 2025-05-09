@@ -12,7 +12,7 @@
 #include <QHash>
 #include <QThread>
 #include <algorithm>
-#include "eigen-3.4.0/Eigen/Eigen"
+#include "eigen/Eigen"
 #include <chrono>
 #include <thread>
 
@@ -21,7 +21,7 @@ Simulator::Simulator(Scene *scene)
     , scene(scene)
     , workerThread(new QThread(this))
 {
-    setFps(30.0f);
+    setFps(60.0f);
 
     // Move this object into the worker thread
     this->moveToThread(workerThread);
@@ -32,9 +32,6 @@ Simulator::Simulator(Scene *scene)
     // When simulationEnded() is emitted, quit the thread
     connect(this, &Simulator::simulationEnded,
             workerThread, &QThread::quit);
-
-    // Give it high priority
-    workerThread->setPriority(QThread::HighPriority);
 }
 
 Simulator::~Simulator() {
@@ -42,9 +39,17 @@ Simulator::~Simulator() {
     workerThread->wait();
 }
 
+void Simulator::reset(){
+    if(m_running){
+        stop();
+        workerThread->wait();
+    }
+}
+
 void Simulator::run() {
     if (m_running.load()) return;
     workerThread->start();
+    workerThread->setPriority(QThread::HighPriority);
 }
 
 void Simulator::stop() {
@@ -325,7 +330,11 @@ void Simulator::draw(QPainter *painter){
 
             for (int i = 0; i < n; ++i) {
                 QVector2D p = base + dir * (i * STEP_LENGTH);
-                painter->drawPoint(scene->grid.toScreen(QPointF(p.x(), p.y())));
+                painter->drawEllipse(
+                    scene->grid.toScreenX(p.x()) - 2.0f,
+                    scene->grid.toScreenY(p.y()) - 2.0f,
+                    4.0f, 4.0f
+                );
             }
         }
 

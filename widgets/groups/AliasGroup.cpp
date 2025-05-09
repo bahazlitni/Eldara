@@ -2,7 +2,7 @@
 #include "widgets/HSeparator.h"
 #include "widgets/inputs/AddressInput.h"
 #include "widgets/inputs/CoordinateInput.h"
-#include "widgets/inputs/RadiusInput.h"
+#include "widgets/inputs/SimpleIntegerInput.h"
 #include "widgets/inputs/BooleanInput.h"
 
 #include "widgets/MainPanel.h"
@@ -14,7 +14,22 @@ AliasGroup::AliasGroup(MainPanel *mainPanel):
     Address(new AddressInput(this)),
     X(new CoordinateInput(this, Attr::X)),
     Y(new CoordinateInput(this, Attr::Y)),
-    Radius(new RadiusInput(this)),
+    Radius(
+        new SimpleIntegerInput(
+            this,
+            Attr::Radius,
+            Limits::MIN_ALIAS_RADIUS,
+            Limits::MAX_ALIAS_RADIUS
+        )
+    ),
+    StrokeWidth(
+        new SimpleIntegerInput(
+            this,
+            Attr::StrokeWidth,
+            Limits::MIN_ALIAS_OUTLINE,
+            Limits::MAX_ALIAS_OUTLINE
+        )
+    ),
     Gnd(new BooleanInput(this, Attr::Gnd, this))
 {
 
@@ -33,11 +48,14 @@ AliasGroup::AliasGroup(MainPanel *mainPanel):
     contentLayout->addWidget(new QLabel("Size"), 1, 0);
     contentLayout->addWidget(Radius, 1, 1);
 
-    contentLayout->addWidget(new QLabel("Address"), 2, 0);
-    contentLayout->addWidget(Address, 2, 1);
+    contentLayout->addWidget(new QLabel("Outline"), 2, 0);
+    contentLayout->addWidget(StrokeWidth, 2, 1);
 
-    contentLayout->addWidget(new QLabel("GND"), 3, 0);
-    contentLayout->addWidget(Gnd, 3, 1);
+    contentLayout->addWidget(new QLabel("Address"), 3, 0);
+    contentLayout->addWidget(Address, 3, 1);
+
+    contentLayout->addWidget(new QLabel("GND"), 4, 0);
+    contentLayout->addWidget(Gnd, 4, 1);
 
     connect(Gnd, &QPushButton::toggled, this, &AliasGroup::onGndStateChanged);
 }
@@ -52,6 +70,7 @@ void AliasGroup::updateSelection(const Selection &selection){
     X->updateData();
     Y->updateData();
     Radius->updateData();
+    StrokeWidth->updateData();
     Gnd->updateData();
 }
 

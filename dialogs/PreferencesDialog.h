@@ -52,6 +52,7 @@ private:
 
     // Pen tool widgets
     QSpinBox *radiusSpin;
+    QSpinBox *aliasOutlineSpin;
     QSpinBox *strokeWidthSpin;
     QPushButton *strokeColorBtn;
     QPushButton *fillColorBtn;

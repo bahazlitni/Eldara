@@ -22,6 +22,7 @@ public:
     VariablesTab *variablesTab;
 
     void reset();
+    void updateData();
 
 private:
     const QString qssPath = ":widgets/styles/MainPanel.qss";

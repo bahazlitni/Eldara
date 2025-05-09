@@ -1,7 +1,7 @@
 #pragma once
 #include "ColorsGroup.h"
 
-class RadiusInput;
+class SimpleIntegerInput;
 class ColorInput;
 class BooleanInput;
 class Scene;
@@ -11,11 +11,13 @@ class PenGroup: public InputGroup {
     Q_OBJECT
 
 protected:
-    RadiusInput *Radius;
     BooleanInput *ShowLabel;
-
     ColorInput *StrokeColor;
     ColorInput *FillColor;
+
+    SimpleIntegerInput *Radius;
+    SimpleIntegerInput *AliasOutline;
+    SimpleIntegerInput *StrokeWidth;
 
 public:
     PenGroup(MainPanel *mainPanel, QWidget *parent = nullptr);

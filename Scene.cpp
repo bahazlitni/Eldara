@@ -164,8 +164,8 @@ void Scene::reset() {
         }
     }
     aliases.clear();
-
     grid.reset();
+    simulator.reset();
 }
 
 

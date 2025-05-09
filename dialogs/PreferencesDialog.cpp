@@ -1,4 +1,5 @@
 #include "dialogs/PreferencesDialog.h"
+#include "utils/Globals.h"
 
 #include <QSettings>
 #include <QTabWidget>
@@ -46,19 +47,20 @@ void PreferencesDialog::buildSceneTab() {
     bgColorBtn = new QPushButton;
     gridStrokeBtn = new QPushButton;
     tileSizeSpin = new QSpinBox;
-    tileSizeSpin->setRange(10, 500);
+    tileSizeSpin->setRange(Limits::MIN_TILESIZE, Limits::MAX_TILESIZE);
+    tileSizeSpin->setSingleStep(10);
     snapPosCheck = new QCheckBox;
     allowMergeCheck = new QCheckBox;
     showGridCheck = new QCheckBox;
     displayRawCheck = new QCheckBox;
 
-    layout->addRow(tr("Background Color:"), bgColorBtn);
-    layout->addRow(tr("Grid Stroke Color:"), gridStrokeBtn);
-    layout->addRow(tr("Tile Size:"), tileSizeSpin);
-    layout->addRow(tr("Snap Position:"), snapPosCheck);
-    layout->addRow(tr("Allow Merging:"), allowMergeCheck);
-    layout->addRow(tr("Show Grid:"), showGridCheck);
-    layout->addRow(tr("Display Raw Values:"), displayRawCheck);
+    layout->addRow(tr("Background Color"), bgColorBtn);
+    layout->addRow(tr("Grid Stroke Color"), gridStrokeBtn);
+    layout->addRow(tr("Tile Size"), tileSizeSpin);
+    layout->addRow(tr("Snap Position"), snapPosCheck);
+    layout->addRow(tr("Allow Merging"), allowMergeCheck);
+    layout->addRow(tr("Show Grid"), showGridCheck);
+    layout->addRow(tr("Display Raw Values"), displayRawCheck);
 
     tabWidget->addTab(tab, tr("Scene"));
 
@@ -71,9 +73,11 @@ void PreferencesDialog::buildPenToolTab() {
     QFormLayout *layout = new QFormLayout(tab);
 
     radiusSpin = new QSpinBox;
+    aliasOutlineSpin = new QSpinBox;
     strokeWidthSpin = new QSpinBox;
-    radiusSpin->setRange(6, 20);
-    strokeWidthSpin->setRange(1, 5);
+    radiusSpin->setRange(Limits::MIN_ALIAS_RADIUS, Limits::MAX_ALIAS_RADIUS);
+    aliasOutlineSpin->setRange(Limits::MIN_ALIAS_OUTLINE, Limits::MAX_ALIAS_OUTLINE);
+    strokeWidthSpin->setRange(Limits::MIN_STROKE_WIDTH, Limits::MAX_STROKE_WIDTH);
 
     strokeColorBtn = new QPushButton;
     fillColorBtn = new QPushButton;
@@ -82,54 +86,55 @@ void PreferencesDialog::buildPenToolTab() {
     allowOnClickCheck = new QCheckBox;
 
     defaultResSpin = new QDoubleSpinBox;
-    defaultResSpin->setDecimals(6);
-    defaultResSpin->setRange(0, 1e9);
+    defaultResSpin->setDecimals(3);
+    defaultResSpin->setRange(Limits::MIN_RESISTANCE_VALUE, Limits::MAX_RESISTANCE_VALUE);
     defaultResSpin->setSuffix(" Ω");
 
     defaultCapSpin = new QDoubleSpinBox;
     defaultCapSpin->setDecimals(12);
-    defaultCapSpin->setRange(0, 1e-2);
+    defaultCapSpin->setRange(Limits::MIN_CAPACITANCE_VALUE, Limits::MAX_CAPACITANCE_VALUE);
     defaultCapSpin->setSuffix(" F");
 
     defaultIndSpin = new QDoubleSpinBox;
     defaultIndSpin->setDecimals(12);
-    defaultIndSpin->setRange(0, 1e-1);
+    defaultIndSpin->setRange(Limits::MIN_INDUCTANCE_VALUE, Limits::MAX_INDUCTANCE_VALUE);
     defaultIndSpin->setSuffix(" H");
 
     defaultBattSpin = new QDoubleSpinBox;
     defaultBattSpin->setDecimals(3);
-    defaultBattSpin->setRange(0, 1e3);
+    defaultBattSpin->setRange(Limits::MIN_VOLTAGE_VALUE, Limits::MAX_VOLTAGE_VALUE);
     defaultBattSpin->setSuffix(" V");
 
     defaultDCVSpin = new QDoubleSpinBox;
     defaultDCVSpin->setDecimals(3);
-    defaultDCVSpin->setRange(0, 1e3);
+    defaultDCVSpin->setRange(Limits::MIN_VOLTAGE_VALUE, Limits::MAX_VOLTAGE_VALUE);
     defaultDCVSpin->setSuffix(" V");
 
     defaultIntSpin = new QDoubleSpinBox;
     defaultIntSpin->setDecimals(9);
-    defaultIntSpin->setRange(0, 1e2);
+    defaultIntSpin->setRange(Limits::MIN_CURRENT_VALUE, Limits::MAX_CURRENT_VALUE);
     defaultIntSpin->setSuffix(" A");
 
     defaultQtySpin = new QDoubleSpinBox;
     defaultQtySpin->setDecimals(6);
-    defaultQtySpin->setRange(0, 1e5);
+    defaultQtySpin->setRange(Limits::MIN_QUANTITY_VALUE, Limits::MAX_QUANTITY_VALUE);
     defaultQtySpin->setSuffix(" C");
 
-    layout->addRow(tr("Radius:"), radiusSpin);
-    layout->addRow(tr("Stroke Width:"), strokeWidthSpin);
-    layout->addRow(tr("Stroke Color:"), strokeColorBtn);
-    layout->addRow(tr("Fill Color:"), fillColorBtn);
-    layout->addRow(tr("Show Label:"), showLabelCheck);
-    layout->addRow(tr("Allow Splitting:"), allowSplitCheck);
-    layout->addRow(tr("Allow On-Click Coloring:"), allowOnClickCheck);
-    layout->addRow(tr("Default Resistance:"), defaultResSpin);
-    layout->addRow(tr("Default Capacitance:"), defaultCapSpin);
-    layout->addRow(tr("Default Inductance:"), defaultIndSpin);
-    layout->addRow(tr("Default Battery Voltage:"), defaultBattSpin);
-    layout->addRow(tr("Default DCV Voltage:"), defaultDCVSpin);
-    layout->addRow(tr("Default Intensity:"), defaultIntSpin);
-    layout->addRow(tr("Default Quantity:"), defaultQtySpin);
+    layout->addRow(tr("Radius"), radiusSpin);
+    layout->addRow(tr("Fill Color"), fillColorBtn);
+    layout->addRow(tr("Stroke Color"), strokeColorBtn);
+    layout->addRow(tr("Outline"), aliasOutlineSpin);
+    layout->addRow(tr("Thickness"), strokeWidthSpin);
+    layout->addRow(tr("Show Label"), showLabelCheck);
+    layout->addRow(tr("Allow Splitting"), allowSplitCheck);
+    layout->addRow(tr("Allow On-Click Coloring"), allowOnClickCheck);
+    layout->addRow(tr("Default Resistance"), defaultResSpin);
+    layout->addRow(tr("Default Capacitance"), defaultCapSpin);
+    layout->addRow(tr("Default Inductance"), defaultIndSpin);
+    layout->addRow(tr("Default Battery Voltage"), defaultBattSpin);
+    layout->addRow(tr("Default DCV Voltage"), defaultDCVSpin);
+    layout->addRow(tr("Default Intensity"), defaultIntSpin);
+    layout->addRow(tr("Default Quantity"), defaultQtySpin);
 
     tabWidget->addTab(tab, tr("Pen Tool"));
 
@@ -165,6 +170,7 @@ void PreferencesDialog::loadSettings() {
 
     radiusSpin->setValue(s.value("pen/radius", 8).toInt());
     strokeWidthSpin->setValue(s.value("pen/strokeWidth", 1).toInt());
+    aliasOutlineSpin->setValue(s.value("pen/aliasOutline", 0).toInt());
     updateColorButton(strokeColorBtn, s.value("pen/strokeColor", QColor("#CCC")).value<QColor>());
     updateColorButton(fillColorBtn, s.value("pen/fillColor", QColor("#FFF")).value<QColor>());
     showLabelCheck->setChecked(s.value("pen/showLabel", true).toBool());
@@ -192,6 +198,7 @@ void PreferencesDialog::saveSettings() {
 
     s.setValue("pen/radius", radiusSpin->value());
     s.setValue("pen/strokeWidth", strokeWidthSpin->value());
+    s.setValue("pen/aliasOutline", aliasOutlineSpin->value());
     s.setValue("pen/strokeColor", strokeColorBtn->palette().button().color());
     s.setValue("pen/fillColor", fillColorBtn->palette().button().color());
     s.setValue("pen/showLabel", showLabelCheck->isChecked());

@@ -409,7 +409,7 @@ void Grid::drawObject(const SharedObject &obj, const QPen &pen, const QBrush &br
     if(const auto &a = dynamic_pointer_cast<Alias>(obj))
         drawAlias(
             toScreen(a->p()), brush,
-            a->radius(), a->gnd(),
+            a->visualRadius(), a->gnd(),
             a->showLabel() ? a->label(scene->displayRawValues()) : "",
             pen
         );
@@ -585,8 +585,9 @@ void Grid::render([[maybe_unused]] QPaintEvent *event){
         if (scene->mouse->willDraw(alias)) continue;
         drawAlias(
             toScreen(alias->p()), alias->brush(),
-            alias->radius(), alias->gnd(),
-            alias->showLabel() ? alias->label(true) : ""
+            alias->visualRadius(), alias->gnd(),
+            alias->showLabel() ? alias->label(true) : "",
+            alias->pen()
         );
     }
 

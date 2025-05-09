@@ -81,6 +81,13 @@ public:
         return p;
     }
 
+    inline QPen aliasPen() const {
+        QPen p;
+        p.setStyle(Qt::PenStyle::SolidLine);
+        p.setWidth(aliasOutline());
+        p.setColor(strokeColor());
+        return p;
+    }
 
 // Settings
 protected:
@@ -97,6 +104,7 @@ protected:
         double defaultQuantity          ;
         int    radius                   ;
         int    strokeWidth              ;
+        int    aliasOutline             ;
         QColor strokeColor              ;
         QColor fillColor                ;
     };
@@ -116,6 +124,7 @@ public:
     inline void setDefaultQuantity       ( const double v ){ settings.defaultQuantity = v; }
     inline void setRadius                ( const int    v ){ settings.radius = v; }
     inline void setStrokeWidth           ( const int    v ){ settings.strokeWidth = v; }
+    inline void setAliasOutline          ( const int    v ){ settings.aliasOutline = v; }
     inline void setStrokeColor           ( const QColor &v){ settings.strokeColor = v; }
     inline void setFillColor             ( const QColor &v){ settings.fillColor = v; }
 
@@ -131,6 +140,7 @@ public:
     inline double defaultQuantity       () const { return settings.defaultQuantity; }
     inline int radius                   () const { return settings.radius; }
     inline int strokeWidth              () const { return settings.strokeWidth; }
+    inline int aliasOutline             () const { return settings.aliasOutline; }
     inline QColor strokeColor           () const { return settings.strokeColor; }
     inline QColor fillColor             () const { return settings.fillColor; }
 

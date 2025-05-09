@@ -1,4 +1,5 @@
 #include "Window.h"
+
 #include "Scene.h"
 #include "widgets/MainPanel.h"
 #include "widgets/tabs/SelectionTab.h"
@@ -33,59 +34,156 @@
 #include <QString>
 #include <QVector>
 #include <QHash>
+#include <QSet>
 #include <QPen>
 #include <QBrush>
 #include <cstring>
+#include <QIcon>
+#include <QStandardPaths>
+#include <QCoreApplication>
+
+#include <QScreen>
+#include <QGuiApplication>
+
 
 Window::Window()
     : QMainWindow(),
     splitter(new QSplitter(Qt::Horizontal, this)),
-    scene(new Scene(splitter)),
-    mainPanel(new MainPanel(scene, splitter))
+    scene(splitter),
+    mainPanel(&scene, splitter)
 {
+
+    QCoreApplication::setOrganizationName("EldaraSoft");
+    QCoreApplication::setApplicationName("Eldara");
+
     setWindowTitle("Eldara");
-    setupMenuBar();
+    setWindowIcon(QIcon(":/Eldara.ico"));
+
+    QSettings settings;
+
+    restoreGeometry(settings.value("mainWindow/geometry").toByteArray());
+    restoreState(settings.value("mainWindow/state").toByteArray());
+
+    if (isMaximized() || size().isEmpty() || pos().isNull()) {
+        QScreen *screen = QGuiApplication::primaryScreen();
+        if (screen) {
+            QRect screenGeometry = screen->geometry();
+            int windowWidth = static_cast<int>(screenGeometry.width() * 0.8);
+            int windowHeight = static_cast<int>(screenGeometry.height() * 0.8);
+            resize(windowWidth, windowHeight);
+            move(screenGeometry.center() - rect().center());
+        } else {
+            resize(1024, 768);
+        }
+    }
+
+
     setupSplitter();
     setupHistoryDock();
+
+    settings.beginGroup("PanelVisibility");
+    bool historyDockVisible = settings.value("historyDock", true).toBool();
+    bool mainPanelVisible = settings.value("mainPanel", true).toBool();
+    settings.endGroup();
+
+    if (historyDock) {
+        historyDock->setVisible(historyDockVisible);
+    }
+
+    mainPanel.setVisible(mainPanelVisible);
+
+    setupMenuBar();
     applySettings();
     setupConnections();
 }
 
+
+void Window::saveSettings() {
+    QSettings settings;
+
+    settings.setValue("mainWindow/geometry", saveGeometry());
+    settings.setValue("mainWindow/state", saveState());
+
+    settings.beginGroup("PanelVisibility");
+    if (historyDock) {
+        settings.setValue("historyDock", historyDock->isVisible());
+    }
+
+    settings.setValue("mainPanel", mainPanel.isVisible());
+
+    settings.endGroup();
+
+    settings.sync();
+}
+
+
 void Window::setupMenuBar() {
-    // ─── File Menu ─────────────────────────────────────────────────────────────
-    fileMenu = menuBar()->addMenu(tr("&File"));
+    QMenuBar *mb = menuBar();
+    if (!mb) {
+        return;
+    }
+
+    fileMenu = mb->addMenu(tr("&File"));
     openAction = fileMenu->addAction(tr("&Open..."), QKeySequence::Open, this, &Window::openFile);
     saveAction = fileMenu->addAction(tr("&Save"),    QKeySequence::Save, this, &Window::saveFile);
     saveAsAction = fileMenu->addAction(tr("Save &As..."), QKeySequence::SaveAs, this, &Window::saveFileAs);
 
-    // ─── Edit Menu ─────────────────────────────────────────────────────────────
-    editMenu = menuBar()->addMenu(tr("&Edit"));
-    undoAction = scene->undoStack.createUndoAction(this, tr("&Undo"));
-    undoAction->setShortcuts(QKeySequence::Undo);
-    editMenu->addAction(undoAction);
+    editMenu = mb->addMenu(tr("&Edit"));
 
-    redoAction = scene->undoStack.createRedoAction(this, tr("&Redo"));
-    redoAction->setShortcuts(QKeySequence::Redo);
-    editMenu->addAction(redoAction);
+        undoAction = scene.undoStack.createUndoAction(this, tr("&Undo"));
+        undoAction->setShortcuts(QKeySequence::Undo);
+        editMenu->addAction(undoAction);
+
+        redoAction = scene.undoStack.createRedoAction(this, tr("&Redo"));
+        redoAction->setShortcuts(QKeySequence::Redo);
+        editMenu->addAction(redoAction);
+
 
     editMenu->addSeparator();
     preferencesAction = editMenu->addAction(tr("&Preferences..."), this, &Window::openPreferences);
 
-    // ─── Simulation Menu ───────────────────────────────────────────────────────
-    simulationMenu = menuBar()->addMenu(tr("&Simulation"));
+    viewMenu = mb->addMenu(tr("&View"));
+
+    if (historyDock) {
+        historyDockViewAction = historyDock->toggleViewAction();
+        historyDockViewAction->setText(tr("History &Dock"));
+        viewMenu->addAction(historyDockViewAction);
+    }
+
+    mainPanelViewAction = new QAction(tr("&Main Panel"), this);
+    mainPanelViewAction->setCheckable(true);
+    mainPanelViewAction->setChecked(mainPanel.isVisible());
+    viewMenu->addAction(mainPanelViewAction);
+
+    simulationMenu = mb->addMenu(tr("&Simulation"));
     simulationAction = simulationMenu->addAction(tr("&Run"), this, &Window::onSimulationActionTriggered);
     simulationAction->setShortcut(QKeySequence(tr("Ctrl+R")));
 }
 
 void Window::setupSplitter() {
     setCentralWidget(splitter);
+
     splitter->setHandleWidth(1);
-    splitter->addWidget(scene);
-    splitter->addWidget(mainPanel);
+
+    splitter->addWidget(&scene);
+    splitter->addWidget(&mainPanel);
+
     splitter->setStretchFactor(0, 1);
     splitter->setStretchFactor(1, 0);
-    splitter->setCollapsible(1, false);
-    splitter->setSizes({scene->width(), mainPanel->minimumWidth()});
+
+
+    int mainPanelIndex = splitter->indexOf(&mainPanel);
+    if (mainPanelIndex != -1) {
+        splitter->setCollapsible(mainPanelIndex, false);
+    }
+
+    int mainPanelWidth = mainPanel.minimumSizeHint().width();
+    int sceneWidth = width() - mainPanelWidth - splitter->handleWidth();
+    if (sceneWidth < 0) sceneWidth = width() / 2;
+
+    splitter->setSizes({sceneWidth, mainPanelWidth});
+
+
     splitter->setStyleSheet(R"(
         QSplitter::handle {
             background-color: #333;
@@ -94,45 +192,53 @@ void Window::setupSplitter() {
 }
 
 void Window::setupHistoryDock() {
-    undoView = new QUndoView(&scene->undoStack, this);
+    undoView = new QUndoView(&scene.undoStack, this);
     undoView->setWindowTitle(tr("Undo History"));
 
     historyDock = new QDockWidget(tr("History"), this);
     historyDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     historyDock->setWidget(undoView);
+
     addDockWidget(Qt::RightDockWidgetArea, historyDock);
     historyDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable);
-
 }
 
 void Window::setupConnections() {
-    connect(&scene->selector, &Selector::selectionChanged,
-            mainPanel->selectionTab, &SelectionTab::updateData);
-    connect(&scene->selector, &Selector::selectionDragged,
-            mainPanel->selectionTab, &SelectionTab::updateCoordinates);
-    connect(&scene->pen, &Pen::dataChanged,
-            mainPanel->quickSettingsTab, &QuickSettingsTab::updatePenData);
 
-    connect(&scene->simulator, &Simulator::simulationStarted,
+    connect(&scene.selector, &Selector::selectionChanged,
+            mainPanel.selectionTab, &SelectionTab::updateData);
+    connect(&scene.selector, &Selector::selectionDragged,
+            mainPanel.selectionTab, &SelectionTab::updateCoordinates);
+
+    connect(&scene.pen, &Pen::dataChanged,
+            mainPanel.quickSettingsTab, &QuickSettingsTab::updatePenData);
+
+
+    connect(&scene.simulator, &Simulator::simulationStarted,
             this, &Window::updateSimulationActionToStop);
-    connect(&scene->simulator, &Simulator::simulationEnded,
+    connect(&scene.simulator, &Simulator::simulationEnded,
             this, &Window::updateSimulationActionToRun);
+
+    connect(mainPanelViewAction, &QAction::toggled,
+            &mainPanel, &QWidget::setVisible);
+
 }
 
 void Window::applySettings() {
     QSettings settings("EldaraSoft", "Eldara");
 
-    scene->setBackgroundColor(settings.value("scene/background", QColor(33, 33, 33)).value<QColor>());
-    scene->setGridStrokeColor(settings.value("scene/gridStroke", QColor(44, 44, 44)).value<QColor>());
-    scene->setTileSize(settings.value("scene/tileSize", 50).toInt());
-    scene->setSnapPosition(settings.value("scene/snapPosition", true).toBool());
-    scene->setAllowMerging(settings.value("scene/allowMerge", true).toBool());
-    scene->setShowGrid(settings.value("scene/showGrid", true).toBool());
-    scene->setDisplayRawValues(settings.value("scene/displayRaw", false).toBool());
+    scene.setBackgroundColor(settings.value("scene/background", QColor(33, 33, 33)).value<QColor>());
+    scene.setGridStrokeColor(settings.value("scene/gridStroke", QColor(44, 44, 44)).value<QColor>());
+    scene.setTileSize(settings.value("scene/tileSize", 50).toInt());
+    scene.setSnapPosition(settings.value("scene/snapPosition", true).toBool());
+    scene.setAllowMerging(settings.value("scene/allowMerge", true).toBool());
+    scene.setShowGrid(settings.value("scene/showGrid", true).toBool());
+    scene.setDisplayRawValues(settings.value("scene/displayRaw", false).toBool());
 
-    Pen &pen = scene->pen;
+    Pen &pen = scene.pen;
     pen.setRadius(settings.value("pen/radius", 8).toInt());
-    pen.setStrokeWidth(settings.value("pen/strokeWidth", 1).toInt());
+    pen.setStrokeWidth(settings.value("pen/strokeWidth", 1).toUInt());
+    pen.setAliasOutline(settings.value("pen/aliasOutline", 0).toUInt());
     pen.setStrokeColor(settings.value("pen/strokeColor", QColor("#CCC")).value<QColor>());
     pen.setFillColor(settings.value("pen/fillColor", QColor("#FFF")).value<QColor>());
     pen.setShowLabel(settings.value("pen/showLabel", true).toBool());
@@ -146,19 +252,21 @@ void Window::applySettings() {
     pen.setDefaultIntensity(settings.value("pen/defaultIntensity", 1e-3).toDouble());
     pen.setDefaultQuantity(settings.value("pen/defaultQuantity", 1.0).toDouble());
 
-    scene->update();
+    mainPanel.updateData();
+    scene.update();
 }
 
 void Window::openPreferences() {
-    PreferencesDialog dlg(this);
-    connect(&dlg, &PreferencesDialog::settingsApplied, this, &Window::applySettings);
-    if (dlg.exec() == QDialog::Accepted) {
-        applySettings();
+    if (!preferencesDialogue) {
+        preferencesDialogue = new PreferencesDialog(this);
+        connect(preferencesDialogue, &PreferencesDialog::settingsApplied, this, &Window::applySettings);
     }
+
+    preferencesDialogue->exec();
 }
 
 void Window::openFile() {
-    if (scene->hasChanged()) {
+    if (scene.hasChanged()) {
         auto reply = QMessageBox::question(
             this, tr("Unsaved Changes"),
             tr("You have unsaved changes. Do you want to save them before opening a new file?"),
@@ -198,8 +306,8 @@ void Window::openFile() {
         return;
     }
 
-    scene->reset();
-    mainPanel->reset();
+    scene.reset();
+    mainPanel.reset();
 
 
     auto readBlock = [&](auto &vec) {
@@ -223,7 +331,7 @@ void Window::openFile() {
         auto alias = std::make_shared<Alias>(
             d.id, d.address, d.x, d.y, d.radius, brush, pen, d.showLabel
         );
-        scene->addAlias(alias);
+        scene.addAlias(alias);
     }
 
     // --- Read Dipole Data Blocks ---
@@ -255,8 +363,8 @@ void Window::openFile() {
     // --- Generic loader for all two‐terminal elements ---
     auto forEachDipoleBlock = [&](auto &vec, auto ctor){
         for (auto &d : vec) {
-            auto A = scene->aliases[d.idA];
-            auto B = scene->aliases[d.idB];
+            auto A = scene.aliases[d.idA];
+            auto B = scene.aliases[d.idB];
             dipolesMap.insert(d.id, ctor(d, A, B, makePen(d)));
         }
     };
@@ -343,7 +451,7 @@ void Window::openFile() {
             types.append((VariableType)v.type);
         }
     }
-    mainPanel->variablesTab->addVariables(names, values, types);
+    mainPanel.variablesTab->addVariables(names, values, types);
 
     // --- Apply variable links for double vars ---
     for (auto &v : vec_doubles) {
@@ -360,8 +468,8 @@ void Window::openFile() {
 
     file.close();
     currentSavePath = filename;
-    scene->grid.moveTo(QPointF(0.0f, 0.0f));
-    scene->update();
+    scene.grid.moveTo(QPointF(0.0f, 0.0f));
+    scene.update();
 }
 
 void Window::saveFile() {
@@ -429,7 +537,7 @@ bool Window::saveToFile(const QString &filename) {
     };
 
     // walk aliases → dipoles once
-    for (auto &alias : scene->aliases) {
+    for (auto &alias : scene.aliases) {
         AliasData a{};
         a.id          = alias->id();
         a.address     = alias->address();
@@ -527,9 +635,9 @@ bool Window::saveToFile(const QString &filename) {
     QVector<IntVariableData>    vec_varInt;
     QVector<StringVariableData> vec_varString;
 
-    const auto &names  = mainPanel->variablesTab->names();
-    const auto &values = mainPanel->variablesTab->values();
-    const auto &types  = mainPanel->variablesTab->types();
+    const auto &names  = mainPanel.variablesTab->names();
+    const auto &values = mainPanel.variablesTab->values();
+    const auto &types  = mainPanel.variablesTab->types();
 
     for (int i = 0; i < names.size(); ++i) {
         const auto &nm   = names[i];
@@ -586,10 +694,10 @@ void Window::closeEvent(QCloseEvent *event) {
 
 
 void Window::onSimulationActionTriggered() {
-    if (scene->simulator.isRunning())
-        scene->simulator.stop();
+    if (scene.simulator.isRunning())
+        scene.simulator.stop();
     else
-        scene->simulator.run();
+        scene.simulator.run();
 }
 
 void Window::updateSimulationActionToRun() {

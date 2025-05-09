@@ -18,6 +18,7 @@ private:
     int64_t _address;
     QString _label;
     int _radius;
+    int _visualRadius;
     DipolesSet _connections;
     bool _showLabel;
     double _refV;
@@ -25,31 +26,16 @@ private:
 public:
     // Constructor & Destructor
     Alias(const uint64_t id,
-        const int64_t address,
-        float x, float y, int r,
-        const QBrush &brush,
-        const bool showLabel
-    ):
-        WorldPoint(x, y, brush),
-        _id(id),
-        _radius(r),
-        _showLabel(showLabel)
-    {
-        setAddress(address);
-    }
-
-    Alias(const uint64_t id,
           const int64_t address,
           float x, float y, int r,
           const QBrush &brush,
           const QPen &pen,
           const bool showLabel
-          ) :
-        WorldPoint(x, y, brush, pen),
-        _id(id),
-        _radius(r),
-        _showLabel(showLabel)
+    ):
+        WorldPoint(x, y, brush, pen), _id(id)
     {
+        setRadius(r);
+        setShowLabel(showLabel);
         setAddress(address);
     }
 
@@ -68,7 +54,21 @@ public:
 
     inline int diameter() const { return _radius*2; }
     inline int radius() const { return _radius; }
-    inline void setRadius(int r) { _radius = r; }
+    inline int visualRadius() const { return _visualRadius; }
+    inline int visualDiameter() const { return _visualRadius*2; }
+    inline void setRadius(int r) {
+        _radius = r;
+        _visualRadius = _radius + _pen.width();
+    }
+    inline void setPen(const QPen &pen) override {
+        _pen = pen;
+        _visualRadius = _radius + _pen.width();
+    }
+
+    inline void setStrokeWidth(const int w) override {
+        _pen.setWidth(w);
+        _visualRadius = _radius + w;
+    }
 
     inline float width() const { return (float) diameter(); }
     inline float height() const { return width(); }
@@ -86,11 +86,6 @@ public:
     bool inside(const QRectF &box, [[maybe_unused]] float zoom) override {
         return CinR(p(), static_cast<float>(_radius) / zoom, box);
     }
-
-    bool visible(const QRectF &viewport, [[maybe_unused]] float zoom) override {
-        return inside(viewport, zoom);
-    }
-
     bool hover(const QPointF &p, [[maybe_unused]] float zoom) override {
         return PinC(p, this->p(), static_cast<float>(_radius) / zoom);
     }
@@ -132,7 +127,7 @@ public:
     }
 
     SharedAlias clone(const uint64_t id) const {
-        return std::make_shared<Alias>(id, address(), x(), y(), radius(), _brush, showLabel());
+        return std::make_shared<Alias>(id, address(), x(), y(), radius(), _brush, _pen, showLabel());
     }
 
     // Simulation

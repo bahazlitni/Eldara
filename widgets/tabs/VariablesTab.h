@@ -30,7 +30,7 @@ public:
     MainPanel *mainPanel;
 
     explicit VariablesTab(MainPanel *mainPanel);
-    void updateData();
+    void updateData(){}
 
     QVector<QString> names() const;
     QVector<QVariant> values() const;

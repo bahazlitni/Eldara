@@ -4,6 +4,7 @@
 #include "widgets/HSeparator.h"
 #include "widgets/inputs/IDLabel.h"
 #include "widgets/inputs/DoubleParameterInput.h"
+#include "widgets/inputs/SimpleIntegerInput.h"
 
 #include "objects/Dipole.h"
 
@@ -11,12 +12,22 @@
 #include "Scene.h"
 #include "widgets/tabs/VariablesTab.h"
 
+
 DipoleGroup::DipoleGroup(MainPanel *mainPanel, ObjectType type, QWidget *parent):
     ObjectGroup(mainPanel, parent), _type(type),
-    ID(new IDLabel(this))
+    ID(new IDLabel(this)),
+    StrokeWidth(
+        new SimpleIntegerInput(
+            this,
+            Attr::StrokeWidth,
+            Limits::MIN_STROKE_WIDTH,
+            Limits::MAX_STROKE_WIDTH
+        )
+    )
 {
     contentLayout->addWidget(new QLabel("ID"), 0, 0);
     contentLayout->addWidget(ID, 0, 1);
+    m_i++;
 
     switch(type){
     case ObjectType::Resistor:
@@ -40,14 +51,16 @@ DipoleGroup::DipoleGroup(MainPanel *mainPanel, ObjectType type, QWidget *parent)
     default:
         break;
     }
+
+    contentLayout->addWidget(new QLabel("Thickness"), m_i, 0);
+    contentLayout->addWidget(StrokeWidth, m_i, 1);
 }
 
 void DipoleGroup::addParameter(const Param param, const QString &label, const bool hasShowLabel){
-    static int i = 1;
     const auto &DoubleInput = new DoubleParameterInput(this, param, label, hasShowLabel, this);
     DoubleInputs.append(DoubleInput);
-    contentLayout->addWidget(DoubleInput, i, 0, 1, 2);
-    i++;
+    contentLayout->addWidget(DoubleInput, m_i, 0, 1, 2);
+    m_i++;
 }
 
 
@@ -56,11 +69,12 @@ void DipoleGroup::updateData(){
     ID->updateData();
     for(auto &DoubleInput : DoubleInputs)
         DoubleInput->updateData();
+    StrokeWidth->updateData();
 }
 
 
 bool DipoleGroup::isMixedParam(const Param param) const {
-    double firstValue;
+    double firstValue = 0.0;
     bool init = true;
     for(const auto &obj : selection){
         if(const auto &d = dynamic_pointer_cast<Dipole>(obj)){

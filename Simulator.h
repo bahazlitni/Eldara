@@ -18,6 +18,7 @@ public:
 
     void run();
     void stop();
+    void reset();
 
     bool isPaused()   const { return m_paused.load(); }
     bool isRunning()  const { return m_running.load(); }
@@ -46,11 +47,11 @@ private slots:
     void runLoop();
 
 private:
-    Scene  *scene;
+    Scene *scene;
     QThread* workerThread;
 
     std::atomic<bool>        m_running{false};
-    std::atomic<float>       m_timestep{1.0f/30.0f};
+    std::atomic<float>       m_timestep{1.0f/60.0f};
     std::atomic<bool>        m_paused{false};
 
     using clock     = std::chrono::steady_clock;

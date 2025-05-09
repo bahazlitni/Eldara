@@ -8,13 +8,18 @@
 #include <QDockWidget>
 #include <QUndoView>
 #include <QKeySequence>
+#include <QString>
 
-class Scene;
-class MainPanel;
+#include <QSettings>
+#include <QVariant>
+
+#include "Scene.h"
+#include "widgets/MainPanel.h"
+
+
 class SelectionTab;
 class QuickSettingsTab;
 class PreferencesDialog;
-class QString;
 
 class Window : public QMainWindow {
     Q_OBJECT
@@ -35,6 +40,7 @@ private:
     struct ResistorData {
         uint64_t id, idA, idB;
         double R;
+        char varnameR[VARNAME_MAX_LENGTH];
         bool showLabel;
         uint32_t strokeColor;
         uint8_t strokeWidth, penStyle;
@@ -43,6 +49,8 @@ private:
     struct CapacitorData {
         uint64_t id, idA, idB;
         double C, Q0;
+        char varnameC[VARNAME_MAX_LENGTH];
+        char varnameQ0[VARNAME_MAX_LENGTH];
         bool showLabel;
         uint32_t strokeColor;
         uint8_t strokeWidth, penStyle;
@@ -51,6 +59,8 @@ private:
     struct InductorData {
         uint64_t id, idA, idB;
         double L, I0;
+        char varnameL[VARNAME_MAX_LENGTH];
+        char varnameI0[VARNAME_MAX_LENGTH];
         bool showLabel;
         uint32_t strokeColor;
         uint8_t strokeWidth, penStyle;
@@ -59,6 +69,7 @@ private:
     struct DCVData {
         uint64_t id, idA, idB;
         double V;
+        char varnameV[VARNAME_MAX_LENGTH];
         bool showLabel;
         uint32_t strokeColor;
         uint8_t strokeWidth, penStyle;
@@ -67,6 +78,7 @@ private:
     struct DCIData {
         uint64_t id, idA, idB;
         double I;
+        char varnameI[VARNAME_MAX_LENGTH];
         bool showLabel;
         uint32_t strokeColor;
         uint8_t strokeWidth, penStyle;
@@ -75,6 +87,7 @@ private:
     struct BatteryData {
         uint64_t id, idA, idB;
         double V;
+        char varnameV[VARNAME_MAX_LENGTH];
         bool showLabel;
         uint32_t strokeColor;
         uint8_t strokeWidth, penStyle;
@@ -106,32 +119,42 @@ private:
         uint16_t param;
     };
 
-    QSplitter   *splitter;
-    QMenu       *fileMenu;
-    QMenu       *editMenu;
-    QMenu       *simulationMenu;
-    QAction     *openAction;
-    QAction     *saveAction;
-    QAction     *saveAsAction;
-    QAction     *preferencesAction;
-    QAction     *undoAction;
-    QAction     *redoAction;
-    QAction     *simulationAction;
 
-    QDockWidget *historyDock;
-    QUndoView   *undoView;
+    PreferencesDialog *preferencesDialogue = nullptr;
+    QSplitter   *splitter = nullptr;
+    QMenu       *fileMenu = nullptr;
+    QMenu       *editMenu = nullptr;
+    QMenu       *simulationMenu = nullptr;
 
-    Scene       *scene;
-    MainPanel   *mainPanel;
+    QMenu       *viewMenu = nullptr;
+    QAction     *historyDockViewAction = nullptr;
+    QAction     *mainPanelViewAction = nullptr;
+
+    QAction     *openAction = nullptr;
+    QAction     *saveAction = nullptr;
+    QAction     *saveAsAction = nullptr;
+    QAction     *preferencesAction = nullptr;
+    QAction     *undoAction = nullptr;
+    QAction     *redoAction = nullptr;
+    QAction     *simulationAction = nullptr;
+
+    QDockWidget *historyDock = nullptr;
+    QUndoView   *undoView = nullptr;
+
+    Scene scene;
+    MainPanel mainPanel;
 
     QString currentSavePath;
     bool saveToFile(const QString &filename);
+    void saveSettings();
+
 
     void setupMenuBar();
     void setupSplitter();
     void setupConnections();
     void applySettings();
     void setupHistoryDock();
+
 
 private slots:
     void openFile();
@@ -142,6 +165,7 @@ private slots:
     void onSimulationActionTriggered();
     void updateSimulationActionToRun();
     void updateSimulationActionToStop();
+
 
 protected:
     void closeEvent(QCloseEvent *event) override;

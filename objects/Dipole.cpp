@@ -19,27 +19,35 @@ bool Dipole::inside(const QRectF &box, [[maybe_unused]] const float zoom){
     return LinR(line(), box);
 }
 
-float Dipole::x1() const { return A()->x(); }
-float Dipole::x2() const { return B()->x(); }
-float Dipole::y1() const { return A()->y(); }
-float Dipole::y2() const { return B()->y(); }
+float Dipole::x1() const {
+    if(auto A = _A.lock()) return A->x();
+    return 0.0f;
+}
+float Dipole::x2() const {
+    if(auto B = _B.lock()) return B->x();
+    return 0.0f;
+}
+float Dipole::y1() const {
+    if(auto A = _A.lock()) return A->y();
+    return 0.0f;
+}
+float Dipole::y2() const {
+    if(auto B = _B.lock()) return B->y();
+    return 0.0f;
+}
 
 void Dipole::setX1(const float v) {
-    _A->setX(v);
+    if(auto A = _A.lock()) A->setX(v);
 }
 void Dipole::setX2(const float v) {
-    _B->setX(v);
+    if(auto B = _B.lock()) B->setX(v);
 }
 void Dipole::setY1(const float v) {
-    _A->setY(v);
+    if(auto A = _A.lock()) A->setY(v);
 }
 void Dipole::setY2(const float v) {
-    _B->setY(v);
+    if(auto B = _B.lock()) B->setY(v);
 }
-
-QPointF Dipole::p2() const { return *B(); }
-QPointF Dipole::p1() const { return *A(); }
-
 
 QVariant Dipole::getAttr(const Attr attr) const {
     switch (attr) {

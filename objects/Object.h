@@ -91,11 +91,11 @@ public:
     inline QColor strokeColor() const { return _pen.color(); }
     inline int strokeWidth() const { return _pen.width(); }
 
-    inline void setPen(const QPen &pen) { _pen = pen; }
-    inline void setBrush(const QBrush &brush) { _brush = brush; }
-    inline void setFillColor(const QColor &color) { _brush.setColor(color); }
-    inline void setStrokeColor(const QColor &color) { _pen.setColor(color); }
-    inline void setStrokeWidth(const int w) { _pen.setWidth(w); }
+    virtual inline void setPen(const QPen &pen) { _pen = pen; }
+    virtual inline void setBrush(const QBrush &brush) { _brush = brush; }
+    virtual inline void setFillColor(const QColor &color) { _brush.setColor(color); }
+    virtual inline void setStrokeColor(const QColor &color) { _pen.setColor(color); }
+    virtual inline void setStrokeWidth(const int w) { _pen.setWidth(w); }
 
     inline virtual void setShowLabel([[maybe_unused]] const bool b) {}
     inline virtual bool showLabel() const { return false; }

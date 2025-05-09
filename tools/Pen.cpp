@@ -25,12 +25,7 @@ Pen::Pen(Scene *scene): MouseTool(scene),
     penCursor(QCursor(QPixmap(":assets/cursor/pen.png"), 0, 0)),
     constructingCursor(QCursor(QPixmap(":assets/cursor/pen_constructing.png"), 0, 0)),
     constructingPlusCursor(QCursor(QPixmap(":assets/cursor/pen_constructing_plus.png"), 0, 0))
-{
-    setFillColor(QColor(255,255,255));
-    setStrokeColor(QColor(222,222,222));
-    setStrokeWidth(2);
-    setRadius(10);
-}
+{}
 
 QVariant Pen::getAttr(const Attr attr) const {
     switch(attr){
@@ -38,6 +33,7 @@ QVariant Pen::getAttr(const Attr attr) const {
     case Attr::FillColor : return fillColor();
     case Attr::StrokeColor : return strokeColor();
     case Attr::StrokeWidth : return strokeWidth();
+    case Attr::AliasOutline : return aliasOutline();
     case Attr::ShowLabel : return showLabel();
     default: return MouseTool::getAttr(attr);
     }
@@ -48,6 +44,7 @@ void Pen::setAttr(const Attr attr, const QVariant &v) {
     case Attr::FillColor : setFillColor(v.toString()); return;
     case Attr::StrokeColor : setStrokeColor(v.toString()); return;
     case Attr::StrokeWidth : setStrokeWidth(v.toUInt()); return;
+    case Attr::AliasOutline : setAliasOutline(v.toUInt()); return;
     case Attr::ShowLabel : setShowLabel(v.toBool()); return;
     default: MouseTool::setAttr(attr, v); return;
     }
@@ -104,6 +101,7 @@ SharedAlias Pen::MakeAlias(const QPointF &p){
         p.x(), p.y(),
         radius(),
         brush(),
+        aliasPen(),
         showLabel()
     );
 }

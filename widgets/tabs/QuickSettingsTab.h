@@ -16,6 +16,10 @@ public:
     MainPanel *mainPanel;
 
     void reset(){}
+    inline void updateData() {
+        updateGridData();
+        updatePenData();
+    }
 
 public slots:
     void updateGridData();

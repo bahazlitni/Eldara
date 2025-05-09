@@ -32,5 +32,6 @@
         <file>assets/icons/arrow_up.png</file>
         <file>assets/icons/eye_opened.png</file>
         <file>assets/icons/eye_shut.png</file>
+        <file>Eldara.ico</file>
     </qresource>
 </RCC>

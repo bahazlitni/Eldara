@@ -43,6 +43,11 @@ void MainPanel::loadStyleSheet() {
     }
 }
 
+void MainPanel::updateData(){
+    quickSettingsTab->updateData();
+    selectionTab->updateData();
+    variablesTab->updateData();
+}
 
 void MainPanel::reset(){
     quickSettingsTab->reset();

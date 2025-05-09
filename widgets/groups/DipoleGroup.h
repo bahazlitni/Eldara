@@ -8,6 +8,7 @@ class CoordinateInput;
 class IDLabel;
 class AliasGroup;
 class DoubleParameterInput;
+class SimpleIntegerInput;
 
 class DipoleGroup: public ObjectGroup {
     Q_OBJECT
@@ -15,8 +16,10 @@ class DipoleGroup: public ObjectGroup {
 protected:
     const ObjectType _type;
 
+    int m_i;
     IDLabel *ID;
     QVector<DoubleParameterInput*> DoubleInputs;
+    SimpleIntegerInput *StrokeWidth;
 
     void addParameter(const Param param, const QString &label, const bool hasShowLabel);
 

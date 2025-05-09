@@ -93,7 +93,7 @@ enum SIUnit { NO_UNIT = -1, OHM, FARAD, HENRY, VOLT, AMP, COULOMB };
 enum class Attr {
     None = -1, ID, Address,
     ShowLabel, Name, Label,
-    StrokeColor, FillColor, StrokeWidth,
+    StrokeColor, FillColor, StrokeWidth, AliasOutline,
     X, Y, X1, X2, Y1, Y2, P, P1, P2,
     Width, Height, Size, Radius, Diameter, Rect,
     Length, Angle,
@@ -402,4 +402,35 @@ const QColor BCP   = QColor("#F5F5F5");
 inline bool isDarkColor(const QColor &c) {
     // brightness = 0.299 R + 0.587 G + 0.114 B
     return (0.299*c.red() + 0.587*c.green() + 0.114*c.blue()) < 128;
+}
+
+
+
+// =============================================
+// Limits
+// =============================================
+namespace Limits {
+// UI/Geometry
+constexpr int    MIN_ALIAS_RADIUS      =    6;
+constexpr int    MAX_ALIAS_RADIUS      =   16;
+constexpr int    MIN_STROKE_WIDTH      =    1;
+constexpr int    MAX_STROKE_WIDTH      =    4;
+constexpr int    MIN_ALIAS_OUTLINE     =    0;
+constexpr int    MAX_ALIAS_OUTLINE     =    3;
+constexpr int    MIN_TILESIZE          =   10;
+constexpr int    MAX_TILESIZE          =  250;
+
+// Physics
+constexpr double MIN_RESISTANCE_VALUE  =  0.0;
+constexpr double MAX_RESISTANCE_VALUE  = 1e12;
+constexpr double MIN_CAPACITANCE_VALUE =  0.0;
+constexpr double MAX_CAPACITANCE_VALUE =  1e2;
+constexpr double MIN_INDUCTANCE_VALUE  =  0.0;
+constexpr double MAX_INDUCTANCE_VALUE  =  1e3;
+constexpr double MIN_VOLTAGE_VALUE     = -1e6;
+constexpr double MAX_VOLTAGE_VALUE     =  1e6;
+constexpr double MIN_CURRENT_VALUE     = -1e3;
+constexpr double MAX_CURRENT_VALUE     =  1e3;
+constexpr double MIN_QUANTITY_VALUE    =  0.0;
+constexpr double MAX_QUANTITY_VALUE    =  1e3;
 }
