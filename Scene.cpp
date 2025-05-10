@@ -7,10 +7,10 @@
 
 Scene::Scene(QWidget *parent):
     QWidget(parent),
-    grid(Grid(this)),
     pen(Pen(this)),
     selector(Selector(this)),
     grabber(Grabber(this)),
+    grid(Grid(this)),
     simulator(Simulator(this))
 {
     mouse = &selector;

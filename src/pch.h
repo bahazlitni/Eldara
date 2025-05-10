@@ -43,6 +43,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QThread>
+#include <QStandardPaths>
 
 // =============================================
 // Qt GUI
@@ -58,6 +59,8 @@
 #include <QSvgRenderer>
 #include <QGraphicsColorizeEffect>
 #include <QGuiApplication>
+#include <QCoreApplication>
+#include <QScreen>
 
 // =============================================
 // Qt Widgets

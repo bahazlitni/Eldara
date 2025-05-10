@@ -27,14 +27,15 @@ public:
 
     QUndoStack undoStack;
 
-    Grid grid; Pen pen; Selector selector; Grabber grabber;
+    Pen pen;
+    Selector selector;
+    Grabber grabber;
 
     MouseTool *mouse;
-    AliasMap aliases;
+    QHash<uint64_t, SharedAlias> aliases;
 
+    Grid grid;
     Simulator simulator;
-
-
 
     void addAlias(const SharedAlias &alias);
     void removeAlias(const SharedAlias &alias);

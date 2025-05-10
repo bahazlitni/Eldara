@@ -484,8 +484,8 @@ void Grid::updateVisibility() {
     const bool NOT_dirtyVisibleCheckFlagInitial = !dirtyVisibleCheckFlagInitial;
 
     // Prepare for parallel processing
-    const QHash<int, SharedAlias>& aliases = scene->aliases;
-    const QList<int> aliasKeys = aliases.keys(); // Get keys for indexing
+    const QHash<uint64_t, SharedAlias>& aliases = scene->aliases;
+    const QList<uint64_t> aliasKeys = aliases.keys(); // Get keys for indexing
     const int totalAliases = aliasKeys.size();
 
     threadSafeVisibleAliases.reserve(visibleAliases.size());
@@ -511,7 +511,7 @@ void Grid::updateVisibility() {
             localVisibleDipoles.reserve(assumptionThreadSizeForDipoles);
 
             for (int i = startIdx; i < endIdx; i++) {
-                const int aliasKey = aliasKeys[i];
+                const uint64_t aliasKey = aliasKeys[i];
                 const auto& alias = aliases[aliasKey];
 
                 if (alias->visible(*this, zoom())) {
