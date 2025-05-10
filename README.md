@@ -40,8 +40,3 @@ This application is written in C++20 and built using Qt 6.8.0. These instruction
    windeployqt Eldara.exe
    ```
    * This command scans `Eldara.exe` and copies all required Qt runtime libraries, plugins, and QML modules into the current directory.
-
-
-## License
-
-This project is released under the \[Your License Name] License. See `LICENSE` for details.
