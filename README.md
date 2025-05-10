@@ -1,10 +1,9 @@
-# Project Name
+# Eldara
 
 ## Overview
 
 This application is written in C++20 and built using Qt 6.8.0. These instructions will guide you through building a release version and packaging the application for Windows deployment.
 
----
 
 ## Prerequisites
 
@@ -12,8 +11,6 @@ This application is written in C++20 and built using Qt 6.8.0. These instruction
 * A C++20–capable compiler:
   * MSVC 2019 or 2022 (MinGW-w64 is also supported).
 * **windeployqt** tool (bundled with your Qt installation).
-
----
 
 ## Building a Release
 
@@ -36,7 +33,6 @@ This application is written in C++20 and built using Qt 6.8.0. These instruction
 4. **Locate the Executable**
    After a successful build, the release binaries will reside in `build/`, based on your configuration, you should find the release directory.
 
----
 ## Packaging for Windows
 1. **Change to the Release Directory**
 2. **Run windeployqt**
@@ -44,14 +40,8 @@ This application is written in C++20 and built using Qt 6.8.0. These instruction
    windeployqt Eldara.exe
    ```
    * This command scans `Eldara.exe` and copies all required Qt runtime libraries, plugins, and QML modules into the current directory.
----
-## Verifying the Package
-* **Test on a Clean Windows VM**
-  Ensure all dependencies are present and that the application launches without errors.
----
+
 
 ## License
 
 This project is released under the \[Your License Name] License. See `LICENSE` for details.
-
----
